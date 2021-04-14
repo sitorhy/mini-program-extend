@@ -1,0 +1,1 @@
+import OptionInstaller from"./OptionInstaller";import{isFunction}from"../utils/common";export default class DataInstaller extends OptionInstaller{_data=[];install(t,a,n){var s;this._data=t.installers.map(t=>t.data()).concat(n.data),a.set("data",(s=this,function(){return s._data.reduce((t,a)=>Object.assign(t,isFunction(a)?a.call(this):a),{})}))}}

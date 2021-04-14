@@ -1,11 +1,17 @@
 <!--index.wxml-->
 <view class="container">
-  <view class="userinfo">
-    <block wx:if="{{canIUseOpenData}}" calss="userinfo-opendata">
-      <view class="userinfo-avatar" bindtap="bindViewTap">
-        <open-data type="userAvatarUrl"></open-data>
-      </view>
-      <text>wechat mini program contrast environment</text>
-    </block>
-  </view>
+    <view class="userinfo">
+        <block wx:if="{{canIUseOpenData}}" calss="userinfo-opendata">
+            <view class="userinfo-avatar" bindtap="bindViewTap">
+                <open-data type="userAvatarUrl"></open-data>
+            </view>
+            <text>wechat mini program contrast environment</text>
+        </block>
+    </view>
+</view>
+
+<view class="container">
+    <navigator url="/pages/props/index">
+        <button type="primary">Props</button>
+    </navigator>
 </view>

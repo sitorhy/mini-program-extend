@@ -1,0 +1,1 @@
+class Singleton{_instance=void 0;_constructor=function(){return null};constructor(t){this._constructor=t}get(){return void 0===this._instance&&(this._instance=this._constructor.apply(void 0,arguments)),this._instance}release(){this._instance=void 0}}export{Singleton};

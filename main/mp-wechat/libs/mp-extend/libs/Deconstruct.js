@@ -1,0 +1,1 @@
+import{isFunction,isNullOrEmpty}from"../utils/common";function Deconstruct(o,c,t=!1){const n=Object.keys(c),r=Boolean(t)?{...o}:o;return n.forEach(function(t){const n=c[t];isFunction(n)&&(r[t]=n(o))}),n.filter(function(t){return isNullOrEmpty(c[t])}).forEach(function(t){delete r[t]}),r}export{Deconstruct};

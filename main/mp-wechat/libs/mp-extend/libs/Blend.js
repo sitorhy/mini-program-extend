@@ -1,0 +1,1 @@
+import{isFunction}from"../utils/common";function Blend(n,t){return function(...i){return isFunction(t)?Object.assign({},n,t.apply(this,i)):Array.isArray(t)?Object.assign.apply(void 0,[{},n].concat(t.map(n=>isFunction(n)?n.apply(this,i):n))):Object.assign({},n,t)}}export{Blend};
