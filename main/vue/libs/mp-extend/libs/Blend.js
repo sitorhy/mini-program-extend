@@ -1,1 +1,23 @@
-import{isFunction}from"../utils/common";function Blend(n,t){return function(...i){return isFunction(t)?Object.assign({},n,t.apply(this,i)):Array.isArray(t)?Object.assign.apply(void 0,[{},n].concat(t.map(n=>isFunction(n)?n.apply(this,i):n))):Object.assign({},n,t)}}export{Blend};
+import {isFunction} from '../utils/common';
+
+export function Blend(target, blender) {
+    return function (...args) {
+        if (isFunction(blender)) {
+            return Object.assign({}, target, blender.apply(this, args));
+        } else if (Array.isArray(blender)) {
+            return Object.assign.apply(
+                undefined, [{}, target].concat(
+                    blender.map(i => {
+                        if (isFunction(i)) {
+                            return i.apply(this, args);
+                        } else {
+                            return i;
+                        }
+                    })
+                )
+            )
+        } else {
+            return Object.assign({}, target, blender);
+        }
+    }
+}

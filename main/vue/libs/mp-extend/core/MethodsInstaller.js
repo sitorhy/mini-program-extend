@@ -1,1 +1,23 @@
-import OptionInstaller from"./OptionInstaller";export default class MethodsInstaller extends OptionInstaller{_methods={};definitionFilter(t,s,e,l,o){Object.assign(l,{methods:Object.assign(l.methods||{},this._methods)})}install(t,s,e){var{methods:e=null}=e;s.set("methods",Object.assign.apply(void 0,[this._methods,...t.installers.map(t=>t.methods()),e]))}}
+import OptionInstaller from './OptionInstaller';
+
+export default class MethodsInstaller extends OptionInstaller {
+    _methods = {};
+
+    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
+        Object.assign(defFields, {
+            methods: Object.assign(defFields.methods || {}, this._methods)
+        });
+    }
+
+    install(extender, context, options) {
+        const {methods = null} = options;
+        context.set('methods', Object.assign.apply(
+            undefined,
+            [
+                this._methods,
+                ...extender.installers.map(i => i.methods()),
+                methods
+            ]
+        ));
+    }
+}

@@ -1,1 +1,138 @@
-const Collectors={toList:function(){return r=>[...r]},toMap:function(...r){let n=r=>r[0],e=r=>r[1],u=!1;return 1===r.length&&!0===r[0]?u=!0:3<=r.length&&(n=r[0],e=r[1],u=Boolean(r[2])),(r=[])=>{let t;return u?(t=new Map,r.forEach(r=>t.set(n(r),e(r)))):(t={},r.forEach(r=>t[n(r)]=e(r))),t}},toSet:function(){return r=>new Set(r)},reducing:function(t,n){return r=>r.reduce(t,n)},counting:function(){return r=>r.length},maxBy:function(u=()=>0){return n=>{let e=n[0];return n.forEach((r,t)=>{0<t&&0<u(n[t-1],n[t])&&(e=r)}),e}},minBy:function(u=()=>0){return n=>{let e=n[0];return n.forEach((r,t)=>{0<t&&u(n[t-1],n[t])<0&&(e=r)}),e}},joining:function(t){return r=>r.join(t)},groupingBy:function(e,u=!1){return r=>this.reducing((r,t)=>{var n=e(t);return u?r.has(n)?r.get(n).push(t):r.set(n,[t]):Object.hasOwnProperty.call(r,n)?r[n].push(t):r[n]=[t],r},u?new Map:{})(r)}};class Stream{static of(r=[]){return new Stream(r)}constructor(r=[]){this.arr=r}flat(){return this.arr.reduce((r,t)=>Array.isArray(t)?r.concat(t):(r.push(t),r),[])}flatMap(r=r=>r){return Stream.of(this.arr.map(r)).flat()}map(r=r=>r){return Stream.of(this.arr.map(r))}collect(r){return"function"==typeof r?r(this.arr):null}distinct(){return Stream.of([...new Set([...this.arr])])}filter(r=()=>!0){return Stream.of(this.arr.filter(r))}}export{Collectors,Stream};
+export const Collectors = {
+    toList: function () {
+        return (arr) => {
+            return [...arr];
+        };
+    },
+
+    toMap: function (...args) {
+        let v1 = v => v[0], v2 = v => v[1], useCollection = false;
+        if (args.length === 1 && args[0] === true) {
+            useCollection = true;
+        } else if (args.length >= 3) {
+            v1 = args[0];
+            v2 = args[1];
+            useCollection = Boolean(args[2]);
+        }
+        return (entries = []) => {
+            let o;
+            if (!useCollection) {
+                o = {};
+                entries.forEach(i => o[v1(i)] = v2(i));
+            } else {
+                o = new Map();
+                entries.forEach(i => o.set(v1(i), v2(i)));
+            }
+            return o;
+        };
+    },
+
+    toSet: function () {
+        return arr => new Set(arr);
+    },
+
+    reducing: function (v1, v2) {
+        return arr => arr.reduce(v1, v2);
+    },
+
+    counting: function () {
+        return arr => arr.length;
+    },
+
+    maxBy: function (v1 = () => 0) {
+        return arr => {
+            let m = arr[0];
+            arr.forEach((i, j) => {
+                if (j > 0) {
+                    if (v1(arr[j - 1], arr[j]) > 0) {
+                        m = i;
+                    }
+                }
+            });
+            return m;
+        };
+    },
+
+    minBy: function (v1 = () => 0) {
+        return arr => {
+            let m = arr[0];
+            arr.forEach((i, j) => {
+                if (j > 0) {
+                    if (v1(arr[j - 1], arr[j]) < 0) {
+                        m = i;
+                    }
+                }
+            });
+            return m;
+        };
+    },
+
+    joining: function (sp) {
+        return arr => arr.join(sp);
+    },
+
+
+    groupingBy: function (v1, useCollection = false) {
+        return arr => this.reducing((s, i) => {
+            const k = v1(i);
+            if (useCollection) {
+                if (!s.has(k)) {
+                    s.set(k, [i]);
+                } else {
+                    s.get(k).push(i);
+                }
+            } else {
+                if (!Object.hasOwnProperty.call(s, k)) {
+                    s[k] = [i];
+                } else {
+                    s[k].push(i);
+                }
+            }
+            return s;
+        }, useCollection ? new Map() : {})(arr);
+    }
+};
+
+export class Stream {
+    static of(arr = []) {
+        return new Stream(arr);
+    }
+
+    constructor(arr = []) {
+        this.arr = arr;
+    }
+
+    flat() {
+        return this.arr.reduce((s, i) => {
+            if (Array.isArray(i))
+                return s.concat(i);
+            s.push(i);
+            return s;
+        }, []);
+    }
+
+    flatMap(mapper = (i) => i) {
+        return Stream.of(
+            this.arr.map(mapper)
+        ).flat();
+    }
+
+    map(mapper = (i) => i) {
+        return Stream.of(this.arr.map(mapper));
+    }
+
+    collect(collector) {
+        if (typeof collector === "function") {
+            return collector(this.arr);
+        }
+        return null;
+    }
+
+    distinct() {
+        return Stream.of([...(new Set([...this.arr]))]);
+    }
+
+    filter(fn = () => true) {
+        return Stream.of(this.arr.filter(fn));
+    }
+}

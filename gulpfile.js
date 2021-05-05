@@ -18,7 +18,7 @@ function copyFile(location) {
             i,
             paths[paths.length - 2]
         ].join(path.sep).replace(/[(\\)(\\/)]/g, path.sep).replace(/\\\\/g, path.sep)
-        gulp.src(location).pipe(uglify()).pipe(gulp.dest(target));
+        gulp.src(location).pipe(gulp.dest(target));
     });
 }
 
@@ -45,7 +45,7 @@ gulp.task('deploy', async () => {
             const paths = j.split(path.sep);
             const dest = `${dist}${path.sep}${paths[paths.length - 1]}`;
             console.log(`${src} => ${dest}`);
-            gulp.src(src).pipe(uglify()).pipe(gulp.dest(dest));
+            gulp.src(src).pipe(gulp.dest(dest));
         });
     });
 });

@@ -1,1 +1,70 @@
-function isNullOrEmpty(n){return null==n||""===n}function isNull(n){return null==n}function isFunction(n){return"function"==typeof n}function isString(n){return"string"==typeof n}function isPrimitive(n){return"string"==typeof n||"number"==typeof n||"symbol"==typeof n||"boolean"==typeof n}function isPlainObject(n){return!Array.isArray(n)&&!isNullOrEmpty(n)&&!isPrimitive(n)}function removeEmpty(t,n={}){if(!t)return t;const r=!!n.omitZero,i=!0===n.omitEmptyString,e=n.ignore||[],u={};return Object.keys(t).forEach(n=>{!e.includes(n)&&(null===t[n]||void 0===t[n]||0===t[n]&&r||""===t[n]&&i)||(u[n]=t[n])}),u}function randomNumber(n,t){switch(arguments.length){case 1:return parseInt(Math.random()*n+1,10);case 2:return parseInt(Math.random()*(t-n+1)+n,10);default:return 0}}function uuid(){return"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,function(n){const t=16*Math.random()|0,r="x"===n?t:3&t|8;return r.toString(16)})}export{isNullOrEmpty,isNull,isFunction,isString,isPrimitive,isPlainObject,removeEmpty,randomNumber,uuid};
+export function isNullOrEmpty(input) {
+    return (input === null || input === undefined || input === "");
+}
+
+export function isNull(value) {
+    return (value === null || value === undefined);
+}
+
+export function isFunction(value) {
+    return typeof value === "function";
+}
+
+export function isString(value) {
+    return typeof value === "string";
+}
+
+export function isPrimitive(value) {
+    return (
+        typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "symbol" ||
+        typeof value === "boolean"
+    );
+}
+
+export function isPlainObject(obj) {
+    return !Array.isArray(obj) && !isNullOrEmpty(obj) && !isPrimitive(obj);
+}
+
+
+export function removeEmpty(obj, options = {}) {
+    if (!obj) {
+        return obj;
+    }
+    const omitZero = !!options["omitZero"];
+    const omitEmptyString = options["omitEmptyString"] === true;
+    const ignore = options.ignore || [];
+    const accepts = {};
+    Object.keys(obj).forEach((key) => {
+        if (ignore.includes(key)) {
+            accepts[key] = obj[key];
+        } else {
+            if (!(obj[key] === null || obj[key] === undefined || (obj[key] === 0 && omitZero) || (obj[key] === "" && omitEmptyString))) {
+                accepts[key] = obj[key];
+            }
+        }
+    });
+    return accepts;
+}
+
+export function randomNumber(minNum, maxNum) {
+    switch (arguments.length) {
+        case 1:
+            return parseInt(Math.random() * minNum + 1, 10);
+            break;
+        case 2:
+            return parseInt(Math.random() * (maxNum - minNum + 1) + minNum, 10);
+            break;
+        default:
+            return 0;
+            break;
+    }
+}
+
+export function uuid() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}

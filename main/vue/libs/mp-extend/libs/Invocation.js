@@ -1,1 +1,29 @@
-import{isFunction}from"../utils/common";function applyFunctions(i,n){i.forEach(i=>{isFunction(i)&&i.apply(this,n)})}function Invocation(n,t,o){return function(...i){isFunction(t)?t.apply(this,i):Array.isArray(t)&&applyFunctions.call(this,t,i),isFunction(n)?n.apply(this,i):Array.isArray(n)&&applyFunctions.call(this,n,i),isFunction(o)?o.apply(this,i):Array.isArray(o)&&applyFunctions.call(this,o,i)}}export{Invocation};
+import {isFunction} from '../utils/common';
+
+function applyFunctions(functions, args) {
+    functions.forEach((func) => {
+        if (isFunction(func)) {
+            func.apply(this, args);
+        }
+    });
+}
+
+export function Invocation(target, before, after) {
+    return function (...args) {
+        if (isFunction(before)) {
+            before.apply(this, args);
+        } else if (Array.isArray(before)) {
+            applyFunctions.call(this, before, args);
+        }
+        if (isFunction(target)) {
+            target.apply(this, args);
+        } else if (Array.isArray(target)) {
+            applyFunctions.call(this, target, args);
+        }
+        if (isFunction(after)) {
+            after.apply(this, args);
+        } else if (Array.isArray(after)) {
+            applyFunctions.call(this, after, args);
+        }
+    }
+}

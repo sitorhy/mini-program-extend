@@ -1,8 +1,4 @@
-import options from "../../libs/test-units/props";
+import MPExtender from "../../libs/mp-extend/core/MPExtender";
+import Props from "../../libs/test-units/props";
 
-Page({
-    data: {},
-    onLoad() {
-
-    }
-})
+Page(new MPExtender().extends(Props))

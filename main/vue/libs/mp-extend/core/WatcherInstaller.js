@@ -1,1 +1,271 @@
-import OptionInstaller from"./OptionInstaller";import{Invocation}from"../libs/Invocation";import{isFunction,isNullOrEmpty,isPlainObject,isString}from"../utils/common";import{Collectors,Stream}from"../libs/Stream";const ARR_REG=/([\w\$]+)\[(\d+)\]/;class CompatibleWatcher{_oldValue=[];_callback=void 0;_immediate=!1;_deep=!1;_path="";constructor(e,t,i,s,a=[]){this._callback=t,this._immediate=i,this._deep=s,this._path=e,this._oldValue=a}call(e,t){this._callback&&this._callback.apply(e,t.concat(this._oldValue||[])),this._oldValue=t}get immediate(){return this._immediate}set immediate(e){this._immediate=e}get deep(){return this._deep}set deep(e){this._deep=e}get path(){return this._path}set path(e){this._path=e}get oldValue(){return this._oldValue}set oldValue(e){this._oldValue=e}}class OnceCompatibleWatcher extends CompatibleWatcher{_queue=[];_emitted=!1;_immediateWatchers=void 0;constructor(e,t,i=void 0){super(t,i,!0,!1,[]),this._queue=e,this._immediateWatchers=e.filter(e=>e.immediate)}call(e,t){!1===this._emitted&&(super.call(e,t),this._emitted=!0)}run(t,i=[]){this._immediateWatchers&&this._immediateWatchers.length&&this._immediateWatchers.forEach(function(e){e.call(t,i)})}release(){this._queue.splice(this._queue.indexOf(this),1),this._queue=null}get emitted(){return this._emitted}}function collectObservers(t,e,i,s,a,l=new Map){let r=l.get(t);if(r||(r=[],l.set(t,r)),isFunction(e))r.push(new CompatibleWatcher(t,e,i,s));else if(isString(e))r.push(new CompatibleWatcher(t,function(){isFunction(this[e])&&this[e].apply(this,arguments)},i,s));else if(isPlainObject(e)){const{deep:s=!1,immediate:i=!1}=e;!0===s?collectObservers(t+".**",e.handler,i,!1,a,l):collectObservers(t,e.handler,i,!1,a,l)}else Array.isArray(e)&&e.forEach(e=>{collectObservers(t,e,i,s,a,l)})}export default class WatcherInstaller extends OptionInstaller{_observers={};watch(e,t,i){}dynamicObserver(){}selectData(e,t){var i=t.indexOf("."),s=i<0?t:t.substring(0,i);if(0<i)return this.selectData(e[s],t.substring(i+1));if("**"===s)return e;if(ARR_REG.test(s)){var[,t,i]=ARR_REG.exec(s);return e[t][parseInt(i)]}return e[s]}selectMultiData(t,e=[]){return isNullOrEmpty(t)?[]:e.map(e=>this.selectData(t,e))}definitionFilter(e,t,i,s,a){const l=t.get("observers")||{},r=t.get("watch");var c=t.get("data"),t=t.get("properties");const n=this,o=this.createInitializationCompatibleContext(c,t,null);Object.assign(l,Object.hasOwnProperty.call(l,"**")?{"**":Invocation(l["**"],this.dynamicObserver)}:{"**":this.dynamicObserver});const h=Object.keys(r).filter(e=>"**"!==e);if(0<h.length){const m=new Map;h.forEach(e=>{collectObservers(e,r[e],!1,!1,o,m)});const u=[];Object.assign.apply(void 0,[l,Stream.of([...m]).filter(([,e])=>0<e.length).map(([e,i])=>{const t=n.selectMultiData(o,e.split(","));var s=new OnceCompatibleWatcher(i,e,function(){i.forEach(e=>{e.oldValue=t})});i.unshift(s),u.push(s);const a=l[e];return[e,function(...t){isFunction(a)&&a.call(this,t),i.forEach(e=>{e.call(this,t)})}]}).collect(Collectors.toMap())]),Object.assign(s,{behaviors:(s.behaviors||[]).concat(Behavior({lifetimes:{attached(){const i=n.createRuntimeCompatibleContext(this);u.filter(e=>!1===e.emitted).forEach(e=>{var t;!e.path||(t=e.path.split(",")).length&&(t=n.selectMultiData(i,t),e.run(this,t),e.call(this,t))}),u.splice(0).forEach(e=>e.release())}}}))})}Object.assign(s,{observers:l})}install(e,t,i){var{observers:s=null}=i;t.set("observers",Object.assign.apply(void 0,[this._observers,...e.installers.map(e=>e.observers()),s])),t.set("watch",i.watch||{})}}
+import OptionInstaller from './OptionInstaller';
+import {Invocation} from "../libs/Invocation";
+import {isFunction, isNullOrEmpty, isPlainObject, isString} from "../utils/common";
+import {Collectors, Stream} from "../libs/Stream";
+
+const ARR_REG = /([\w\$]+)\[(\d+)\]/;
+
+class CompatibleWatcher {
+    _oldValue = [];
+    _callback = undefined;
+    _immediate = false;
+    _deep = false;
+    _path = "";
+
+    constructor(path, callback, immediate, deep, oldValue = []) {
+        this._callback = callback;
+        this._immediate = immediate;
+        this._deep = deep;
+        this._path = path;
+        this._oldValue = oldValue;
+    }
+
+    call(thisArg, args) {
+        if (this._callback) {
+            this._callback.apply(thisArg, args.concat(this._oldValue || []));
+        }
+        this._oldValue = args;
+    }
+
+    get immediate() {
+        return this._immediate;
+    }
+
+    set immediate(value) {
+        this._immediate = value;
+    }
+
+    get deep() {
+        return this._deep;
+    }
+
+    set deep(value) {
+        this._deep = value;
+    }
+
+    get path() {
+        return this._path;
+    }
+
+    set path(value) {
+        this._path = value;
+    }
+
+    get oldValue() {
+        return this._oldValue;
+    }
+
+    set oldValue(value) {
+        this._oldValue = value;
+    }
+}
+
+class OnceCompatibleWatcher extends CompatibleWatcher {
+    _queue = [];
+    _emitted = false;
+    _immediateWatchers = undefined;
+
+    constructor(queue, path, callback = undefined) {
+        super(path, callback, true, false, []);
+        this._queue = queue;
+        this._immediateWatchers = queue.filter(w => w.immediate);
+    }
+
+    call(thisArg, args) {
+        if (this._emitted === false) {
+            super.call(thisArg, args);
+            this._emitted = true;
+        }
+    }
+
+    run(thisArg, args = []) {
+        if (this._immediateWatchers && this._immediateWatchers.length) {
+            this._immediateWatchers.forEach(function (w) {
+                w.call(thisArg, args);
+            });
+        }
+    }
+
+    release() {
+        this._queue.splice(this._queue.indexOf(this), 1);
+        this._queue = null;
+    }
+
+    get emitted() {
+        return this._emitted;
+    }
+}
+
+function collectObservers(path, handler, immediate, deep, instanceState, collection = new Map()) {
+    let callbacks = collection.get(path);
+    if (!callbacks) {
+        callbacks = [];
+        collection.set(path, callbacks);
+    }
+    if (isFunction(handler)) {
+        callbacks.push(new CompatibleWatcher(path, handler, immediate, deep));
+    } else if (isString(handler)) {
+        callbacks.push(new CompatibleWatcher(
+            path,
+            function () {
+                if (isFunction(this[handler])) {
+                    (this[handler]).apply(this, arguments);
+                }
+            },
+            immediate,
+            deep
+        ));
+    } else if (isPlainObject(handler)) {
+        const {deep = false, immediate = false} = handler;
+        if (deep === true) {
+            collectObservers(path + '.**', handler['handler'], immediate, false, instanceState, collection);
+        } else {
+            collectObservers(path, handler['handler'], immediate, false, instanceState, collection);
+        }
+    } else if (Array.isArray(handler)) {
+        handler.forEach(i => {
+            collectObservers(path, i, immediate, deep, instanceState, collection);
+        });
+    }
+}
+
+/**
+ * immediate - 拦截 mounted/attached 前置执行
+ * deep - 加上 '.**' 后缀
+ */
+export default class WatcherInstaller extends OptionInstaller {
+    _observers = {};
+
+    watch(expOfFn, callback, options) {
+
+    }
+
+    dynamicObserver() {
+
+    }
+
+    selectData(data, path) {
+        const iSp = path.indexOf('.');
+        const target = iSp < 0 ? path : path.substring(0, iSp);
+        if (iSp > 0) {
+            return this.selectData(data[target], path.substring(iSp + 1));
+        } else {
+            if (target === '**') {
+                return data;
+            }
+            if (ARR_REG.test(target)) {
+                const [, arr, index] = ARR_REG.exec(target);
+                return data[arr][parseInt(index)];
+            } else {
+                return data[target]
+            }
+        }
+    }
+
+    selectMultiData(data, paths = []) {
+        if (isNullOrEmpty(data)) {
+            return [];
+        }
+        return paths.map(path => {
+            return this.selectData(data, path);
+        });
+    }
+
+    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
+        const observers = context.get('observers') || {};
+        const watch = context.get('watch');
+        const data = context.get('data');
+        const properties = context.get('properties');
+        const installer = this;
+
+        const instanceState = this.createInitializationCompatibleContext(data, properties, null);
+
+        Object.assign(observers, Object.hasOwnProperty.call(observers, '**') ? {
+            '**': Invocation(observers['**'], this.dynamicObserver)
+        } : {
+            '**': this.dynamicObserver
+        });
+
+        const paths = Object.keys(watch).filter(i => i !== '**');
+        if (paths.length > 0) {
+            const collection = new Map();
+            paths.forEach((i) => {
+                collectObservers(i, watch[i], false, false, instanceState, collection);
+            });
+
+            const onceWatchers = [];
+
+            Object.assign.apply(undefined, [
+                observers,
+                Stream.of([...collection]).filter(([, watchers]) => {
+                    return watchers.length > 0;
+                }).map(([path, watchers]) => {
+                    const oldValue = installer.selectMultiData(instanceState, path.split(','));
+                    const once = new OnceCompatibleWatcher(
+                        watchers,
+                        path,
+                        function () {
+                            watchers.forEach(w => {
+                                w.oldValue = oldValue;
+                            });
+                        }
+                    );
+                    watchers.unshift(once);
+                    onceWatchers.push(once);
+
+                    const observer = observers[path];
+                    return [path, function (...args) {
+                        if (isFunction(observer)) {
+                            observer.call(this, args);
+                        }
+                        watchers.forEach(w => {
+                            w.call(this, args);
+                        });
+                    }];
+                }).collect(Collectors.toMap())
+            ]);
+
+            Object.assign(defFields, {
+                behaviors: (defFields.behaviors || []).concat(
+                    Behavior(
+                        {
+                            lifetimes: {
+                                attached() {
+                                    const currentState = installer.createRuntimeCompatibleContext(this);
+                                    onceWatchers.filter(w => w.emitted === false).forEach(w => {
+                                        if (w.path) {
+                                            const paths = w.path.split(',');
+                                            if (paths.length) {
+                                                const currentValues = installer.selectMultiData(currentState, paths);
+                                                w.run(this, currentValues);
+                                                w.call(this, currentValues);
+                                            }
+                                        }
+                                    });
+                                    onceWatchers.splice(0).forEach(w => w.release());
+                                }
+                            }
+                        }
+                    )
+                )
+            });
+        }
+
+        Object.assign(defFields, {
+            observers
+        });
+    }
+
+    install(extender, context, options) {
+        const {observers = null} = options;
+        context.set('observers', Object.assign.apply(
+            undefined,
+            [
+                this._observers,
+                ...extender.installers.map(i => i.observers()),
+                observers
+            ]
+        ));
+        context.set('watch', options.watch || {});
+    }
+}

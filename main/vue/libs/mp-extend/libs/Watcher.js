@@ -1,1 +1,95 @@
-import equal from"./fast-deep-equal/index";import{isFunction,isString}from"../utils/common";class ValueWatcher{name=null;watching=void 0;current=void 0;prev=void 0;constructor(e){this.name=e}prepare(e){this.watching=e}accept(){return this.prev=this.current,this.current=this.watching,this.watching=void 0,!equal(this.current,this.prev)}get value(){return this.current}get previous(){return this.prev}}class Watcher{watchers=new Map;constructor(e){if(!isString(e))throw new Error(`Try subscribe invalid fields: ${e.toString()}`);e.split(",").forEach(e=>{e=e.trim();return this.watchers.set(e,new ValueWatcher(e))})}prepare(...e){let r;if(1===e.length)r=e[0],r&&Object.keys(r).forEach(e=>{const t=this.watchers.get(e);t&&t.prepare(r[e])});else{var t=e[0],e=e[1];const s=this.watchers.get(t);s&&s.prepare(e)}}accept(t){const e=[...this.watchers.values()];e.some(e=>e.accept())&&isFunction(t)&&(1<e.length?e.map(e=>[e.value,e.previous]):[e[0].value,e[0].previous]).forEach(e=>{t(...e)})}get names(){return[...this.watchers.keys()]}get values(){return[...this.watchers.values()].map(e=>e.value)}}export{Watcher};
+import equal from './fast-deep-equal/index';
+import {isFunction, isString} from '../utils/common';
+
+class ValueWatcher {
+    name = null;
+    watching = undefined;
+    current = undefined;
+    prev = undefined;
+
+    constructor(name) {
+        this.name = name;
+    }
+
+    prepare(value) {
+        this.watching = value;
+    }
+
+    accept() {
+        this.prev = this.current;
+        this.current = this.watching;
+        this.watching = undefined;
+        return !equal(this.current, this.prev);
+    }
+
+    get value() {
+        return this.current;
+    }
+
+    get previous() {
+        return this.prev;
+    }
+}
+
+export class Watcher {
+
+    /**
+     * @type {Map<String, ValueWatcher>}
+     */
+    watchers = new Map();
+
+    constructor(subFields) {
+        if (isString(subFields)) {
+            subFields.split(',').forEach(i => {
+                const name = i.trim();
+                return this.watchers.set(name, new ValueWatcher(name));
+            });
+        } else {
+            throw new Error(`Try subscribe invalid fields: ${subFields.toString()}`);
+        }
+    }
+
+    prepare(...args) {
+        let obj;
+        if (args.length === 1) {
+            obj = args[0];
+            if (obj) {
+                Object.keys(obj).forEach((name) => {
+                    const watcher = this.watchers.get(name);
+                    if (watcher) {
+                        watcher.prepare(obj[name]);
+                    }
+                });
+            }
+        } else {
+            const name = args[0];
+            const value = args[1];
+            const watcher = this.watchers.get(name);
+            if (watcher) {
+                watcher.prepare(value);
+            }
+        }
+    }
+
+    accept(changed) {
+        const watchers = [...this.watchers.values()];
+        if (watchers.some(w => w.accept())) {
+            if (isFunction(changed)) {
+                (watchers.length > 1 ?
+                        watchers.map(w => [w.value, w.previous]) :
+                        [watchers[0].value, watchers[0].previous]
+                ).forEach(args => {
+                    changed(...args);
+                });
+            }
+        }
+    }
+
+    get names() {
+        return [...this.watchers.keys()];
+    }
+
+    get values() {
+        return [...this.watchers.values()].map(i => i.value);
+    }
+}

@@ -1,1 +1,218 @@
-import BehaviorInstaller from"./BehaviorInstaller";import{isFunction,isPlainObject}from"../utils/common";import{Collectors,Stream}from"../libs/Stream";export default class OptionInstaller extends BehaviorInstaller{install(e,t,l){return l}build(e,t,l){return{}}createRuntimeCompatibleContext(e){return new Proxy(e,{get(e,t,l){if(Reflect.has(e,t)){const a=Reflect.get(e,t);return isFunction(a)?a.bind(e):a}if(Reflect.has(e,"data")){var r=Reflect.get(e,"data");if(Reflect.has(r,t))return Reflect.get(r,t)}return Reflect.get(e,t)}})}createDynamicCompatibleContext(e,r,a,c,l){let n=null,i=null;const o=Object.create(new Proxy({},{get(e,t){return Reflect.has(n,t)||Reflect.has(i,t)||isFunction(l)&&l.call(void 0,t),Reflect.has(i,t)?Reflect.get(i,t):Reflect.get(n,t)}}));return Object.create(new Proxy(e,{get(e,t){if(n=isPlainObject(r)?r:{},i=isPlainObject(a)?Stream.of(Object.entries(a)).map(([e,t])=>[e,t.value]).collect(Collectors.toMap()):{},Reflect.has(n,t)||Reflect.has(i,t)){if(c&&Reflect.has(c,t))return Reflect.get(c,t);if(Reflect.has(e,t)){const l=Reflect.get(e,t);return isFunction(l)?l.bind(e):l}}else if("data"===t)return o;return Reflect.has(i,t)?Reflect.get(i,t):Reflect.get(n,t)}}))}createInitializationCompatibleContext(e,t,l,r){t=Object.assign({},isPlainObject(e)?e:null,isPlainObject(t)?Stream.of(Object.entries(t)).map(([e,t])=>[e,t.value]).collect(Collectors.toMap()):null);const a=Object.create(new Proxy(t,{get(e,t){return Reflect.has(e,t)||isFunction(r)&&r.call(void 0,t),Reflect.get(e,t)}}));return Object.create(new Proxy(t,{get(e,t){if(Reflect.has(e,t)){if(l&&Reflect.has(l,t))return Reflect.get(l,t)}else if("data"===t)return a;return Reflect.get(e,t)}}))}beforeCreate(){}created(){}beforeMount(){}mounted(){}beforeUpdate(){}updated(){}activated(){}deactivated(){}beforeDestroy(){}destroyed(){}}
+import BehaviorInstaller from './BehaviorInstaller';
+import {isFunction, isPlainObject} from "../utils/common";
+import {Collectors, Stream} from "../libs/Stream";
+
+export default class OptionInstaller extends BehaviorInstaller {
+    /**
+     * 处理配置上下文
+     *
+     * @param {MPExtender} extender
+     * @param {Map<any,any>} context
+     * @param {[key:string]:any} options
+     */
+    install(extender, context, options) {
+        return options;
+    }
+
+    /**
+     * 返回值将直接注入最终配置
+     * @param {MPExtender} extender
+     * @param {Map<any,any>} context
+     * @param {[key:string]:any} options
+     * @returns {{}}
+     */
+    build(extender, context, options) {
+        return {};
+    }
+
+    /**
+     * 创建运行时上下文
+     * @param {object} context - 传入this
+     * @returns {*}
+     */
+    createRuntimeCompatibleContext(context) {
+        return new Proxy(
+            context,
+            {
+                get(target, p, receiver) {
+                    if (Reflect.has(target, p)) {
+                        const prop = Reflect.get(target, p);
+                        if (isFunction(prop)) {
+                            return prop.bind(target);
+                        }
+                        return prop;
+                    } else {
+                        if (Reflect.has(target, 'data')) {
+                            const data = Reflect.get(target, 'data');
+                            if (Reflect.has(data, p)) {
+                                return Reflect.get(data, p);
+                            }
+                        }
+                        return Reflect.get(target, p);
+                    }
+                }
+            }
+        );
+    }
+
+    /**
+     * 运行时临时上下文，允许拦截部分数据
+     * @param context
+     * @param data
+     * @param properties
+     * @param methods
+     * @param onMissingHandler
+     * @returns {null|any}
+     */
+    createDynamicCompatibleContext(context, data, properties, methods, onMissingHandler) {
+        let curState = null;
+        let curProps = null;
+
+        const compatibleDataContext = Object.create(
+            new Proxy(
+                {},
+                {
+                    get(target, p) {
+                        if (!Reflect.has(curState, p) && !Reflect.has(curProps, p)) {
+                            if (isFunction(onMissingHandler)) {
+                                onMissingHandler.call(undefined, p);
+                            }
+                        }
+                        if (Reflect.has(curProps, p)) {
+                            return Reflect.get(curProps, p);
+                        }
+                        return Reflect.get(curState, p);
+                    }
+                }
+            )
+        );
+
+        return Object.create(
+            new Proxy(
+                context,
+                {
+                    get(target, p) {
+                        curState = isPlainObject(data) ? data : {};
+                        curProps = isPlainObject(properties) ? Stream.of(
+                            Object.entries(properties)
+                        ).map(([name, constructor]) => [name, constructor.value]).collect(Collectors.toMap()) : {};
+
+                        if (!Reflect.has(curState, p) && !Reflect.has(curProps, p)) {
+                            if (p === 'data') {
+                                return compatibleDataContext;
+                            }
+                        } else {
+                            if (methods && Reflect.has(methods, p)) {
+                                return Reflect.get(methods, p);
+                            } else if (Reflect.has(target, p)) {
+                                const prop = Reflect.get(target, p);
+                                if (isFunction(prop)) {
+                                    return prop.bind(target);
+                                }
+                                return prop;
+                            }
+                        }
+                        if (Reflect.has(curProps, p)) {
+                            return Reflect.get(curProps, p);
+                        }
+                        return Reflect.get(curState, p);
+                    }
+                }
+            )
+        );
+    }
+
+    /**
+     * 创建临时上下文
+     * @param data - 小程序格式
+     * @param properties - 小程序格式
+     * @param methods
+     * @param onMissingHandler - 参数命中失败时回调
+     * @returns {any}
+     */
+    createInitializationCompatibleContext(data, properties, methods, onMissingHandler) {
+        const initialState = Object.assign(
+            {},
+            isPlainObject(data) ? data : null,
+            isPlainObject(properties) ? Stream.of(
+                Object.entries(properties)
+            ).map(([name, constructor]) => [name, constructor.value]).collect(Collectors.toMap()) : null
+        );
+
+        const compatibleDataContext = Object.create(
+            new Proxy(
+                initialState,
+                {
+                    get(target, p) {
+                        if (!Reflect.has(target, p)) {
+                            if (isFunction(onMissingHandler)) {
+                                onMissingHandler.call(undefined, p);
+                            }
+                        }
+                        return Reflect.get(target, p);
+                    }
+                }
+            )
+        );
+
+        return Object.create(
+            new Proxy(
+                initialState,
+                {
+                    get(target, p) {
+                        if (!Reflect.has(target, p)) {
+                            if (p === 'data') {
+                                return compatibleDataContext;
+                            }
+                        } else {
+                            if (methods && Reflect.has(methods, p)) {
+                                return Reflect.get(methods, p);
+                            }
+                        }
+                        return Reflect.get(target, p);
+                    }
+                }
+            )
+        );
+    }
+
+    beforeCreate() {
+
+    }
+
+    created() {
+
+    }
+
+    beforeMount() {
+
+    }
+
+    mounted() {
+
+    }
+
+    beforeUpdate() {
+
+    }
+
+    updated() {
+
+    }
+
+    activated() {
+
+    }
+
+    deactivated() {
+
+    }
+
+    beforeDestroy() {
+
+    }
+
+    destroyed() {
+
+    }
+}

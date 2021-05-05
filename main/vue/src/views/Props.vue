@@ -1,10 +1,19 @@
 <template>
-
+  <div>
+    <p>默认值</p>
+    <p><span>num={{ num }}</span></p>
+    <p><span>str={{ num }}</span></p>
+    <p><span>bool={{ bool }}</span></p>
+    <p><span>obj={{ obj }}</span></p>
+  </div>
 </template>
 
 <script>
+import Props from "../../libs/test-units/props";
+
 export default {
-  name: "Props"
+  name: "Props",
+  ...Props
 }
 </script>
 

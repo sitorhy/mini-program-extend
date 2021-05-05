@@ -1,1 +1,60 @@
-import OptionInstaller from"./OptionInstaller";import MethodsInstaller from"./MethodsInstaller";import PropertiesInstaller from"./PropertiesInstaller";import DataInstaller from"./DataInstaller";import StateInstaller from"./StateInstaller";import WatcherInstaller from"./WatcherInstaller";import ContextInstaller from"./ContextInstaller";import ComputedInstaller from"./ComputedInstaller";export default class MPExtender{_installers=[];_context=new Map;constructor(){this.use(new MethodsInstaller),this.use(new PropertiesInstaller),this.use(new DataInstaller),this.use(new StateInstaller),this.use(new WatcherInstaller),this.use(new ComputedInstaller),this.use(new ContextInstaller)}get installers(){return this._installers}use(t){t instanceof OptionInstaller&&this._installers.indexOf(t)<0&&this._installers.push(t)}extends(r){this._installers.forEach(t=>{t.install(this,this._context,r)});const e={behaviors:[Behavior({definitionFilter:(e,s)=>{this._installers.forEach(t=>{t.definitionFilter(this,this._context,r,e,s)})}})]};return this._installers.forEach(t=>{Object.assign(e,t.build(this,this._context,r))}),e}}
+import OptionInstaller from './OptionInstaller';
+import MethodsInstaller from './MethodsInstaller';
+import PropertiesInstaller from './PropertiesInstaller';
+import DataInstaller from './DataInstaller';
+import StateInstaller from './StateInstaller';
+import WatcherInstaller from './WatcherInstaller';
+import ContextInstaller from './ContextInstaller';
+import ComputedInstaller from "./ComputedInstaller";
+
+export default class MPExtender {
+    /**
+     * @type {[OptionInstaller]}
+     * @private
+     */
+    _installers = [];
+    _context = new Map();
+
+    constructor() {
+        this.use(new MethodsInstaller());
+        this.use(new PropertiesInstaller());
+        this.use(new DataInstaller());
+        this.use(new StateInstaller());
+        this.use(new WatcherInstaller());
+        this.use(new ComputedInstaller());
+        this.use(new ContextInstaller());
+    }
+
+    get installers() {
+        return this._installers;
+    }
+
+    use(installer) {
+        if (installer instanceof OptionInstaller) {
+            if (this._installers.indexOf(installer) < 0) {
+                this._installers.push(installer);
+            }
+        }
+    }
+
+    extends(options) {
+        this._installers.forEach(installer => {
+            installer.install(this, this._context, options);
+        });
+        const config = {
+            behaviors: [
+                Behavior({
+                    definitionFilter: (defFields, definitionFilterArr) => {
+                        this._installers.forEach(installer => {
+                            installer.definitionFilter(this, this._context, options, defFields, definitionFilterArr);
+                        });
+                    }
+                })
+            ]
+        };
+        this._installers.forEach(installer => {
+            Object.assign(config, installer.build(this, this._context, options));
+        });
+        return config;
+    }
+}

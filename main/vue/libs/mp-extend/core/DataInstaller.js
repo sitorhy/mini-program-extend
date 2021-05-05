@@ -1,1 +1,23 @@
-import OptionInstaller from"./OptionInstaller";import{isFunction}from"../utils/common";export default class DataInstaller extends OptionInstaller{_data=[];install(t,a,n){var s;this._data=t.installers.map(t=>t.data()).concat(n.data),a.set("data",(s=this,function(){return s._data.reduce((t,a)=>Object.assign(t,isFunction(a)?a.call(this):a),{})}))}}
+import OptionInstaller from './OptionInstaller';
+
+import {isFunction} from '../utils/common';
+
+/**
+ * 混合数据生成
+ */
+export default class DataInstaller extends OptionInstaller {
+    _data = [];
+
+    install(extender, context, options) {
+        this._data = extender.installers.map(
+            i => i.data()
+        ).concat(options.data);
+        context.set('data', ((installer) => {
+            return function () {
+                return installer._data.reduce((obj, i) => {
+                    return Object.assign(obj, isFunction(i) ? i.call(this) : i);
+                }, {});
+            }
+        })(this));
+    }
+}

@@ -1,1 +1,89 @@
-import OptionInstaller from"./OptionInstaller";import{isPlainObject}from"../utils/common";import{Optional}from"../libs/Optional";import{Collectors,Stream}from"../libs/Stream";import equal from"../libs/fast-deep-equal";export default class ComputedInstaller extends OptionInstaller{_computed=[];definitionFilter(t,e,a,i,o){var s=e.get("data"),l=e.get("methods")||{},n=e.get("properties");const r=e.get("computed")||{},c=this;if(isPlainObject(s)){const m=new Set(Object.keys(s));Optional.of(Object.keys(r).find(t=>m.has(t))).ifPresent(t=>{throw new Error(`The computed property "${t}" is already defined in data.`)})}if(isPlainObject(n)){const d=new Set(Object.keys(n));Optional.of(Object.keys(r).find(t=>d.has(t))).ifPresent(t=>{throw new Error(`The computed property "${t}" is already declared as a prop.`)})}const p=this.createInitializationCompatibleContext(s,n,l);l=Stream.of(Object.entries(r)).map(([t,e])=>[t,e.call(p)]).collect(Collectors.toMap());Object.assign(i,{behaviors:(i.behaviors||[]).concat(Behavior({data:l})),lifetimes:{created(){const i=Object.keys(r),o=this.setData;let s;const l=c.createDynamicCompatibleContext(this,{},null,null);this.setData=function(e,t){if(isPlainObject(e)){i.length&&i.forEach(t=>{delete e[t]}),s=e;const a={};i.length&&(i.forEach(t=>{var e=r[t].call(l);equal(e,this.data[t])||(a[t]=e)}),Object.assign(e,a)),o.call(this,e,t)}else o.call(this,e,t)}}}})}install(t,e,a){e.set("computed",Object.assign(this._computed,a.computed||{}))}}
+import OptionInstaller from "./OptionInstaller";
+import {isPlainObject} from "../utils/common";
+import {Optional} from "../libs/Optional";
+import {Collectors, Stream} from "../libs/Stream";
+
+import equal from "../libs/fast-deep-equal/index";
+
+export default class ComputedInstaller extends OptionInstaller {
+    _computed = [];
+
+    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
+        const data = context.get('data');
+        const methods = context.get('methods') || {};
+        const properties = context.get('properties');
+        const computed = context.get('computed') || {};
+        const installer = this;
+
+        if (isPlainObject(data)) {
+            const keys = new Set(Object.keys(data));
+            Optional.of(Object.keys(computed).find(k => keys.has(k))).ifPresent((property) => {
+                throw new Error(`The computed property "${property}" is already defined in data.`);
+            });
+        }
+
+        if (isPlainObject(properties)) {
+            const keys = new Set(Object.keys(properties));
+            Optional.of(Object.keys(computed).find(k => keys.has(k))).ifPresent((property) => {
+                throw new Error(`The computed property "${property}" is already declared as a prop.`);
+            });
+        }
+        const instanceComputedContext = this.createInitializationCompatibleContext(data, properties, methods);
+
+        const instComputed = Stream.of(
+            Object.entries(computed)
+        ).map(([name, constructor]) => {
+            return [name, constructor.call(instanceComputedContext)];
+        }).collect(Collectors.toMap());
+
+        Object.assign(defFields, {
+            behaviors: (defFields.behaviors || []).concat(
+                Behavior(
+                    {
+                        data: instComputed
+                    }
+                )
+            ),
+            lifetimes: {
+                created() {
+                    const computedKeys = Object.keys(computed);
+                    const originalSetData = this.setData;
+                    let nextData = {};
+                    const currentComputedContext = installer.createDynamicCompatibleContext(
+                        this,
+                        nextData,
+                        null,
+                        null
+                    );
+                    this.setData = function (data, callback) {
+                        if (isPlainObject(data)) {
+                            if (computedKeys.length) {
+                                computedKeys.forEach(i => {
+                                    delete data[i];
+                                });
+                            }
+                            nextData = data;
+                            const nextInstComputed = {};
+                            if (computedKeys.length) {
+                                computedKeys.forEach(i => {
+                                    const next = computed[i].call(currentComputedContext);
+                                    if (!equal(next, this.data[i])) {
+                                        nextInstComputed[i] = next;
+                                    }
+                                });
+                                Object.assign(data, nextInstComputed);
+                            }
+                            originalSetData.call(this, data, callback);
+                        } else {
+                            originalSetData.call(this, data, callback);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    install(extender, context, options) {
+        context.set('computed', Object.assign(this._computed, options.computed || {}));
+    }
+}
