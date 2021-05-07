@@ -16,6 +16,7 @@ function copyFile(location) {
         const target = [
             __dirname,
             i,
+            paths[paths.length - 3],
             paths[paths.length - 2]
         ].join(path.sep).replace(/[(\\)(\\/)]/g, path.sep).replace(/\\\\/g, path.sep)
         gulp.src(location).pipe(gulp.dest(target));
@@ -28,6 +29,7 @@ function deleteFile(location) {
         const target = [
             __dirname,
             i,
+            paths[paths.length - 3],
             paths[paths.length - 2],
             paths[paths.length - 1]
         ].join(path.sep).replace(/[(\\)(\\/)]/g, path.sep).replace(/\\\\/g, path.sep)
@@ -41,10 +43,9 @@ gulp.task('deploy', async () => {
     TARGETS.forEach(i => {
         const dist = `${__dirname}${path.sep}${i}`.replace(/\//g, path.sep);
         [LIB_HOME, TEST_UNITS_HOME].forEach(j => {
-            const src = `${__dirname}${path.sep}${j}${path.sep}**${path.sep}*.js`.replace(/\//g, path.sep);
+            const src = `${__dirname}${path.sep}${j}${path.sep}**${path.sep}*`.replace(/\//g, path.sep);
             const paths = j.split(path.sep);
             const dest = `${dist}${path.sep}${paths[paths.length - 1]}`;
-            console.log(`${src} => ${dest}`);
             gulp.src(src).pipe(gulp.dest(dest));
         });
     });
