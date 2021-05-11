@@ -17,6 +17,7 @@ export default class MPExtender {
     _context = new Map();
 
     constructor() {
+        this.use(new MixinInstaller());
         this.use(new MethodsInstaller());
         this.use(new PropertiesInstaller());
         this.use(new DataInstaller());
@@ -24,7 +25,6 @@ export default class MPExtender {
         this.use(new WatcherInstaller());
         this.use(new ComputedInstaller());
         this.use(new ContextInstaller());
-        this.use(new MixinInstaller());
     }
 
     get installers() {
