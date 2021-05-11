@@ -22,5 +22,6 @@ export default {
     ],
     onLoad() {
         console.log("默认值");
+        console.log(this.data);
     }
 }

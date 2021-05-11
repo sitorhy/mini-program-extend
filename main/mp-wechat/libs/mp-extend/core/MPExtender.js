@@ -7,6 +7,7 @@ import WatcherInstaller from './WatcherInstaller';
 import ContextInstaller from './ContextInstaller';
 import ComputedInstaller from "./ComputedInstaller";
 import MixinInstaller from "./MixinInstaller";
+import LifeCycleInstaller from "./LifeCycleInstaller";
 
 export default class MPExtender {
     /**
@@ -25,6 +26,7 @@ export default class MPExtender {
         this.use(new WatcherInstaller());
         this.use(new ComputedInstaller());
         this.use(new ContextInstaller());
+        this.use(new LifeCycleInstaller());
     }
 
     get installers() {

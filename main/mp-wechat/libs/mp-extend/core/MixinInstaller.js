@@ -5,7 +5,7 @@ import {Blend} from "../libs/Blend";
 export default class MixinInstaller extends OptionInstaller {
     install(extender, context, options) {
         const {mixins} = options;
-        console.log(options)
+
         if (Array.isArray(mixins) && mixins.length) {
             mixins.forEach(m => {
                 if (m && Object.keys(m).length) {
@@ -47,8 +47,6 @@ export default class MixinInstaller extends OptionInstaller {
                     );
                 }
             });
-
-            console.log(options)
         }
     }
 }
