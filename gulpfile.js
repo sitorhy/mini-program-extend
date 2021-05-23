@@ -5,63 +5,61 @@ const uglify = require("gulp-uglify");
 
 const LIB_HOME = path.join("main", "mp-extend");
 const TEST_UNITS_HOME = path.join("main", "test-units");
-const TARGETS = [
-    path.join("main", "mp-wechat", "libs"),
-    path.join("main", "vue", "libs")
-];
 
-function copyFile(location) {
-    const paths = location.split(path.sep);
-    TARGETS.forEach(i => {
-        const target = [
-            __dirname,
-            i,
-            paths[paths.length - 3],
-            paths[paths.length - 2]
-        ].join(path.sep).replace(/[(\\)(\\/)]/g, path.sep).replace(/\\\\/g, path.sep)
-        gulp.src(location).pipe(gulp.dest(target));
+
+function copyFile(location, targetSubDir) {
+    const dir = path.dirname(location);
+    const dest = [
+        `main/mp-wechat/libs/${targetSubDir}/`.replace(/\\/g, '/'),
+        `main/vue/libs/${targetSubDir}/`.replace(/\\/g, '/')
+    ];
+    dest.forEach(i => {
+        gulp.src(location, {
+            base: dir
+        }).pipe(gulp.dest(i));
     });
 }
 
-function deleteFile(location) {
-    const paths = location.split(path.sep);
-    TARGETS.forEach(i => {
-        const target = [
-            __dirname,
-            i,
-            paths[paths.length - 3],
-            paths[paths.length - 2],
-            paths[paths.length - 1]
-        ].join(path.sep).replace(/[(\\)(\\/)]/g, path.sep).replace(/\\\\/g, path.sep)
-        fs.unlink(target, function () {
-            console.log(`${target} unlink.`);
-        });
+function deleteFile(location, targetSubDir) {
+    const dest = [
+        `main/mp-wechat/libs/${targetSubDir}/`.replace(/\\/g, '/'),
+        `main/vue/libs/${targetSubDir}/`.replace(/\\/g, '/')
+    ];
+    dest.forEach(i => {
+        fs.unlink(i);
     });
 }
 
-gulp.task('deploy', async () => {
-    TARGETS.forEach(i => {
-        const dist = `${__dirname}${path.sep}${i}`.replace(/\//g, path.sep);
-        [LIB_HOME, TEST_UNITS_HOME].forEach(j => {
-            const src = `${__dirname}${path.sep}${j}${path.sep}**${path.sep}*`.replace(/\//g, path.sep);
-            const paths = j.split(path.sep);
-            const dest = `${dist}${path.sep}${paths[paths.length - 1]}`;
-            gulp.src(src).pipe(gulp.dest(dest));
-        });
-    });
+gulp.task("deploy", async () => {
+    gulp.src(LIB_HOME + "/**/*.js", {
+        base: LIB_HOME
+    }).pipe(gulp.dest(`main/mp-wechat/libs/mp-extend/`));
+    gulp.src(TEST_UNITS_HOME + "/**/*.js", {
+        base: TEST_UNITS_HOME
+    }).pipe(gulp.dest(`main/mp-wechat/libs/test-units/`));
 });
 
-gulp.task("dev", gulp.series('deploy', async () => {
-    const watcher = gulp.watch([LIB_HOME, TEST_UNITS_HOME].map(i => `${__dirname}${path.sep}${i}`));
-    watcher.on('change', function (location, stats) {
-        copyFile(location);
+gulp.task("dev", gulp.series(['deploy'], async () => {
+    const libWatcher = gulp.watch(LIB_HOME);
+    const testWatcher = gulp.watch(TEST_UNITS_HOME);
+    libWatcher.on('change', function (location, stats) {
+        copyFile(location, "mp-extend");
+    });
+    testWatcher.on('change', function (location, stats) {
+        copyFile(location, "test-units");
     });
 
-    watcher.on('add', function (location, stats) {
-        copyFile(location);
+    libWatcher.on('add', function (location, stats) {
+        copyFile(location, "mp-extend");
+    });
+    testWatcher.on('add', function (location, stats) {
+        copyFile(location, "test-units");
     });
 
-    watcher.on('unlink', function (location, stats) {
-        deleteFile(location);
+    libWatcher.on('unlink', function (location, stats) {
+        deleteFile(location, "mp-extend");
+    });
+    testWatcher.on('unlink', function (location, stats) {
+        deleteFile(location, "test-units");
     });
 }));

@@ -20,7 +20,7 @@ export default {
             }
         }
     ],
-    onLoad() {
+    mounted() {
         console.log("默认值");
         console.log(this.data);
     }
