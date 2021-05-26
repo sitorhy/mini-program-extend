@@ -1,5 +1,5 @@
 import OptionInstaller from "./OptionInstaller";
-import {Invocation} from "../libs/Invocation";
+import {Blend} from "../libs/Blend";
 import {isFunction} from "../utils/common";
 
 export default class LifeCycleInstaller extends OptionInstaller {
@@ -25,13 +25,13 @@ export default class LifeCycleInstaller extends OptionInstaller {
 
         const behavior = {
             created: created,
-            ready: Invocation(ready, null, onReady),
-            lifetimes: {
-                attached: Invocation(attached, beforeMount, mounted),
-                detached: Invocation(detached, beforeDestroy, destroyed)
+            ready: Blend(ready, null, onReady),
+            lifetime: {
+                attached: Blend(attached, beforeMount, mounted),
+                detached: Blend(detached, beforeDestroy, destroyed)
             },
             pageLifetimes: {
-                show: Invocation(show, null, onShow)
+                show: Blend(show, null, onShow)
             }
         };
 

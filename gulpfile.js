@@ -13,11 +13,16 @@ function copyFile(location, targetSubDir) {
         `main/mp-wechat/libs/${targetSubDir}/`.replace(/\\/g, '/'),
         `main/vue/libs/${targetSubDir}/`.replace(/\\/g, '/')
     ];
-    dest.forEach(i => {
-        gulp.src(location, {
-            base: dir
-        }).pipe(gulp.dest(i));
-    });
+    const index = dir.indexOf(targetSubDir);
+    if (index >= 0) {
+        const iDir = index + targetSubDir.length;
+        const sub = dir.substring(iDir + 1);
+        dest.forEach(i => {
+            gulp.src(location, {
+                base: dir
+            }).pipe(gulp.dest(i + sub));
+        });
+    }
 }
 
 function deleteFile(location, targetSubDir) {
