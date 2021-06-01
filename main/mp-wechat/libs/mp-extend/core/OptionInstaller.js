@@ -48,6 +48,12 @@ export default class OptionInstaller extends BehaviorInstaller {
                                 return Reflect.get(data, p);
                             }
                         }
+                        if (p === '$props') {
+                            return Reflect.get(target, 'properties');
+                        } else if (p === '$data') {
+                            const $props = Reflect.get(target, 'properties') || {};
+                            return Stream.of(Object.entries(Reflect.get(target, 'data'))).filter(([prop]) => !Reflect.has($props, prop)).collect(Collectors.toMap())
+                        }
                         return Reflect.get(target, p);
                     }
                 }

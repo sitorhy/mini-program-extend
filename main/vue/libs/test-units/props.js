@@ -16,12 +16,17 @@ export default {
                 },
                 arr: {
                     type: Array
+                },
+                str1: {
+                    type: String,
+                    default: "田所"
                 }
             }
         }
     ],
-    mounted() {
+    mounted: function () {
         console.log("默认值");
-        console.log(this.data);
+        console.log(this.$props);
+        console.log(this.$data);
     }
 }

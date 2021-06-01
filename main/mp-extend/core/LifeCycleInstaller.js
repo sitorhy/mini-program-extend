@@ -7,16 +7,17 @@ export default class LifeCycleInstaller extends OptionInstaller {
         const {
             beforeCreate,
             created,
-            attached,
-            show,
-            onShow,
-            ready,
-            onReady,
             beforeMount,
             mounted,
+            beforeUpdate,
+            updated,
             beforeDestroy,
-            detached,
-            destroyed
+            destroyed,
+            onShow,
+            onHide,
+            onResize,
+            pageLifetimes = {},
+            lifetimes = {}
         } = options;
 
         const data = context.get('data');
@@ -24,14 +25,30 @@ export default class LifeCycleInstaller extends OptionInstaller {
         const properties = context.get('properties');
 
         const behavior = {
-            created: created,
-            ready: Invocation(ready, null, onReady),
             lifetimes: {
-                attached: Invocation(attached, beforeMount, mounted),
-                detached: Invocation(detached, beforeDestroy, destroyed)
+                created: Invocation(lifetimes.created, function () {
+                    const originalSetData = this.setData;
+                    this.setData = function (data, callback) {
+                        if (isFunction(beforeUpdate)) {
+                            beforeUpdate.call(this);
+                        }
+                        originalSetData.call(this, data, function () {
+                            if (isFunction(callback)) {
+                                callback.call(this);
+                            }
+                            if (isFunction(updated)) {
+                                updated.call(this);
+                            }
+                        });
+                    }
+                }, null, created),
+                attached: Invocation(lifetimes.attached, mounted, beforeMount),
+                detached: Invocation(lifetimes.detached, destroyed, beforeDestroy)
             },
             pageLifetimes: {
-                show: Invocation(show, null, onShow)
+                show: Invocation(pageLifetimes.show, null, onShow),
+                hide: Invocation(pageLifetimes.hide, null, onHide),
+                resize: Invocation(pageLifetimes.resize, null, onResize),
             }
         };
 
@@ -46,11 +63,29 @@ export default class LifeCycleInstaller extends OptionInstaller {
 
     build(extender, context, options) {
         const {
-            onLoad
+            onLoad,
+            onReady,
+            onUnload,
+            onPullDownRefresh,
+            onReachBottom,
+            onShareAppMessage,
+            onShareTimeline,
+            onAddToFavorites,
+            onPageScroll,
+            onTabItemTap
         } = options;
 
         return {
-            onLoad
+            onLoad,
+            onReady,
+            onUnload,
+            onPullDownRefresh,
+            onReachBottom,
+            onShareAppMessage,
+            onShareTimeline,
+            onAddToFavorites,
+            onPageScroll,
+            onTabItemTap
         };
     }
 }

@@ -9,12 +9,14 @@ import {Singleton} from "../libs/Singleton";
  * this.data.id === this.id (true)
  */
 export default class ContextInstaller extends OptionInstaller {
+    compatibleContext = new Singleton((thisArg) => {
+        return this.createRuntimeCompatibleContext(thisArg);
+    });
+
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
         const {methods = {}} = defFields;
         const computed = context.get('computed');
-        const compatibleContext = new Singleton((thisArg) => {
-            return this.createRuntimeCompatibleContext(thisArg);
-        });
+        const compatibleContext = this.compatibleContext;
 
         const behavior = {
             created: function () {
@@ -52,5 +54,101 @@ export default class ContextInstaller extends OptionInstaller {
         defFields.behaviors = (defFields.behaviors || []).concat([
             Behavior(behavior)
         ]);
+    }
+
+    install(extender, context, options) {
+        const {
+            onLoad,
+            onReady,
+            onUnload,
+            onPullDownRefresh,
+            onReachBottom,
+            onShareAppMessage,
+            onShareTimeline,
+            onAddToFavorites,
+            onPageScroll,
+            onTabItemTap,
+            beforeCreate,
+            created,
+            beforeMount,
+            mounted,
+            beforeUpdate,
+            updated,
+            beforeDestroy,
+            destroyed,
+            onShow,
+            onHide,
+            onResize,
+            pageLifetimes = {},
+            lifetimes = {},
+            ...members
+        } = options;
+
+        const compatibleContext = this.compatibleContext;
+
+        Object.assign(
+            options,
+            {
+                pageLifetimes: {
+                    show: function () {
+                        if (isFunction(pageLifetimes.show)) {
+                            pageLifetimes.show.apply(compatibleContext.get(this), arguments);
+                        }
+                    },
+                    hide: function () {
+                        if (isFunction(pageLifetimes.hide)) {
+                            pageLifetimes.hide.apply(compatibleContext.get(this), arguments);
+                        }
+                    },
+                    resize: function (size) {
+                        if (isFunction(pageLifetimes.resize)) {
+                            pageLifetimes.resize.apply(compatibleContext.get(this), arguments);
+                        }
+                    }
+                },
+                lifetimes: {
+                    attached: function () {
+                        if (isFunction(lifetimes.attached)) {
+                            lifetimes.attached.apply(compatibleContext.get(this), arguments);
+                        }
+                    },
+                    detached: function () {
+                        if (isFunction(lifetimes.detached)) {
+                            lifetimes.detached.apply(compatibleContext.get(this), arguments);
+                        }
+                    }
+                }
+            },
+            Stream.of(Object.entries({
+                onLoad,
+                onReady,
+                onUnload,
+                onPullDownRefresh,
+                onReachBottom,
+                onShareAppMessage,
+                onShareTimeline,
+                onAddToFavorites,
+                onPageScroll,
+                onTabItemTap,
+                beforeCreate,
+                created,
+                beforeMount,
+                mounted,
+                beforeUpdate,
+                updated,
+                beforeDestroy,
+                destroyed,
+                onShow,
+                onHide,
+                onResize,
+                ...Stream.of(Object.entries(members || {})).filter(([, v]) => isFunction(v)).collect(Collectors.toMap())
+            })).map(([name, func]) => {
+                return [name, function () {
+                    if (isFunction(func)) {
+                        func.apply(compatibleContext.get(this), arguments);
+                    }
+                }];
+            }).collect(Collectors.toMap())
+        );
     }
 }
