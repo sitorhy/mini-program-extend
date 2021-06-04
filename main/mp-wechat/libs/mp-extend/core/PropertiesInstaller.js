@@ -12,8 +12,6 @@ import {isPlainObject, isFunction, removeEmpty} from '../utils/common';
  * /page?id=110，id会注入到value中，并触发observer
  */
 export default class PropertiesInstaller extends OptionInstaller {
-    _properties = {};
-
     install(extender, context, options) {
         const props = Object.assign.apply(
             undefined,
@@ -102,6 +100,6 @@ export default class PropertiesInstaller extends OptionInstaller {
             }
         }).collect(Collectors.toMap());
 
-        context.set('properties', Object.assign(this._properties, properties));
+        context.set('properties', Object.assign({}, properties));
     }
 }

@@ -30,7 +30,7 @@ export default class OptionInstaller extends BehaviorInstaller {
      * @param {object} context - 传入this
      * @returns {*}
      */
-    createRuntimeCompatibleContext(context) {
+    createRuntimeCompatibleContext(context,data, properties, methods, onMissingHandler) {
         return new Proxy(
             context,
             {

@@ -1,11 +1,9 @@
 import OptionInstaller from './OptionInstaller';
 
 export default class MethodsInstaller extends OptionInstaller {
-    _methods = {};
-
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
         Object.assign(defFields, {
-            methods: Object.assign(defFields.methods || {}, this._methods)
+            methods: context.get('methods')
         });
     }
 
@@ -14,7 +12,7 @@ export default class MethodsInstaller extends OptionInstaller {
         context.set('methods', Object.assign.apply(
             undefined,
             [
-                this._methods,
+                {},
                 ...extender.installers.map(i => i.methods()),
                 methods
             ]

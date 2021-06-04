@@ -17,10 +17,30 @@ export default {
                 arr: {
                     type: Array
                 },
-                str1: {
+                name: {
                     type: String,
-                    default: "田所"
+                    default: "田所浩二"
+                },
+                a: {
+                    type: Number,
+                    default: 100
+                },
+                b: {
+                    type: Number,
+                    default: 200
+                },
+                age: {
+                    type: Number,
+                    default: 23,
+                    validator(value) {
+                        return value === 24;
+                    }
                 }
+            },
+            data() {
+                return {
+                    c: this.a + this.b
+                };
             }
         }
     ],

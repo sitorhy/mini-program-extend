@@ -119,45 +119,23 @@ export default class StateInstaller extends OptionInstaller {
         return instData;
     }
 
-    getValidatableProps(properties) {
-        return Stream.of(Object.entries(properties)).filter(([, constructor]) => {
-            return isPlainObject(constructor) && isFunction(constructor.validator);
-        }).map(([name, constructor]) => {
-            return [name, constructor.validator];
-        }).collect(Collectors.toMap());
-    }
-
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
         const methods = context.get('methods');
-        const validatableProps = this.getValidatableProps(context.get('properties'));
         const properties = this.attemptToInstantiateProps(extender, context, methods, options);
         const data = this.attemptToInstantiateData(extender, properties, methods, context, options);
-        const installer = this;
 
         const keys = new Set(Object.keys(properties));
+
         Optional.of(Object.keys(data).find(k => keys.has(k))).ifPresent((property) => {
             throw new Error(`The data property "${property}" is already declared as a prop. Use prop default value instead.`);
         });
 
-        context.set('properties', properties);
-        context.set('data', data);
-
         Object.assign(defFields, {
             behaviors: (defFields.behaviors || []).concat(
-                Behavior(
-                    {
-                        properties: Object.assign(defFields.properties || {}, properties),
-                        data: Object.assign(defFields.data || {}, data),
-                        lifetimes: {
-                            created() {
-                                const currentState = installer.createRuntimeCompatibleContext(this);
-                                Object.entries(validatableProps).forEach(([name, validator]) => {
-                                    validator.call(currentState, this.data[name]);
-                                });
-                            }
-                        }
-                    }
-                )
+                Behavior({
+                    data,
+                    properties
+                })
             )
         });
     }
