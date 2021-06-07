@@ -3,6 +3,11 @@ import {isFunction, isPlainObject} from "../utils/common";
 import {Collectors, Stream} from "../libs/Stream";
 
 export default class OptionInstaller extends BehaviorInstaller {
+    constructor(extender = null) {
+        super();
+        this.extender = extender;
+    }
+
     /**
      * 处理配置上下文
      *
@@ -30,7 +35,7 @@ export default class OptionInstaller extends BehaviorInstaller {
      * @param {object} context - 传入this
      * @returns {*}
      */
-    createRuntimeCompatibleContext(context,data, properties, methods, onMissingHandler) {
+    createRuntimeCompatibleContext(context) {
         return new Proxy(
             context,
             {
@@ -142,7 +147,7 @@ export default class OptionInstaller extends BehaviorInstaller {
             isPlainObject(data) ? data : null,
             isPlainObject(properties) ? Stream.of(
                 Object.entries(properties)
-            ).map(([name, constructor]) => [name, constructor.value]).collect(Collectors.toMap()) : null
+            ).map(([prop, constructor]) => [prop, constructor.value]).collect(Collectors.toMap()) : null
         );
 
         const compatibleDataContext = Object.create(
@@ -186,31 +191,11 @@ export default class OptionInstaller extends BehaviorInstaller {
 
     }
 
-    created() {
-
-    }
-
     beforeMount() {
 
     }
 
     mounted() {
-
-    }
-
-    beforeUpdate() {
-
-    }
-
-    updated() {
-
-    }
-
-    activated() {
-
-    }
-
-    deactivated() {
 
     }
 

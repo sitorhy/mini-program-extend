@@ -33,14 +33,6 @@ export default class BehaviorInstaller {
         return {};
     }
 
-    created() {
-
-    }
-
-    attached() {
-
-    }
-
     ready() {
 
     }
@@ -49,19 +41,15 @@ export default class BehaviorInstaller {
 
     }
 
-    detached() {
-
-    }
-
     options() {
         return {};
     }
 
-    lifetimes() {
+    lifetimes(extender, context) {
         return {};
     }
 
-    pageLifetimes() {
+    pageLifetimes(extender, context) {
         return {};
     }
 

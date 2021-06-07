@@ -12,7 +12,13 @@ export default {
                     type: Boolean
                 },
                 obj: {
-                    type: Object
+                    type: Object,
+                    required: true,
+                    default() {
+                        return {
+                            createTime: Date.now()
+                        };
+                    }
                 },
                 arr: {
                     type: Array
@@ -31,7 +37,7 @@ export default {
                 },
                 age: {
                     type: Number,
-                    default: 23,
+                    default: 24,
                     validator(value) {
                         return value === 24;
                     }
@@ -41,12 +47,13 @@ export default {
                 return {
                     c: this.a + this.b
                 };
+            },
+            mounted() {
+                console.log(this.$props);
+                console.log(this.$data);
+                console.log(this.obj);
+                console.log(`age = ${this.age}`);
             }
         }
-    ],
-    mounted: function () {
-        console.log("默认值");
-        console.log(this.$props);
-        console.log(this.$data);
-    }
+    ]
 }

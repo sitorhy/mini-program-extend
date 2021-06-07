@@ -130,6 +130,14 @@ export default class StateInstaller extends OptionInstaller {
             throw new Error(`The data property "${property}" is already declared as a prop. Use prop default value instead.`);
         });
 
+        context.set('state', Object.assign
+            (
+                {},
+                data,
+                Stream.of(Object.entries(properties)).map(([prop, constructor]) => [prop, constructor.value]).collect(Collectors.toMap())
+            )
+        );
+
         Object.assign(defFields, {
             behaviors: (defFields.behaviors || []).concat(
                 Behavior({

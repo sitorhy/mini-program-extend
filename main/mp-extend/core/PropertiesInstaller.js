@@ -9,9 +9,25 @@ import {isPlainObject, isFunction, removeEmpty} from '../utils/common';
  * 默认值为生成函数时，一律转为 default:Function
  *
  * Page启动参数的值会自动注入到属性中
- * /page?id=110，id会注入到value中，并触发observer
+ * /page?id=110，id会注入到value中，并触发并触发observer
+ *
+ * observer初始化时不会触发，只有再值变化时触发
+ * validator针对当前值，因此初始化会触发一次
  */
 export default class PropertiesInstaller extends OptionInstaller {
+    lifetimes(extender, context) {
+        const properties = context.get('properties');
+        return {
+            created() {
+                Object.entries(properties).filter(([, constructor]) => {
+                    return isPlainObject(constructor) && isFunction(constructor.validator);
+                }).forEach(([prop, constructor]) => {
+                    constructor.validator.apply(this, [this.data[prop], undefined]);
+                });
+            }
+        };
+    }
+
     install(extender, context, options) {
         const props = Object.assign.apply(
             undefined,

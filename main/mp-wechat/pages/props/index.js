@@ -9,4 +9,22 @@ obj: null
 str: ""
  */
 
+
+/*
+Page({
+    behaviors: [
+        Behavior({
+            properties: {
+                obj: {
+                    type: Object
+                }
+            }
+        })
+    ],
+    onLoad() {
+        console.log(this.data);
+    }
+});
+*/
+
 Page(new MPExtender().extends(Props));
