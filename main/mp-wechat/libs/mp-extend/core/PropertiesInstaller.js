@@ -15,15 +15,14 @@ import {isPlainObject, isFunction, removeEmpty} from '../utils/common';
  * validator针对当前值，因此初始化会触发一次
  */
 export default class PropertiesInstaller extends OptionInstaller {
-    lifetimes(extender, context) {
+    lifetimes(extender, context, options) {
         const properties = context.get('properties');
         return {
-            created() {
-                Object.entries(properties).filter(([, constructor]) => {
-                    return isPlainObject(constructor) && isFunction(constructor.validator);
-                }).forEach(([prop, constructor]) => {
-                    console.log(this.data[prop]);
-                    constructor.validator.apply(this, [this.data[prop], undefined]);
+            attached() {
+                Object.entries(properties).filter(([, config]) => {
+                    return isFunction(config.validator);
+                }).forEach(([prop, config]) => {
+                    config.validator.apply(this, [this.data[prop]]);
                 });
             }
         };
@@ -71,29 +70,13 @@ export default class PropertiesInstaller extends OptionInstaller {
                     value: null
                 }];
             } else if (isPlainObject(constructor)) {
-                return [name, Object.assign({
+                const config = Object.assign({}, {
                         type: Array.isArray(constructor.type) ? (constructor.type[0] || null) : (constructor.type || Object)
                     },
                     removeEmpty({
                         optionalTypes: Array.isArray(constructor.type) ? [...constructor.type].concat(
                             Array.isArray(constructor.optionalTypes) ? (constructor.optionalTypes) : []
-                        ) : (Array.isArray(constructor.optionalTypes) ? [...constructor.optionalTypes] : null),
-                        observer: isFunction(constructor.observer) || isFunction(constructor.validator) || constructor.required === true ? Invocation(
-                            constructor.observer,
-                            (function () {
-                                const prop = name.toString();
-                                const validator = constructor.validator;
-                                constructor.validator = function (newVal, oldVal) {
-                                    console.log([newVal, oldVal]);
-                                    if (isFunction(validator)) {
-                                        if (!validator.call(this, newVal, oldVal)) {
-                                            console.warn(`${this.is}: custom validator failed for prop '${prop}'`);
-                                        }
-                                    }
-                                };
-                                return constructor.validator;
-                            })()
-                        ) : null
+                        ) : (Array.isArray(constructor.optionalTypes) ? [...constructor.optionalTypes] : null)
                     }),
                     !Object.hasOwnProperty.call(constructor, 'value') ?
                         (
@@ -105,9 +88,38 @@ export default class PropertiesInstaller extends OptionInstaller {
                                         Object === constructor.type ? {value: null} : null
                                     )
                                 )
-                        ) : (isFunction(constructor.value) ? {'default': constructor.value} : {value: constructor.value}),
-                    constructor.validator ? {validator: constructor.validator} : null
-                )];
+                        ) : (isFunction(constructor.value) ? {'default': constructor.value} : {value: constructor.value})
+                );
+                if (isFunction(constructor.observer) || isFunction(constructor.validator) || constructor.required === true) {
+                    Object.assign(config, {
+                        required: constructor.required,
+                        validator: (function () {
+                            const prop = name.toString();
+                            const required = constructor.required;
+                            const validator = constructor.validator;
+                            return function (newVal, oldVal) {
+                                if (required === true) {
+                                    if (newVal === null || newVal === undefined || newVal === '') {
+                                        console.warn(`Missing required prop: "${prop}"`);
+                                    } else {
+                                        if (isFunction(validator)) {
+                                            if (!validator.call(this, newVal, oldVal)) {
+                                                console.warn(`${this.is}: custom validator failed for prop '${prop}'`);
+                                            }
+                                        }
+                                    }
+                                }
+                            };
+                        })(),
+                        observer: Invocation(
+                            constructor.observer,
+                            function (newVal, oldVal) {
+                                config.validator.call(this, newVal, oldVal);
+                            }
+                        )
+                    });
+                }
+                return [name, config];
             } else {
                 throw new Error(`Bad type definition ${constructor ? (constructor.name || constructor.toString()) : constructor} for ${constructor}`);
             }

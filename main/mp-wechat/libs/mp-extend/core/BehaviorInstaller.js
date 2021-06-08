@@ -45,11 +45,11 @@ export default class BehaviorInstaller {
         return {};
     }
 
-    lifetimes(extender, context) {
+    lifetimes(extender, context, options) {
         return {};
     }
 
-    pageLifetimes(extender, context) {
+    pageLifetimes(extender, context, options) {
         return {};
     }
 

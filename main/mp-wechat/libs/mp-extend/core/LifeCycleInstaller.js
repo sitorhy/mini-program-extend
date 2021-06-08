@@ -2,7 +2,6 @@ import OptionInstaller from "./OptionInstaller";
 import {isFunction} from "../utils/common";
 import {Deconstruct} from "../libs/Deconstruct";
 import {Invocation} from "../libs/Invocation";
-import {Collectors, Stream} from "../libs/Stream";
 
 export default class LifeCycleInstaller extends OptionInstaller {
     behaviorLifeCycleDefinition(extender, context, options, defFields) {
@@ -82,8 +81,8 @@ export default class LifeCycleInstaller extends OptionInstaller {
     }
 
     installBehaviorLifeCycle(extender, context, options) {
-        const lifetimes = extender.installers.map(i => i.lifetimes(extender, context)).filter(i => !!i);
-        const pageLifetimes = extender.installers.map(i => i.pageLifetimes(extender, context)).filter(i => !!i);
+        const lifetimes = extender.installers.map(i => i.lifetimes(extender, context, options)).filter(i => !!i);
+        const pageLifetimes = extender.installers.map(i => i.pageLifetimes(extender, context, options)).filter(i => !!i);
 
         context.set("ready", (() => {
             const readyChain = extender.installers.map(i => i.ready);

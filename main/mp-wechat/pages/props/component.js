@@ -1,15 +1,15 @@
 Component({
     properties: {
         test: {
-            type: Number
+            type: String,
+            observer(newVal, oldVal, changedPath) {
+                console.log(`component test prop  ${oldVal} -> ${newVal}`)
+            }
         }
     },
     data: {},
     methods: {},
     ready() {
-        console.log(this);
-        console.log(this.data);
-        console.log(this.properties)
-        console.log(this.dataset)
+
     }
 });

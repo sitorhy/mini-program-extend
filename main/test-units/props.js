@@ -50,7 +50,6 @@ export default {
             mounted() {
                 console.log(this.$props);
                 console.log(this.$data);
-                console.log(this.obj);
                 console.log(`age = ${this.age}`);
             }
         }
