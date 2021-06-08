@@ -74,33 +74,8 @@ export default class LifeCycleInstaller extends OptionInstaller {
     }
 
     definitionFilter(extender, context, options, defFields) {
-        if (isFunction(context.get('beforeCreate')) && context.has('state')) {
-            const methods = Object.assign.apply(
-                undefined,
-                [
-                    {},
-                    ...extender.installers.map(i => i.methods()),
-                    options.methods
-                ]
-            );
-            const stateContext = this.createInitializationCompatibleContext(
-                context.get('state'),
-                null,
-                methods
-            );
-            Object.assign(methods, Stream.of(Object.entries(methods)).map(([name, func]) => {
-                return [name, function () {
-                    func.apply(stateContext, arguments);
-                }];
-            }));
-            context.get('beforeCreate').apply
-            (
-                new Proxy(options, {
-                    get(target, p, receiver) {
-                        return Reflect.get(stateContext, p);
-                    }
-                })
-            );
+        if (isFunction(context.get('beforeCreate'))) {
+            context.get('beforeCreate').call(this.createInitializationCompatibleContext(context.get('state')));
         }
         this.behaviorLifeCycleDefinition(extender, context, options, defFields);
         this.compatibleLifeCycleDefinition(extender, context, options, defFields);

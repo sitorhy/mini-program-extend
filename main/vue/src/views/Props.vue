@@ -2,9 +2,10 @@
   <div>
     <p>默认值</p>
     <p><span>num={{ num }}</span></p>
-    <p><span>str={{ num }}</span></p>
+    <p><span>str={{ str }}</span></p>
     <p><span>bool={{ bool }}</span></p>
     <p><span>obj={{ obj }}</span></p>
+    <p><span>name={{ name }}</span></p>
   </div>
 </template>
 

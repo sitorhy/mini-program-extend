@@ -22,6 +22,7 @@ export default class PropertiesInstaller extends OptionInstaller {
                 Object.entries(properties).filter(([, constructor]) => {
                     return isPlainObject(constructor) && isFunction(constructor.validator);
                 }).forEach(([prop, constructor]) => {
+                    console.log(this.data[prop]);
                     constructor.validator.apply(this, [this.data[prop], undefined]);
                 });
             }
@@ -71,7 +72,7 @@ export default class PropertiesInstaller extends OptionInstaller {
                 }];
             } else if (isPlainObject(constructor)) {
                 return [name, Object.assign({
-                        type: Array.isArray(constructor.type) ? (constructor.type[0] || null) : constructor.type
+                        type: Array.isArray(constructor.type) ? (constructor.type[0] || null) : (constructor.type || Object)
                     },
                     removeEmpty({
                         optionalTypes: Array.isArray(constructor.type) ? [...constructor.type].concat(
@@ -81,16 +82,12 @@ export default class PropertiesInstaller extends OptionInstaller {
                             constructor.observer,
                             (function () {
                                 const prop = name.toString();
-                                const required = constructor.required;
                                 const validator = constructor.validator;
                                 constructor.validator = function (newVal, oldVal) {
-                                    if (required === true && (newVal === null || newVal === undefined || newVal === '')) {
-                                        console.warn(`${this.is}: Missing required prop '${prop}'`)
-                                    } else {
-                                        if (isFunction(validator)) {
-                                            if (!validator.call(this, newVal, oldVal)) {
-                                                console.warn(`${this.is}: custom validator failed for prop '${prop}'`);
-                                            }
+                                    console.log([newVal, oldVal]);
+                                    if (isFunction(validator)) {
+                                        if (!validator.call(this, newVal, oldVal)) {
+                                            console.warn(`${this.is}: custom validator failed for prop '${prop}'`);
                                         }
                                     }
                                 };

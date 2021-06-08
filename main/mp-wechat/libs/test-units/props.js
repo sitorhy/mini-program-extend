@@ -13,7 +13,6 @@ export default {
                 },
                 obj: {
                     type: Object,
-                    required: true,
                     default() {
                         return {
                             createTime: Date.now()
@@ -25,7 +24,7 @@ export default {
                 },
                 name: {
                     type: String,
-                    default: "田所浩二"
+                    required: true
                 },
                 a: {
                     type: Number,
