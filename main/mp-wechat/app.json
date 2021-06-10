@@ -1,7 +1,8 @@
 {
   "pages":[
     "pages/index/index",
-    "pages/props/index"
+    "pages/props/index",
+    "pages/computed/index"
   ],
   "window":{
     "backgroundTextStyle":"light",

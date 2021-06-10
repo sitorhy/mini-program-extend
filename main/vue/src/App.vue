@@ -4,6 +4,8 @@
       <router-link to="/">Home</router-link>
       |
       <router-link to="/props">Props</router-link>
+      |
+      <router-link to="/computed">Computed</router-link>
     </div>
     <router-view/>
   </div>

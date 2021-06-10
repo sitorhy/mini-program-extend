@@ -14,4 +14,7 @@
     <navigator url="/pages/props/index">
         <button type="primary">Props</button>
     </navigator>
+    <navigator url="/pages/computed/index">
+        <button type="primary">Computed</button>
+    </navigator>
 </view>

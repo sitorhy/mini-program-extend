@@ -206,4 +206,8 @@ export default class OptionInstaller extends BehaviorInstaller {
     destroyed() {
 
     }
+
+    computed() {
+        return null;
+    }
 }
