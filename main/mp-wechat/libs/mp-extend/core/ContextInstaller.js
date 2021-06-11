@@ -39,6 +39,7 @@ export default class ContextInstaller extends OptionInstaller {
                         .filter(([, func]) => isFunction(func))
                         .map(([name, func]) => {
                             return [name, function () {
+                                console.log(this)
                                 func.apply(compatibleContext.get(this, context.get('properties')), arguments);
                             }];
                         }).collect(Collectors.toMap())
