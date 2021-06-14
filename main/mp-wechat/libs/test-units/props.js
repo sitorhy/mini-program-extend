@@ -40,6 +40,12 @@ export default {
                     validator(value) {
                         return value === 24;
                     }
+                },
+                d: {
+                    type: Number,
+                    default() {
+                        return this.a * this.b;
+                    }
                 }
             },
             data() {

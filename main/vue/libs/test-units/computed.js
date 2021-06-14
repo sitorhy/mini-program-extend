@@ -2,12 +2,13 @@ export default {
     mixins: [
         {
             data: function () {
-                return {a: 1};
+                return {
+                    a: 1
+                };
             },
             computed: {
                 // 仅读取
                 aDouble: function () {
-                    this.test();
                     return this.a * 2
                 },
                 // 读取和设置
@@ -18,20 +19,27 @@ export default {
                     set: function (v) {
                         this.a = v - 1
                     }
+                },
+                bPlus: {
+                    get() {
+                        return 100;
+                    }
+                },
+                cPlus: {
+                    get() {
+                        return this.bPlus + 200;
+                    }
                 }
             },
             mounted() {
-                this.test();
                 console.log(this.aPlus);   // => 2
-                this.aPlus = 3
-                console.log(this.aPlus);
+                this.aPlus = 3;
+                console.log(this.aPlus);   // => 3
                 console.log(this.a);       // => 2
                 console.log(this.aDouble); // => 4
-            },
-            methods: {
-                test() {
-                    console.log('test a = '+this.a)
-                }
+
+                console.log(this.cPlus);
+
             }
         }
     ]

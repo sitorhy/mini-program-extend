@@ -9,8 +9,8 @@ import {Singleton} from "../libs/Singleton";
  * this.data.id === this.id (true)
  */
 export default class ContextInstaller extends OptionInstaller {
-    compatibleContext = new Singleton((thisArg, properties) => {
-        const runtimeContext = this.createRuntimeCompatibleContext(thisArg);
+    compatibleContext = new Singleton((thisArg, properties, computed) => {
+        const runtimeContext = this.createRuntimeCompatibleContext(thisArg, computed);
         const props = Object.keys(properties || {});
         return new Proxy(runtimeContext, {
             get(target, p, receiver) {
@@ -29,18 +29,34 @@ export default class ContextInstaller extends OptionInstaller {
         });
     });
 
+    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
+        const compatibleContext = this.compatibleContext;
+
+        if (isPlainObject(context.get('methods'))) {
+            Object.assign(defFields, {
+                methods: Stream.of(Object.entries(context.get('methods')))
+                    .map(([name, func]) => {
+                        return [name, function () {
+                            if (isFunction(func)) {
+                                func.apply(compatibleContext.get(this, context.get('properties'), context.get('computed')), arguments);
+                            }
+                        }];
+                    }).collect(Collectors.toMap())
+            });
+        }
+    }
+
     install(extender, context, options) {
         const compatibleContext = this.compatibleContext;
 
-        ['lifetimes', 'pageLifetimes', 'methods'].forEach(prop => {
+        ['lifetimes', 'pageLifetimes'].forEach(prop => {
             if (context.has(prop) && isPlainObject(context.get(prop))) {
                 context.set(prop,
                     Stream.of(Object.entries(context.get(prop)))
                         .filter(([, func]) => isFunction(func))
                         .map(([name, func]) => {
                             return [name, function () {
-                                console.log(this)
-                                func.apply(compatibleContext.get(this, context.get('properties')), arguments);
+                                func.apply(compatibleContext.get(this, context.get('properties'), context.get('computed')), arguments);
                             }];
                         }).collect(Collectors.toMap())
                 );
@@ -53,7 +69,7 @@ export default class ContextInstaller extends OptionInstaller {
                 context.set(i, (() => {
                         const func = context.get(i);
                         return function () {
-                            func.apply(compatibleContext.get(this, context.get('properties')), arguments);
+                            func.apply(compatibleContext.get(this, context.get('properties'), context.get('computed')), arguments);
                         }
                     })()
                 );

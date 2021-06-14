@@ -9,7 +9,7 @@ import {Optional} from "../libs/Optional";
  */
 export default class StateInstaller extends OptionInstaller {
     /**
-     * 属性初始化不允许调用 methods, 不允许访问 data
+     * 属性初始化不允许调用 methods, 不允许访问 data，可以访问props自身
      * @param extender
      * @param context
      * @param methods
@@ -95,7 +95,7 @@ export default class StateInstaller extends OptionInstaller {
 
 
     /**
-     * data 初始化可以访问 props
+     * data 初始化可以访问 props，不允许访问计算属性，不允许访问data自身
      * @param extender
      * @param properties
      * @param methods

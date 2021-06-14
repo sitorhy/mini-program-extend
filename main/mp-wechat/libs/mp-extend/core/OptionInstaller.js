@@ -35,11 +35,42 @@ export default class OptionInstaller extends BehaviorInstaller {
      * @param {object} context - 传入this
      * @returns {*}
      */
-    createRuntimeCompatibleContext(context) {
-        return new Proxy(
+    createRuntimeCompatibleContext(context, computed) {
+        const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
+        const setters = isPlainObject(computed) ? Object.keys(computed).filter(i => isPlainObject(computed[i]) && isFunction(computed[i].set)) : [];
+        let runtimeContext;
+        let runtimeDataContext;
+
+        runtimeDataContext = new Proxy(context.data, {
+            get(target, p, receiver) {
+                if (getters.includes(p)) {
+                    const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
+                    const pValue = getter.call(runtimeContext);
+                    Reflect.set(runtimeDataContext, p, pValue);
+                    return pValue;
+                }
+                return Reflect.get(target, p);
+            },
+            set(target, p, value, receiver) {
+                target[p] = value;
+                Reflect.get(runtimeContext, 'setData').call(runtimeContext, {[p]: value});
+                if (setters.includes(p)) {
+                    computed[p].set.call(runtimeContext, value);
+                }
+                return true;
+            }
+        });
+
+        runtimeContext = new Proxy(
             context,
             {
                 get(target, p, receiver) {
+                    if (getters.includes(p)) {
+                        const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
+                        const pValue = getter.call(runtimeContext);
+                        Reflect.set(runtimeDataContext, p, pValue);
+                        return pValue;
+                    }
                     if (Reflect.has(target, p)) {
                         const prop = Reflect.get(target, p);
                         if (isFunction(prop)) {
@@ -47,84 +78,25 @@ export default class OptionInstaller extends BehaviorInstaller {
                         }
                         return prop;
                     } else {
-                        if (Reflect.has(target, 'data')) {
-                            const data = Reflect.get(target, 'data');
-                            if (Reflect.has(data, p)) {
-                                return Reflect.get(data, p);
-                            }
+                        if (Reflect.has(runtimeDataContext, p)) {
+                            return Reflect.get(runtimeDataContext, p);
                         }
                         return Reflect.get(target, p);
+                    }
+                },
+                set(target, p, value, receiver) {
+                    if (p === 'data') {
+                        return Reflect.set(runtimeDataContext, p, value);
+                    } else if (Reflect.has(runtimeDataContext, p)) {
+                        return Reflect.set(runtimeDataContext, p, value);
+                    } else {
+                        return Reflect.set(context, p, value);
                     }
                 }
             }
         );
-    }
 
-    /**
-     * 运行时临时上下文，允许拦截部分数据
-     * @param context
-     * @param data
-     * @param properties
-     * @param methods
-     * @param onMissingHandler
-     * @returns {null|any}
-     */
-    createDynamicCompatibleContext(context, data, properties, methods, onMissingHandler) {
-        let curState = null;
-        let curProps = null;
-
-        const compatibleDataContext = Object.create(
-            new Proxy(
-                {},
-                {
-                    get(target, p) {
-                        if (!Reflect.has(curState, p) && !Reflect.has(curProps, p)) {
-                            if (isFunction(onMissingHandler)) {
-                                onMissingHandler.call(undefined, p);
-                            }
-                        }
-                        if (Reflect.has(curProps, p)) {
-                            return Reflect.get(curProps, p);
-                        }
-                        return Reflect.get(curState, p);
-                    }
-                }
-            )
-        );
-
-        return Object.create(
-            new Proxy(
-                context,
-                {
-                    get(target, p) {
-                        curState = isPlainObject(data) ? data : {};
-                        curProps = isPlainObject(properties) ? Stream.of(
-                            Object.entries(properties)
-                        ).map(([name, constructor]) => [name, constructor.value]).collect(Collectors.toMap()) : {};
-
-                        if (!Reflect.has(curState, p) && !Reflect.has(curProps, p)) {
-                            if (p === 'data') {
-                                return compatibleDataContext;
-                            }
-                        } else {
-                            if (methods && Reflect.has(methods, p)) {
-                                return Reflect.get(methods, p);
-                            } else if (Reflect.has(target, p)) {
-                                const prop = Reflect.get(target, p);
-                                if (isFunction(prop)) {
-                                    return prop.bind(target);
-                                }
-                                return prop;
-                            }
-                        }
-                        if (Reflect.has(curProps, p)) {
-                            return Reflect.get(curProps, p);
-                        }
-                        return Reflect.get(curState, p);
-                    }
-                }
-            )
-        );
+        return runtimeContext;
     }
 
     /**
@@ -136,25 +108,31 @@ export default class OptionInstaller extends BehaviorInstaller {
      * @returns {any}
      */
     createInitializationCompatibleContext(data, properties, methods, onMissingHandler) {
-        const initialState = Object.assign(
-            {},
-            isPlainObject(data) ? data : null,
-            isPlainObject(properties) ? Stream.of(
-                Object.entries(properties)
-            ).map(([prop, constructor]) => [prop, constructor.value]).collect(Collectors.toMap()) : null
-        );
+        let state;
+        const refreshState = () => {
+            state = Object.assign(
+                {},
+                isPlainObject(data) ? data : null,
+                isPlainObject(properties) ? Stream.of(
+                    Object.entries(properties)
+                ).map(([prop, constructor]) => [prop, constructor.value]).collect(Collectors.toMap()) : null
+            );
+        };
 
         const compatibleDataContext = Object.create(
             new Proxy(
-                initialState,
+                (data || {}),
                 {
                     get(target, p) {
-                        if (!Reflect.has(target, p)) {
+                        if (!Reflect.has(state, p)) {
                             if (isFunction(onMissingHandler)) {
                                 onMissingHandler.call(undefined, p);
                             }
                         }
-                        return Reflect.get(target, p);
+                        return Reflect.get(state, p);
+                    },
+                    set(target, p, value, receiver) {
+                        Reflect.set(target, p, value);
                     }
                 }
             )
@@ -162,10 +140,11 @@ export default class OptionInstaller extends BehaviorInstaller {
 
         return Object.create(
             new Proxy(
-                initialState,
+                (data || {}),
                 {
                     get(target, p) {
-                        if (!Reflect.has(target, p)) {
+                        refreshState();
+                        if (!Reflect.has(state, p)) {
                             if (p === 'data') {
                                 return compatibleDataContext;
                             }
@@ -173,7 +152,14 @@ export default class OptionInstaller extends BehaviorInstaller {
                         if (methods && Reflect.has(methods, p)) {
                             return Reflect.get(methods, p);
                         }
-                        return Reflect.get(target, p);
+                        return Reflect.get(state, p);
+                    },
+                    set(target, p, value, receiver) {
+                        if (p === 'data') {
+                            Reflect.set(compatibleDataContext, p, value);
+                        } else {
+                            Reflect.set(target, p, value);
+                        }
                     }
                 }
             )

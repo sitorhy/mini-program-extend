@@ -10,7 +10,6 @@ export class Singleton {
     }
 
     get() {
-        console.log(this)
         if (this._instance === undefined) {
             this._instance = this._constructor.apply(undefined, arguments);
         }
