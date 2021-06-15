@@ -1,0 +1,7 @@
+<view>
+    <view><text>aPlus=</text><text>{{ aPlus }}</text></view>
+    <view><text>a=</text><text>{{ a }}</text></view>
+    <view><text>aDouble=</text><text>{{ aDouble }}</text></view>
+    <view><text>cPlus=</text><text>{{ cPlus }}</text></view>
+    <view><text>动态测试=</text><text>{{ formatTime }}</text></view>
+</view>

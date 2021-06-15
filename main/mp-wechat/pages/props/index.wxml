@@ -1,0 +1,29 @@
+<wxs module="wxs">
+    module.exports = {
+        stringify: function (obj) {
+            return JSON.stringify(obj);
+        }
+    }
+</wxs>
+
+<view>
+    <text>num={{ num }}</text>
+</view>
+<view>
+    <text>str={{ str }}</text>
+</view>
+<view>
+    <text>bool={{ bool }}</text>
+</view>
+<view>
+    <text>obj={{ wxs.stringify(obj) }}</text>
+</view>
+<view>
+    <text>name={{ name }}</text>
+</view>
+<view>
+    <text>d={{ d }}</text>
+</view>
+<view>
+    <text>c={{ c }}</text>
+</view>

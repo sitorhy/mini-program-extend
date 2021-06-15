@@ -11,7 +11,7 @@
 </view>
 
 <view class="container">
-    <navigator url="/pages/props/index">
+    <navigator url="/pages/props/index?name=田所浩二">
         <button type="primary">Props</button>
     </navigator>
     <navigator url="/pages/computed/index">

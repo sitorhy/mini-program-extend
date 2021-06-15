@@ -1,9 +1,12 @@
+const isWx = !navigator;
+
 export default {
     mixins: [
         {
             data: function () {
                 return {
-                    a: 1
+                    a: 1,
+                    timestamp: Date.now()
                 };
             },
             computed: {
@@ -29,6 +32,10 @@ export default {
                     get() {
                         return this.bPlus + 200;
                     }
+                },
+                formatTime: function () {
+                    const date = new Date(this.timestamp);
+                    return `${date.getFullYear()}年${date.getMonth()}月${date.getDate()}日${date.getHours()}时${date.getMinutes()}分${date.getSeconds()}秒`;
                 }
             },
             mounted() {
@@ -37,9 +44,20 @@ export default {
                 console.log(this.aPlus);   // => 3
                 console.log(this.a);       // => 2
                 console.log(this.aDouble); // => 4
-
                 console.log(this.cPlus);
 
+                this.timer = setInterval(() => {
+                    if (isWx) {
+                        //    this.setData({timestamp: Date.now()});
+                        this.timestamp = Date.now();
+                    } else {
+                        this.timestamp = Date.now();
+                    }
+
+                }, 1000);
+            },
+            destroyed() {
+                clearInterval(this.timer);
             }
         }
     ]

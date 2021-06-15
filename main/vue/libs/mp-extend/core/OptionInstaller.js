@@ -1,6 +1,7 @@
 import BehaviorInstaller from './BehaviorInstaller';
 import {isFunction, isPlainObject} from "../utils/common";
 import {Collectors, Stream} from "../libs/Stream";
+import equal from "../libs/fast-deep-equal/index";
 
 export default class OptionInstaller extends BehaviorInstaller {
     constructor(extender = null) {
@@ -43,12 +44,6 @@ export default class OptionInstaller extends BehaviorInstaller {
 
         runtimeDataContext = new Proxy(context.data, {
             get(target, p, receiver) {
-                if (getters.includes(p)) {
-                    const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
-                    const pValue = getter.call(runtimeContext);
-                    Reflect.set(runtimeDataContext, p, pValue);
-                    return pValue;
-                }
                 return Reflect.get(target, p);
             },
             set(target, p, value, receiver) {
@@ -57,6 +52,14 @@ export default class OptionInstaller extends BehaviorInstaller {
                 if (setters.includes(p)) {
                     computed[p].set.call(runtimeContext, value);
                 }
+                getters.forEach((p) => {
+                    const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
+                    const curVal = Reflect.get(runtimeContext, p);
+                    const pValue = getter.call(runtimeContext);
+                    if (!equal(curVal, pValue)) {
+                        Reflect.set(runtimeDataContext, p, pValue);
+                    }
+                });
                 return true;
             }
         });
@@ -65,12 +68,6 @@ export default class OptionInstaller extends BehaviorInstaller {
             context,
             {
                 get(target, p, receiver) {
-                    if (getters.includes(p)) {
-                        const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
-                        const pValue = getter.call(runtimeContext);
-                        Reflect.set(runtimeDataContext, p, pValue);
-                        return pValue;
-                    }
                     if (Reflect.has(target, p)) {
                         const prop = Reflect.get(target, p);
                         if (isFunction(prop)) {
@@ -85,9 +82,7 @@ export default class OptionInstaller extends BehaviorInstaller {
                     }
                 },
                 set(target, p, value, receiver) {
-                    if (p === 'data') {
-                        return Reflect.set(runtimeDataContext, p, value);
-                    } else if (Reflect.has(runtimeDataContext, p)) {
+                    if (Reflect.has(runtimeDataContext, p)) {
                         return Reflect.set(runtimeDataContext, p, value);
                     } else {
                         return Reflect.set(context, p, value);

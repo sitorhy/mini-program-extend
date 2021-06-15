@@ -1,10 +1,42 @@
 import OptionInstaller from "./OptionInstaller";
-import {isFunction, isPlainObject, removeEmpty} from "../utils/common";
-import {Optional} from "../libs/Optional";
+import {isFunction, isPlainObject} from "../utils/common";
 import {Collectors, Stream} from "../libs/Stream";
-
-import equal from "../libs/fast-deep-equal/index";
 import {Singleton} from "../libs/Singleton";
+import equal from "../libs/fast-deep-equal/index";
+
+class ComputedSourceSingleton extends Singleton {
+    _source = undefined;
+
+    get source() {
+        return this._source;
+    }
+
+    set source(value) {
+        this._source = value;
+    }
+
+    constructor() {
+        super((runtimeContext) => {
+            const self = this;
+            return new Proxy(runtimeContext, {
+                get(target, p, receiver) {
+                    if (isPlainObject(self.source) && Reflect.has(self.source, p)) {
+                        return Reflect.get(self.source, p);
+                    }
+                    return Reflect.get(target, p);
+                },
+                set(target, p, value, receiver) {
+                    return Reflect.set(target, p, value);
+                }
+            });
+        });
+    }
+
+    get(runtimeContext, source) {
+        this.source = source;
+        return super.get(runtimeContext);
+    }
+}
 
 /**
  * 为防止闭环，计算属性初始化在data,props初始化之后
@@ -59,9 +91,12 @@ export default class ComputedInstaller extends OptionInstaller {
         if (isPlainObject(state)) {
             const calculated = this.attemptToInstantiateCalculated(extender, context, options, defFields, definitionFilterArr);
             const setters = Object.keys(computed).filter(i => isPlainObject(computed[i]) && isFunction(computed[i].set));
+            const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
             const runtimeContext = new Singleton((context) => {
-                return this.createRuntimeCompatibleContext(context, computed);
+                return this.createRuntimeCompatibleContext(context, computed)
             });
+            const computedContext = new ComputedSourceSingleton();
+
             Object.assign(defFields, {
                 behaviors: (defFields.behaviors || []).concat(
                     Behavior({
@@ -77,6 +112,16 @@ export default class ComputedInstaller extends OptionInstaller {
                                         (computed[i].set).call(runtimeContext.get(this), data[i]);
                                     });
                                 }
+                                const nextCalculated = {};
+                                getters.forEach((p) => {
+                                    const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
+                                    const curVal = Reflect.get(computedContext.get(runtimeContext.get(this), data), p);
+                                    const pValue = getter.call(computedContext.get(runtimeContext.get(this), data));
+                                    if (!equal(curVal, pValue)) {
+                                        nextCalculated[p] = pValue;
+                                    }
+                                });
+                                Object.assign(data, nextCalculated);
                                 originalSetData.call(this, data, function () {
                                     if (isFunction(callback)) {
                                         callback.call(runtimeContext.get(this));
