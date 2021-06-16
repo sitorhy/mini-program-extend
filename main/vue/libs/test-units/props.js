@@ -46,6 +46,12 @@ export default {
                     default() {
                         return this.a * this.b;
                     }
+                },
+                foods: {
+                    type: Array,
+                    default() {
+                        return ["Orange"];
+                    }
                 }
             },
             data() {
@@ -56,7 +62,8 @@ export default {
             mounted() {
                 console.log(this.$props);
                 console.log(this.$data);
-                console.log(`age = ${this.age}`);
+                this.foods.push("Apple");
+                this.foods.reverse();
             }
         }
     ]

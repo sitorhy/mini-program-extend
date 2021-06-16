@@ -27,3 +27,9 @@
 <view>
     <text>c={{ c }}</text>
 </view>
+<view>
+    <text>age=</text><text>{{  age }}</text>
+</view>
+<view>
+    <text>food=</text><text>{{  wxs.stringify(foods) }}</text>
+</view>
