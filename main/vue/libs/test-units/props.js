@@ -63,7 +63,7 @@ export default {
                 console.log(this.$props);
                 console.log(this.$data);
                 this.foods.push("Apple");
-                this.foods.reverse();
+            //    this.foods.reverse();
             }
         }
     ]

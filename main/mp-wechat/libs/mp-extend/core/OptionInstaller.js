@@ -44,7 +44,32 @@ export default class OptionInstaller extends BehaviorInstaller {
 
         runtimeDataContext = new Proxy(context.data, {
             get(target, p, receiver) {
-                return Reflect.get(target, p);
+                const obj = Reflect.get(target, p);
+                if (Array.isArray(obj)) {
+                    return new Proxy(obj, {
+                        get(arr, arrProp, receiver) {
+                            switch (arrProp) {
+                                case 'push':
+                                case 'pop':
+                                case 'shift':
+                                case 'unshift':
+                                case 'splice':
+                                case 'sort':
+                                case 'reverse': {
+                                    return new Proxy(Reflect.get(arr, arrProp), {
+                                        apply(target, thisArg, argArray) {
+                                            const result = Reflect.apply(target, thisArg, argArray);
+                                            Reflect.get(runtimeContext, 'setData').call(runtimeContext, {[p]: obj});
+                                            return result;
+                                        }
+                                    });
+                                }
+                            }
+                            return Reflect.get(arr, arrProp);
+                        }
+                    });
+                }
+                return obj;
             },
             set(target, p, value, receiver) {
                 target[p] = value;

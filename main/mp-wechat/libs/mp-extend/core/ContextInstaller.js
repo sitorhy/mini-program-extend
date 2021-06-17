@@ -29,6 +29,14 @@ export default class ContextInstaller extends OptionInstaller {
         });
     });
 
+    lifetimes(extender, context, options) {
+        return {
+            detached: () => {
+                this.compatibleContext.release();
+            }
+        }
+    }
+
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
         const compatibleContext = this.compatibleContext;
 
@@ -41,8 +49,10 @@ export default class ContextInstaller extends OptionInstaller {
                                 func.apply(compatibleContext.get(this, context.get('properties'), context.get('computed')), arguments);
                             }
                         }];
-                    }).collect(Collectors.toMap())
+                    }).collect(Collectors.toMap()),
             });
+
+
         }
     }
 

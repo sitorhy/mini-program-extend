@@ -1,4 +1,8 @@
+import {uuid} from "../utils/common";
+
 export class Singleton {
+    _id = uuid();
+
     _instance = undefined;
 
     _constructor = function () {
@@ -10,7 +14,6 @@ export class Singleton {
     }
 
     get() {
-        console.log(this)
         if (this._instance === undefined) {
             this._instance = this._constructor.apply(undefined, arguments);
         }
@@ -19,5 +22,9 @@ export class Singleton {
 
     release() {
         this._instance = undefined;
+    }
+
+    get id() {
+        return this._id;
     }
 }

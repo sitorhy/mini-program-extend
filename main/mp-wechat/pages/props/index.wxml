@@ -31,5 +31,5 @@
     <text>age=</text><text>{{  age }}</text>
 </view>
 <view>
-    <text>food=</text><text>{{  wxs.stringify(foods) }}</text>
+    <text>foods=</text><text>{{  wxs.stringify(foods) }}</text>
 </view>
