@@ -138,7 +138,6 @@ export default class StateInstaller extends OptionInstaller {
             )
         );
 
-
         Object.assign(defFields, {
             behaviors: (defFields.behaviors || []).concat(
                 Behavior({

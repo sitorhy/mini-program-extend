@@ -5,6 +5,9 @@
   "repository": "git@github.com:sitorhy/mini-program-extend.git",
   "author": "sitorhy <sitorhy>",
   "license": "MIT",
+  "scripts": {
+    "dev": "gulp dev"
+  },
   "devDependencies": {
     "gulp": "^4.0.2",
     "gulp-uglify": "^3.0.2"

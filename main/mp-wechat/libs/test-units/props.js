@@ -56,15 +56,24 @@ export default {
             },
             data() {
                 return {
-                    c: this.a + this.b
+                    c: this.a + this.b,
+                    e: 114514
                 };
             },
+            mounted() {
+                console.log(this.data.e);
+                this.setData({
+                    e: 1919810
+                }, () => {
+                    console.log(this.data.e);
+                });
+            }
+            /*
             mounted() {
                 console.log(this.$props);
                 console.log(this.$data);
                 this.foods.push("Apple");
-            //    this.foods.reverse();
-            }
+            }*/
         }
     ]
 }

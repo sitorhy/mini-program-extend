@@ -3,6 +3,11 @@ import {isFunction} from "../utils/common";
 import {Deconstruct} from "../libs/Deconstruct";
 import {Invocation} from "../libs/Invocation";
 
+/**
+ * 专有生命周期 onLoad onShow 不在统合范畴，使用 pageLifetimes 代替
+ * 专有声明周期 onLoad onShow onReady 在 Page 中使用不会与框架的 pageLifetimes 冲突
+ * 优先级 Vue的生命周期 < Installer 生命周期
+ */
 export default class LifeCycleInstaller extends OptionInstaller {
     behaviorLifeCycleDefinition(extender, context, options, defFields) {
         const behavior = Deconstruct({}, {
@@ -19,6 +24,7 @@ export default class LifeCycleInstaller extends OptionInstaller {
             lifetimes: () => {
                 return {
                     created: function () {
+                        console.log('created L1');
                         context.get('lifetimes').created.apply(this, arguments);
                     },
                     attached: function () {
@@ -26,18 +32,19 @@ export default class LifeCycleInstaller extends OptionInstaller {
                     },
                     detached: function () {
                         context.get('lifetimes').detached.apply(this, arguments);
+                        console.log('detached L1')
                     }
                 };
             },
             pageLifetimes: () => {
                 return {
-                    created: function () {
+                    show: function () {
                         context.get('pageLifetimes').show.apply(this, arguments);
                     },
-                    attached: function () {
+                    hide: function () {
                         context.get('pageLifetimes').hide.apply(this, arguments);
                     },
-                    detached: function () {
+                    resize: function () {
                         context.get('pageLifetimes').resize.apply(this, arguments);
                     }
                 };
@@ -54,6 +61,7 @@ export default class LifeCycleInstaller extends OptionInstaller {
             lifetimes: () => {
                 return {
                     created: function () {
+                        console.log('created L2');
                         context.get('beforeMount').apply(this, arguments);
                     },
                     attached: function () {
@@ -62,6 +70,7 @@ export default class LifeCycleInstaller extends OptionInstaller {
                     detached: function () {
                         context.get('beforeDestroy').apply(this, arguments);
                         context.get('destroyed').apply(this, arguments);
+                        console.log('detached L2')
                     }
                 };
             }

@@ -9,30 +9,11 @@ import {Singleton} from "../libs/Singleton";
  * this.data.id === this.id (true)
  */
 export default class ContextInstaller extends OptionInstaller {
-    compatibleContext = new Singleton((thisArg, properties, computed) => {
-        const runtimeContext = this.createRuntimeCompatibleContext(thisArg, computed);
-        const props = Object.keys(properties || {});
-        return new Proxy(runtimeContext, {
-            get(target, p, receiver) {
-                if (p === '$props') {
-                    return Stream.of(
-                        Object.entries(Reflect.get(target, 'data'))
-                    ).filter(([name]) => props.includes(name)).collect(Collectors.toMap());
-                }
-                if (p === '$data') {
-                    return Stream.of(
-                        Object.entries(Reflect.get(target, 'data'))
-                    ).filter(([name]) => !props.includes(name)).collect(Collectors.toMap());
-                }
-                return Reflect.get(target, p, receiver);
-            }
-        });
-    });
-
     lifetimes(extender, context, options) {
         return {
             detached: () => {
                 this.compatibleContext.release();
+                console.log('detached custom')
             }
         }
     }
@@ -50,9 +31,24 @@ export default class ContextInstaller extends OptionInstaller {
                             }
                         }];
                     }).collect(Collectors.toMap()),
+                behaviors: [
+                    Behavior({
+                        lifetimes: {
+                            created() {
+                                console.log(this)
+                            }
+                        }
+                    }),
+                    ...(defFields.behaviors || []),
+                    Behavior({
+                        lifetimes: {
+                            detached() {
+                                console.log('销毁测试');
+                            }
+                        }
+                    })
+                ]
             });
-
-
         }
     }
 
