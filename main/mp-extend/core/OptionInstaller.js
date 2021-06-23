@@ -1,6 +1,7 @@
 import BehaviorInstaller from './BehaviorInstaller';
 import {isFunction, isPlainObject} from "../utils/common";
 import {Collectors, Stream} from "../libs/Stream";
+import {Singleton} from "../libs/Singleton";
 import equal from "../libs/fast-deep-equal/index";
 
 export default class OptionInstaller extends BehaviorInstaller {
@@ -117,6 +118,28 @@ export default class OptionInstaller extends BehaviorInstaller {
         );
 
         return runtimeContext;
+    }
+
+    createRuntimeContextSingleton() {
+        return new Singleton((thisArg, properties, computed) => {
+            const runtimeContext = this.createRuntimeCompatibleContext(thisArg, computed);
+            const props = Object.keys(properties || {});
+            return new Proxy(runtimeContext, {
+                get(target, p, receiver) {
+                    if (p === '$props') {
+                        return Stream.of(
+                            Object.entries(Reflect.get(target, 'data'))
+                        ).filter(([name]) => props.includes(name)).collect(Collectors.toMap());
+                    }
+                    if (p === '$data') {
+                        return Stream.of(
+                            Object.entries(Reflect.get(target, 'data'))
+                        ).filter(([name]) => !props.includes(name)).collect(Collectors.toMap());
+                    }
+                    return Reflect.get(target, p, receiver);
+                }
+            });
+        });
     }
 
     /**
