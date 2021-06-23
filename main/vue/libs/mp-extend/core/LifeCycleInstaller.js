@@ -24,7 +24,6 @@ export default class LifeCycleInstaller extends OptionInstaller {
             lifetimes: () => {
                 return {
                     created: function () {
-                        console.log('created L1');
                         context.get('lifetimes').created.apply(this, arguments);
                     },
                     attached: function () {
@@ -32,7 +31,6 @@ export default class LifeCycleInstaller extends OptionInstaller {
                     },
                     detached: function () {
                         context.get('lifetimes').detached.apply(this, arguments);
-                        console.log('detached L1')
                     }
                 };
             },
@@ -61,7 +59,6 @@ export default class LifeCycleInstaller extends OptionInstaller {
             lifetimes: () => {
                 return {
                     created: function () {
-                        console.log('created L2');
                         context.get('beforeMount').apply(this, arguments);
                     },
                     attached: function () {
@@ -70,7 +67,6 @@ export default class LifeCycleInstaller extends OptionInstaller {
                     detached: function () {
                         context.get('beforeDestroy').apply(this, arguments);
                         context.get('destroyed').apply(this, arguments);
-                        console.log('detached L2')
                     }
                 };
             }
