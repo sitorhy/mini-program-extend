@@ -61,13 +61,11 @@ export default {
                 };
             },
             mounted() {
-                console.log(this.e);
                 this.e = 1919810;
-                console.log(this.e);
+                this.foods.push("Apple");
 
                 console.log(this.$props);
                 console.log(this.$data);
-                this.foods.push("Apple");
             }
         }
     ]

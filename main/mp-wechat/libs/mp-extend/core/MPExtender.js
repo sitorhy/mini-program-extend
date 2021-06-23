@@ -38,13 +38,13 @@ export default class MPExtender {
 
     constructor() {
         this.use(new MixinInstaller(), 10);
-        this.use(new MethodsInstaller(), 20);
-        this.use(new PropertiesInstaller(), 30);
-        this.use(new DataInstaller(), 40);
-        this.use(new StateInstaller(), 50);
+        this.use(new MethodsInstaller(), 15);
+        this.use(new PropertiesInstaller(), 20);
+        this.use(new DataInstaller(), 25);
+        this.use(new StateInstaller(), 30);
         //    this.use(new WatcherInstaller(),60);
-        this.use(new ComputedInstaller(), 70);
-        this.use(new LifeCycleInstaller(), 80);
+        this.use(new ComputedInstaller(), 35);
+        this.use(new LifeCycleInstaller(), 40);
         this.use(new ContextInstaller(), 100);
     }
 

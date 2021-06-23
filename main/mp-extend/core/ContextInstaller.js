@@ -49,10 +49,6 @@ export default class ContextInstaller extends OptionInstaller {
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
-        const getContext = (thisArg) => {
-            return this.getRuntimeContext(thisArg, context);
-        };
-
         const createContext = () => {
             return this.createRuntimeContextSingleton();
         };
