@@ -35,6 +35,7 @@ export default class OptionInstaller extends BehaviorInstaller {
     /**
      * 创建运行时上下文
      * @param {object} context - 传入this
+     * @param {object} computed - 计算属性配置
      * @returns {*}
      */
     createRuntimeCompatibleContext(context, computed) {
@@ -120,6 +121,10 @@ export default class OptionInstaller extends BehaviorInstaller {
         return runtimeContext;
     }
 
+    /**
+     * 扩展运行时上下文
+     * @returns {Singleton}
+     */
     createRuntimeContextSingleton() {
         return new Singleton((thisArg, properties, computed) => {
             const runtimeContext = this.createRuntimeCompatibleContext(thisArg, computed);
@@ -144,9 +149,9 @@ export default class OptionInstaller extends BehaviorInstaller {
 
     /**
      * 创建临时上下文
-     * @param data - 小程序格式
-     * @param properties - 小程序格式
-     * @param methods
+     * @param data - 小程序格式，不能传函数
+     * @param properties - 小程序格式，不能使用生成函数
+     * @param methods - 依赖方法
      * @param onMissingHandler - 参数命中失败时回调
      * @returns {any}
      */
@@ -185,7 +190,7 @@ export default class OptionInstaller extends BehaviorInstaller {
             new Proxy(
                 (data || {}),
                 {
-                    get(target, p) {
+                    get(target, p, receiver) {
                         refreshState();
                         if (!Reflect.has(state, p)) {
                             if (p === 'data') {
@@ -193,7 +198,11 @@ export default class OptionInstaller extends BehaviorInstaller {
                             }
                         }
                         if (methods && Reflect.has(methods, p)) {
-                            return Reflect.get(methods, p);
+                            const method = Reflect.get(methods, p);
+                            if (isFunction(method)) {
+                                return method.bind(receiver);
+                            }
+                            return method;
                         }
                         return Reflect.get(state, p);
                     },
@@ -207,6 +216,24 @@ export default class OptionInstaller extends BehaviorInstaller {
                 }
             )
         );
+    }
+
+    createInitializationContextSingleton() {
+        return new Singleton((data, properties, methods, onMissingHandler) => {
+            const compileTimeContext = this.createInitializationCompatibleContext(data, properties, methods, onMissingHandler)
+            const props = Object.keys(properties || {});
+            return new Proxy(compileTimeContext, {
+                get(target, p, receiver) {
+                    if (p === '$props') {
+                        return Stream.of(Object.entries(properties)).map(([prop, constructor]) => [prop, constructor.value]).collect(Collectors.toMap());
+                    }
+                    if (p === '$data') {
+                        return data;
+                    }
+                    return Reflect.get(target, p, receiver);
+                }
+            });
+        });
     }
 
     computed() {

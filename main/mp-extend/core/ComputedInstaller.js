@@ -178,7 +178,7 @@ export default class ComputedInstaller extends OptionInstaller {
                                 getters.forEach((p) => {
                                     const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
                                     // 获取当前值
-                                    const curVal = Reflect.get(getCMPC(this, data), p);
+                                    const curVal = Reflect.get(getContext(this), p);
                                     // 计算下一个值
                                     const pValue = getter.call(getCMPC(this, data));
                                     // 深度比较，必须，否则会死循环
