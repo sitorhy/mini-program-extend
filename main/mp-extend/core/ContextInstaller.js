@@ -34,64 +34,71 @@ export default class ContextInstaller extends OptionInstaller {
         });
     }
 
-    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
-        const installer = this;
+    getRuntimeContext(thisArg, context) {
+        if (thisArg[RCTSign]) {
+            return thisArg[RCTSign].get(thisArg, context.get('properties'), context.get('computed'));
+        }
+        return thisArg;
+    }
 
-        Deconstruct(defFields, {
-            methods: () => {
-                if (isPlainObject(context.get('methods'))) {
-                    return Stream.of(Object.entries(context.get('methods')))
-                        .map(([name, func]) => {
-                            return [name, function () {
-                                if (isFunction(func)) {
-                                    func.apply(this[RCTSign].get(this, context.get('properties'), context.get('computed')), arguments);
-                                }
-                            }];
-                        }).collect(Collectors.toMap());
-                } else {
-                    return null;
+    releaseRuntimeContext(thisArg) {
+        if (thisArg[RCTSign]) {
+            thisArg[RCTSign].release();
+            Reflect.deleteProperty(this, RCTSign);
+        }
+    }
+
+    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
+        const getContext = (thisArg) => {
+            return this.getRuntimeContext(thisArg, context);
+        };
+
+        const createContext = () => {
+            return this.createRuntimeContextSingleton();
+        };
+
+        const releaseContext = (thisArg) => {
+            this.releaseRuntimeContext(thisArg);
+        };
+
+        defFields.behaviors = [
+            Behavior({
+                lifetimes: {
+                    created() {
+                        Object.defineProperty(this, RCTSign, {
+                            configurable: false,
+                            enumerable: false,
+                            value: createContext(),
+                            writable: false
+                        });
+                    }
                 }
-            },
-            behaviors: (o) => {
-                return [
-                    Behavior({
-                        lifetimes: {
-                            created() {
-                                console.log('created')
-                                Object.defineProperty(this, RCTSign, {
-                                    configurable: false,
-                                    enumerable: false,
-                                    value: installer.createRuntimeContextSingleton(),
-                                    writable: false
-                                });
-                                this[RCTSign].get(this, context.get('properties'), context.get('computed'));
-                            }
-                        }
-                    }),
-                    ...(o.behaviors || []),
-                    Behavior({
-                        lifetimes: {
-                            detached() {
-                                this[RCTSign].release();
-                                Reflect.deleteProperty(this, RCTSign);
-                                console.log('RCTSign Release')
-                            }
-                        }
-                    })
-                ]
-            }
-        });
+            })
+        ].concat(
+            (defFields.behaviors || []),
+            Behavior({
+                lifetimes: {
+                    detached() {
+                        releaseContext(this);
+                    }
+                }
+            })
+        );
     }
 
     install(extender, context, options) {
-        ['lifetimes', 'pageLifetimes'].forEach(prop => {
+        const getContext = (thisArg) => {
+            return this.getRuntimeContext(thisArg, context);
+        };
+
+        ['lifetimes', 'pageLifetimes', 'methods'].forEach(prop => {
             if (context.has(prop) && isPlainObject(context.get(prop))) {
                 context.set(prop,
                     Stream.of(Object.entries(context.get(prop)))
                         .filter(([, func]) => isFunction(func))
                         .map(([name, func]) => {
                             return [name, function () {
-                                func.apply(this[RCTSign].get(this, context.get('properties'), context.get('computed')), arguments);
+                                func.apply(getContext(this), arguments);
                             }];
                         }).collect(Collectors.toMap())
                 );
@@ -99,12 +106,12 @@ export default class ContextInstaller extends OptionInstaller {
         });
 
         [...context.keys()]
-            .filter(i => !['data', 'beforeCreate'].includes(i) && isFunction(context.get(i)))
-            .forEach(i => {
-                context.set(i, (() => {
-                        const func = context.get(i);
+            .filter(prop => !['data', 'beforeCreate'].includes(prop) && isFunction(context.get(prop)))
+            .forEach(prop => {
+                context.set(prop, (() => {
+                        const func = context.get(prop);
                         return function () {
-                            func.apply(this[RCTSign].get(this, context.get('properties'), context.get('computed')), arguments);
+                            func.apply(getContext(this), arguments);
                         }
                     })()
                 );
