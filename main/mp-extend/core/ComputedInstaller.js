@@ -47,7 +47,7 @@ class ComputedSourceSingleton extends Singleton {
 export default class ComputedInstaller extends OptionInstaller {
     getRuntimeContext(thisArg, context) {
         if (Reflect.has(thisArg, RTCSign)) {
-            return Reflect.get(thisArg, RTCSign).get(thisArg, context.get('properties'), context.get('computed'));
+            return Reflect.get(thisArg, RTCSign).get(thisArg, context.get('properties'));
         }
         return thisArg;
     }
@@ -75,7 +75,7 @@ export default class ComputedInstaller extends OptionInstaller {
         const methods = context.get('methods');
         const state = Object.assign({}, context.get('state')); // 复制结果集，避免修改原值
 
-        const computedContext = Object.create(new Proxy(
+        const computedContext = new Proxy(
             {},
             {
                 get(target, p, receiver) {
@@ -98,7 +98,7 @@ export default class ComputedInstaller extends OptionInstaller {
                     return undefined;
                 }
             }
-        ));
+        );
 
         return Stream.of(Object.entries(computed)).map(([name, calc]) => {
             const expr = isPlainObject(calc) && isFunction(calc.get) ? calc.get : (isFunction(calc) ? calc : null);

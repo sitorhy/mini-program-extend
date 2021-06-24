@@ -12,7 +12,7 @@ const RTCSign = Symbol('__wxRTC__');
 export default class ContextInstaller extends OptionInstaller {
     getRuntimeContext(thisArg, context) {
         if (Reflect.has(thisArg, RTCSign)) {
-            return Reflect.get(thisArg, RTCSign).get(thisArg, context.get('properties'), context.get('computed'));
+            return Reflect.get(thisArg, RTCSign).get(thisArg, context.get('properties'));
         }
         return thisArg;
     }
@@ -62,7 +62,7 @@ export default class ContextInstaller extends OptionInstaller {
         const getContext = (thisArg) => {
             return this.getRuntimeContext(thisArg, context);
         };
-
+        context.set('originalMethods', context.get('methods'));
         ['lifetimes', 'pageLifetimes', 'methods'].forEach(prop => {
             if (context.has(prop) && isPlainObject(context.get(prop))) {
                 context.set(prop,

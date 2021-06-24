@@ -141,7 +141,7 @@ export default class OptionInstaller extends BehaviorInstaller {
                             Object.entries(Reflect.get(target, 'data'))
                         ).filter(([name]) => !props.includes(name)).collect(Collectors.toMap());
                     }
-                    return Reflect.get(target, p, receiver);
+                    return Reflect.get(target, p);
                 }
             });
         });
@@ -149,88 +149,114 @@ export default class OptionInstaller extends BehaviorInstaller {
 
     /**
      * 创建临时上下文
+     * @param obj - 注入对象，只读形式可传入null
      * @param data - 小程序格式，不能传函数
      * @param properties - 小程序格式，不能使用生成函数
      * @param methods - 依赖方法
      * @param onMissingHandler - 参数命中失败时回调
      * @returns {any}
      */
-    createInitializationCompatibleContext(data, properties, methods, onMissingHandler) {
+    createInitializationCompatibleContext(obj, data, properties, methods, onMissingHandler) {
         let state;
         const refreshState = () => {
             state = Object.assign(
                 {},
-                isPlainObject(data) ? data : null,
                 isPlainObject(properties) ? Stream.of(
                     Object.entries(properties)
-                ).map(([prop, constructor]) => [prop, constructor.value]).collect(Collectors.toMap()) : null
+                ).map(([prop, constructor]) => [prop, constructor.value]).collect(Collectors.toMap()) : null,
+                isPlainObject(data) ? data : null,
             );
         };
 
-        const compatibleDataContext = Object.create(
-            new Proxy(
-                (data || {}),
-                {
-                    get(target, p) {
-                        if (!Reflect.has(state, p)) {
-                            if (isFunction(onMissingHandler)) {
-                                onMissingHandler.call(undefined, p);
-                            }
+        const compatibleDataContext = new Proxy(
+            (obj || {}).data || {},
+            {
+                has(target, p) {
+                    return Reflect.has(target, p) || Reflect.has(state, p);
+                },
+                get(target, p) {
+                    // 优先注入对象读写
+                    if (Reflect.has(target, p)) {
+                        return Reflect.get(target, p);
+                    }
+                    if (!Reflect.has(state, p)) {
+                        if (isFunction(onMissingHandler)) {
+                            onMissingHandler.call(undefined, p);
                         }
-                        return Reflect.get(state, p);
-                    },
-                    set(target, p, value, receiver) {
-                        Reflect.set(target, p, value);
+                    }
+                    return Reflect.get(state, p);
+                },
+                set(target, p, value, receiver) {
+                    // 优先注入对象读写
+                    if (Reflect.has(target, p)) {
+                        return Reflect.set(target, p, value, receiver);
+                    } else if (isPlainObject(properties) && Reflect.has(properties, p)) {
+                        return Reflect.set(properties[p], 'value', value);
+                    } else {
+                        return Reflect.set(data, p, value);
                     }
                 }
-            )
+            }
         );
 
-        return Object.create(
-            new Proxy(
-                (data || {}),
-                {
-                    get(target, p, receiver) {
-                        refreshState();
-                        if (!Reflect.has(state, p)) {
-                            if (p === 'data') {
-                                return compatibleDataContext;
-                            }
-                        }
-                        if (methods && Reflect.has(methods, p)) {
-                            const method = Reflect.get(methods, p);
-                            if (isFunction(method)) {
-                                return method.bind(receiver);
-                            }
-                            return method;
-                        }
-                        return Reflect.get(state, p);
-                    },
-                    set(target, p, value, receiver) {
+        return new Proxy(
+            (obj || {}),
+            {
+                get(target, p, receiver) {
+                    refreshState();
+                    // 小程序形式读取状态 const a = this.data.a;
+                    if (!Reflect.has(state, p)) {
                         if (p === 'data') {
-                            Reflect.set(compatibleDataContext, p, value);
-                        } else {
-                            Reflect.set(target, p, value);
+                            return compatibleDataContext;
                         }
                     }
+                    // 重定向到methods
+                    if (isPlainObject(methods) && Reflect.has(methods, p)) {
+                        const method = Reflect.get(methods, p);
+                        if (isFunction(method)) {
+                            return method.bind(receiver);
+                        }
+                        return method;
+                    }
+                    // Vue形式读取 const a = this.a;
+                    if (Reflect.has(compatibleDataContext, p)) {
+                        return Reflect.get(compatibleDataContext, p);
+                    }
+                    // 读取 data 外的其他属性
+                    return Reflect.get(target, p);
+                },
+                set(target, p, value, receiver) {
+                    refreshState();
+                    // 尝试重定向到 compatibleDataContext
+                    if (Reflect.has(compatibleDataContext, p)) {
+                        return Reflect.set(compatibleDataContext, p, value);
+                    }
+                    return Reflect.set(target, p, value, receiver);
                 }
-            )
+            }
         );
     }
 
     createInitializationContextSingleton() {
-        return new Singleton((data, properties, methods, onMissingHandler) => {
-            const compileTimeContext = this.createInitializationCompatibleContext(data, properties, methods, onMissingHandler)
-            const props = Object.keys(properties || {});
+        return new Singleton((obj, data, properties, methods, onMissingHandler) => {
+            const compileTimeContext = this.createInitializationCompatibleContext(obj, data, properties, methods, onMissingHandler)
+            const props = Object.keys(properties);
             return new Proxy(compileTimeContext, {
                 get(target, p, receiver) {
                     if (p === '$props') {
-                        return Stream.of(Object.entries(properties)).map(([prop, constructor]) => [prop, constructor.value]).collect(Collectors.toMap());
+                        return Stream.of(props.map(prop => {
+                            return [prop, Reflect.get(compileTimeContext, prop)];
+                        })).collect(Collectors.toMap());
                     }
                     if (p === '$data') {
-                        return data;
+                        return Stream.of(
+                            Object.entries(Object.assign({}, (obj || {}).data, data))
+                        ).filter(([name]) => !props.includes(name)).collect(Collectors.toMap());
                     }
-                    return Reflect.get(target, p, receiver);
+                    return Reflect.get(target, p);
+                },
+                set(target, p, value, receiver) {
+                    return Reflect.set(target, p, value, receiver);
                 }
             });
         });

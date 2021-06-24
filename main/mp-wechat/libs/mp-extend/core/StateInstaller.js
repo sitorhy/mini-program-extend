@@ -59,21 +59,23 @@ export default class StateInstaller extends OptionInstaller {
         let crossReferenceOrEnd = true;
         let checkContextMissing = false;
 
-        const instancePropsContext = this.createInitializationCompatibleContext(
-            instanceProps,
-            null,
-            methods,
-            () => {
-                checkContextMissing = true;
-            }
-        );
+        const instancePropsContext = this.createInitializationContextSingleton();
 
         while (crossReferenceOrEnd) {
             const limit = computedProps.size;
             checkContextMissing = false;
             for (const name of computedProps) {
                 const constructor = properties[name];
-                const value = (constructor['default']).call(instancePropsContext);
+                const value = (constructor['default']).call(
+                    instancePropsContext.get(
+                        null,
+                        instanceProps,
+                        methods,
+                        () => {
+                            checkContextMissing = true;
+                        }
+                    )
+                );
                 instanceProps[name] = value;
                 if (!checkContextMissing) {
                     computedProps.delete(name);
@@ -107,12 +109,15 @@ export default class StateInstaller extends OptionInstaller {
         const data = context.get('data') || {};
         const instData = {};
         if (isFunction(data)) {
-            const instanceDataContext = this.createInitializationCompatibleContext(
-                null,
-                properties,
-                methods
+            const instanceDataContext = this.createInitializationContextSingleton();
+            Object.assign(instData, data.call(
+                instanceDataContext.get(
+                    null,
+                    null,
+                    properties,
+                    methods
+                ))
             );
-            Object.assign(instData, data.call(instanceDataContext));
         } else {
             Object.assign(instData, data);
         }

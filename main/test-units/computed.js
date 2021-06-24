@@ -6,7 +6,7 @@ export default {
             data: function () {
                 return {
                     a: 1,
-                    timestamp: Date.now()
+                    timestamp: 0
                 };
             },
             computed: {
@@ -14,7 +14,7 @@ export default {
                 aDouble: function () {
                     return this.a * 2
                 },
-                // 读取和设置
+                // 读取和设置（触发器）
                 aPlus: {
                     get: function () {
                         return this.a + 1
@@ -34,6 +34,9 @@ export default {
                     }
                 },
                 formatTime: function () {
+                    if (!this.timestamp) {
+                        return '';
+                    }
                     const date = new Date(this.timestamp);
                     return `${date.getFullYear()}年${date.getMonth()}月${date.getDate()}日${date.getHours()}时${date.getMinutes()}分${date.getSeconds()}秒`;
                 }
