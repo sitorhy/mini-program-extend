@@ -10,9 +10,9 @@ const RTCSign = Symbol('__wxRTC__');
  * this.data.id === this.id (true)
  */
 export default class ContextInstaller extends OptionInstaller {
-    getRuntimeContext(thisArg, context) {
+    getRuntimeContext(thisArg, context, fnSetData) {
         if (Reflect.has(thisArg, RTCSign)) {
-            return Reflect.get(thisArg, RTCSign).get(thisArg, context.get('properties'));
+            return Reflect.get(thisArg, RTCSign).get(thisArg, context.get('properties'), context.get('computed'), fnSetData);
         }
         return thisArg;
     }
@@ -29,6 +29,10 @@ export default class ContextInstaller extends OptionInstaller {
             return this.createRuntimeContextSingleton();
         };
 
+        const initContext = (thisArg, fnSetData) => {
+            return this.getRuntimeContext(thisArg, context, fnSetData);
+        };
+
         const releaseContext = (thisArg) => {
             this.releaseRuntimeContext(thisArg);
         };
@@ -43,6 +47,7 @@ export default class ContextInstaller extends OptionInstaller {
                             value: createContext(),
                             writable: false
                         });
+                        initContext(this, this.setData.bind(this));
                     }
                 }
             })
@@ -59,8 +64,8 @@ export default class ContextInstaller extends OptionInstaller {
     }
 
     install(extender, context, options) {
-        const getContext = (thisArg) => {
-            return this.getRuntimeContext(thisArg, context);
+        const getContext = (thisArg, fnSetData) => {
+            return this.getRuntimeContext(thisArg, context, fnSetData);
         };
         context.set('originalMethods', context.get('methods'));
         ['lifetimes', 'pageLifetimes', 'methods'].forEach(prop => {

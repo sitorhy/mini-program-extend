@@ -50,13 +50,7 @@ export default {
                 console.log(this.cPlus);
 
                 this.timer = setInterval(() => {
-                    if (isWx) {
-                        //    this.setData({timestamp: Date.now()});
-                        this.timestamp = Date.now();
-                    } else {
-                        this.timestamp = Date.now();
-                    }
-
+                    this.timestamp = Date.now();
                 }, 1000);
             },
             destroyed() {

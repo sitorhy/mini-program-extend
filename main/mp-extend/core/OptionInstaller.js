@@ -36,9 +36,10 @@ export default class OptionInstaller extends BehaviorInstaller {
      * 创建运行时上下文
      * @param {object} context - 传入this
      * @param {object} computed - 计算属性配置
+     * @param {Function} fnSetData - 自定义setData函数，可传入原生setData函数，提高效率
      * @returns {*}
      */
-    createRuntimeCompatibleContext(context, computed) {
+    createRuntimeCompatibleContext(context, computed, fnSetData) {
         const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
         const setters = isPlainObject(computed) ? Object.keys(computed).filter(i => isPlainObject(computed[i]) && isFunction(computed[i].set)) : [];
         let runtimeContext;
@@ -61,7 +62,11 @@ export default class OptionInstaller extends BehaviorInstaller {
                                     return new Proxy(Reflect.get(arr, arrProp), {
                                         apply(target, thisArg, argArray) {
                                             const result = Reflect.apply(target, thisArg, argArray);
-                                            Reflect.get(runtimeContext, 'setData').call(runtimeContext, {[p]: obj});
+                                            if (isFunction(fnSetData)) {
+                                                fnSetData({[p]: obj});
+                                            } else {
+                                                Reflect.get(runtimeContext, 'setData').call(runtimeContext, {[p]: obj});
+                                            }
                                             return result;
                                         }
                                     });
@@ -75,7 +80,11 @@ export default class OptionInstaller extends BehaviorInstaller {
             },
             set(target, p, value, receiver) {
                 target[p] = value;
-                Reflect.get(runtimeContext, 'setData').call(runtimeContext, {[p]: value});
+                if (isFunction(fnSetData)) {
+                    fnSetData({[p]: value});
+                } else {
+                    Reflect.get(runtimeContext, 'setData').call(runtimeContext, {[p]: value});
+                }
                 if (setters.includes(p)) {
                     computed[p].set.call(runtimeContext, value);
                 }
@@ -126,8 +135,8 @@ export default class OptionInstaller extends BehaviorInstaller {
      * @returns {Singleton}
      */
     createRuntimeContextSingleton() {
-        return new Singleton((thisArg, properties, computed) => {
-            const runtimeContext = this.createRuntimeCompatibleContext(thisArg, computed);
+        return new Singleton((thisArg, properties, computed, fnSetData) => {
+            const runtimeContext = this.createRuntimeCompatibleContext(thisArg, computed, fnSetData);
             const props = Object.keys(properties || {});
             return new Proxy(runtimeContext, {
                 get(target, p, receiver) {

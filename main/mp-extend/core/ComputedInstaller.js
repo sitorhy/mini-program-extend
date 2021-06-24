@@ -45,9 +45,9 @@ class ComputedSourceSingleton extends Singleton {
  * 为防止闭环，计算属性初始化在data,props初始化之后
  */
 export default class ComputedInstaller extends OptionInstaller {
-    getRuntimeContext(thisArg, context) {
+    getRuntimeContext(thisArg, context, fnSetData) {
         if (Reflect.has(thisArg, RTCSign)) {
-            return Reflect.get(thisArg, RTCSign).get(thisArg, context.get('properties'));
+            return Reflect.get(thisArg, RTCSign).get(thisArg, context.get('properties'), context.get('computed'), fnSetData);
         }
         return thisArg;
     }
@@ -59,8 +59,8 @@ export default class ComputedInstaller extends OptionInstaller {
         }
     }
 
-    getComputedContext(thisArg, context, source) {
-        return Reflect.get(thisArg, CMPCSign).get(this.getRuntimeContext(thisArg, context), source);
+    getComputedContext(thisArg, context, fnSetData, source) {
+        return Reflect.get(thisArg, CMPCSign).get(this.getRuntimeContext(thisArg, context, fnSetData), source);
     }
 
     releaseComputedContext(thisArg) {
@@ -119,8 +119,8 @@ export default class ComputedInstaller extends OptionInstaller {
             const setters = Object.keys(computed).filter(i => isPlainObject(computed[i]) && isFunction(computed[i].set));
             const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
 
-            const getContext = (thisArg) => {
-                return this.getRuntimeContext(thisArg, context);
+            const getContext = (thisArg, fnSetData) => {
+                return this.getRuntimeContext(thisArg, context, fnSetData);
             };
 
             const createContext = () => {
@@ -131,8 +131,8 @@ export default class ComputedInstaller extends OptionInstaller {
                 this.releaseRuntimeContext(thisArg);
             };
 
-            const getCMPC = (thisArg, source) => {
-                return this.getComputedContext(thisArg, context, source);
+            const getCMPC = (thisArg, fnSetData, source) => {
+                return this.getComputedContext(thisArg, context, fnSetData, source);
             };
 
             const createCMPC = () => {
@@ -169,7 +169,7 @@ export default class ComputedInstaller extends OptionInstaller {
                                 // setData数据是否包含计算属性，调用对应的setter触发器
                                 if (setterIncludes.length) {
                                     setterIncludes.forEach((i) => {
-                                        (computed[i].set).call(getContext(this), data[i]);
+                                        (computed[i].set).call(getContext(this, originalSetData.bind(this)), data[i]);
                                     });
                                 }
 
@@ -178,11 +178,12 @@ export default class ComputedInstaller extends OptionInstaller {
                                 getters.forEach((p) => {
                                     const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
                                     // 获取当前值
-                                    const curVal = Reflect.get(getContext(this), p);
+                                    const curVal = Reflect.get(getContext(this, originalSetData.bind(this)), p);
                                     // 计算下一个值
-                                    const pValue = getter.call(getCMPC(this, data));
+                                    const pValue = getter.call(getCMPC(this, originalSetData.bind(this), data));
                                     // 深度比较，必须，否则会死循环
                                     if (!equal(curVal, pValue)) {
+                                        console.log(p);
                                         nextCalculated[p] = pValue;
                                     }
                                 });
@@ -191,7 +192,7 @@ export default class ComputedInstaller extends OptionInstaller {
                                 Object.assign(data, nextCalculated);
                                 originalSetData.call(this, data, function () {
                                     if (isFunction(callback)) {
-                                        callback.call(getContext(this));
+                                        callback.call(getContext(this, originalSetData.bind(this)));
                                     }
                                 });
                             };
