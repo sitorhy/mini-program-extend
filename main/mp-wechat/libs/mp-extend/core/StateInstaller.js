@@ -59,7 +59,7 @@ export default class StateInstaller extends OptionInstaller {
         let crossReferenceOrEnd = true;
         let checkContextMissing = false;
 
-        const instancePropsContext = this.createInitializationContextSingleton();
+        const instancePropsContext = extender.createInitializationContextSingleton();
 
         while (crossReferenceOrEnd) {
             const limit = computedProps.size;
@@ -109,7 +109,7 @@ export default class StateInstaller extends OptionInstaller {
         const data = context.get('data') || {};
         const instData = {};
         if (isFunction(data)) {
-            const instanceDataContext = this.createInitializationContextSingleton();
+            const instanceDataContext = extender.createInitializationContextSingleton();
             Object.assign(instData, data.call(
                 instanceDataContext.get(
                     null,
@@ -122,6 +122,10 @@ export default class StateInstaller extends OptionInstaller {
             Object.assign(instData, data);
         }
         return instData;
+    }
+
+    attemptToInstantiateState(){
+
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {

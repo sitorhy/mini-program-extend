@@ -124,7 +124,7 @@ export default class ComputedInstaller extends OptionInstaller {
             };
 
             const createContext = () => {
-                return this.createRuntimeContextSingleton();
+                return extender.createRuntimeContextSingleton();
             };
 
             const releaseContext = (thisArg) => {
