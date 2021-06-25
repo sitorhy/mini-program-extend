@@ -183,7 +183,6 @@ export default class ComputedInstaller extends OptionInstaller {
                                     const pValue = getter.call(getCMPC(this, originalSetData.bind(this), data));
                                     // 深度比较，必须，否则会死循环
                                     if (!equal(curVal, pValue)) {
-                                        console.log(p);
                                         nextCalculated[p] = pValue;
                                     }
                                 });

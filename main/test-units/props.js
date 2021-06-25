@@ -62,7 +62,9 @@ export default {
             },
             mounted() {
                 this.e = 1919810;
+                console.log(this.e);
                 this.foods.push("Apple");
+                this.$data.e = 1145141919;
 
                 console.log(this.$props);
                 console.log(this.$data);

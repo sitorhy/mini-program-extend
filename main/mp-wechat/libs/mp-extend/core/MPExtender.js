@@ -9,6 +9,7 @@ import ComputedInstaller from "./ComputedInstaller";
 import MixinInstaller from "./MixinInstaller";
 import LifeCycleInstaller from "./LifeCycleInstaller";
 import {Singleton} from "../libs/Singleton";
+import {isFunction} from "../utils/common";
 
 class InstallersSingleton extends Singleton {
     /**
@@ -61,6 +62,40 @@ export default class MPExtender {
         installers.forEach(installer => {
             installer.install(this, this._context, options);
         });
+/*
+        if (isFunction(this._context.get('beforeCreate'))) {
+            const initContext = this.createInitializationContextSingleton();
+            const options = {};
+            // 检查是否安装ContextInstaller，methods被修改过
+            const methods = context.get('originalMethods') || context.get('methods');
+            context.get('beforeCreate').call(
+                initContext.get(
+                    options,
+                    context.get('state'),
+                    context.get('properties'),
+                    methods
+                )
+            );
+            (function () {
+                this.$props.age = 99;
+                console.log(this.$data);
+                console.log(this.$props)
+                this.test = 999;
+                this.$data.x = 777;
+            }).call(
+                initContext.get(
+                    options,
+                    context.get('state'),
+                    context.get('properties'),
+                    methods
+                )
+            )
+            console.log(options)
+            if (Object.keys(options).length) {
+                defFields.behaviors = (defFields.behaviors || []).concat(Behavior(options));
+            }
+        }
+        */
         const config = {
             behaviors: [
                 Behavior({

@@ -141,14 +141,32 @@ export default class OptionInstaller extends BehaviorInstaller {
             return new Proxy(runtimeContext, {
                 get(target, p, receiver) {
                     if (p === '$props') {
-                        return Stream.of(
-                            Object.entries(Reflect.get(target, 'data'))
-                        ).filter(([name]) => props.includes(name)).collect(Collectors.toMap());
+                        const $props = {};
+                        Object.keys(Reflect.get(target, 'data')).filter(i => props.includes(i)).forEach(i => {
+                            Object.defineProperty($props, i, {
+                                get() {
+                                    return Reflect.get(target, i);
+                                },
+                                set(v) {
+                                    return Reflect.set(target, i, v);
+                                }
+                            })
+                        });
+                        return $props;
                     }
                     if (p === '$data') {
-                        return Stream.of(
-                            Object.entries(Reflect.get(target, 'data'))
-                        ).filter(([name]) => !props.includes(name)).collect(Collectors.toMap());
+                        const $data = {};
+                        Object.keys(Reflect.get(target, 'data')).filter(i => !props.includes(i)).forEach(i => {
+                            Object.defineProperty($data, i, {
+                                get() {
+                                    return Reflect.get(target, i);
+                                },
+                                set(v) {
+                                    return Reflect.set(target, i, v);
+                                }
+                            })
+                        });
+                        return $data;
                     }
                     return Reflect.get(target, p);
                 }
@@ -159,50 +177,45 @@ export default class OptionInstaller extends BehaviorInstaller {
     /**
      * 创建临时上下文
      * @param obj - 注入对象，只读形式可传入null
-     * @param data - 小程序格式，不能传函数
+     * @param state - 小程序格式，不能传函数
      * @param properties - 小程序格式，不能使用生成函数
      * @param methods - 依赖方法
      * @param onMissingHandler - 参数命中失败时回调
      * @returns {any}
      */
-    createInitializationCompatibleContext(obj, data, properties, methods, onMissingHandler) {
-        let state;
-        const refreshState = () => {
-            state = Object.assign(
-                {},
-                isPlainObject(properties) ? Stream.of(
-                    Object.entries(properties)
-                ).map(([prop, constructor]) => [prop, constructor.value]).collect(Collectors.toMap()) : null,
-                isPlainObject(data) ? data : null,
-            );
-        };
-
+    createInitializationCompatibleContext(obj, state, properties, methods, onMissingHandler) {
         const compatibleDataContext = new Proxy(
-            (obj || {}).data || {},
+            (obj || {}),
             {
                 has(target, p) {
-                    return Reflect.has(target, p) || Reflect.has(state, p);
+                    // 检查是否存在对应状态
+                    return (state && Reflect.has(state, p)) || (properties && Reflect.has(properties, p));
                 },
                 get(target, p) {
-                    // 优先注入对象读写
-                    if (Reflect.has(target, p)) {
-                        return Reflect.get(target, p);
+                    // 状态命中，返回 state 或 props 的值
+                    if (state && Reflect.has(state, p)) {
+                        return Reflect.get(state, p);
                     }
-                    if (!Reflect.has(state, p)) {
+                    if (properties && Reflect.has(properties, p)) {
+                        return properties[p].value;
+                    } else {
                         if (isFunction(onMissingHandler)) {
                             onMissingHandler.call(undefined, p);
                         }
                     }
-                    return Reflect.get(state, p);
+                    return undefined;
                 },
                 set(target, p, value, receiver) {
-                    // 优先注入对象读写
-                    if (Reflect.has(target, p)) {
-                        return Reflect.set(target, p, value, receiver);
-                    } else if (isPlainObject(properties) && Reflect.has(properties, p)) {
-                        return Reflect.set(properties[p], 'value', value);
+                    // 状态命中，检查是否命中静态的props
+                    if (isPlainObject(properties) && Reflect.has(properties, p)) {
+                        properties[p].value = value;
+                        if (Reflect.has(state, p)) {
+                            state[p] = value;
+                        }
+                        return true;
                     } else {
-                        return Reflect.set(data, p, value);
+                        // 其余状态一律写入data
+                        return Reflect.set(state, p, value);
                     }
                 }
             }
@@ -212,12 +225,9 @@ export default class OptionInstaller extends BehaviorInstaller {
             (obj || {}),
             {
                 get(target, p, receiver) {
-                    refreshState();
-                    // 小程序形式读取状态 const a = this.data.a;
-                    if (!Reflect.has(state, p)) {
-                        if (p === 'data') {
-                            return compatibleDataContext;
-                        }
+                    // 小程序形式读取状态 const a = this.state.a;
+                    if (p === 'state') {
+                        return compatibleDataContext;
                     }
                     // 重定向到methods
                     if (isPlainObject(methods) && Reflect.has(methods, p)) {
@@ -231,12 +241,11 @@ export default class OptionInstaller extends BehaviorInstaller {
                     if (Reflect.has(compatibleDataContext, p)) {
                         return Reflect.get(compatibleDataContext, p);
                     }
-                    // 读取 data 外的其他属性
+                    // 读取 state 外的其他属性
                     return Reflect.get(target, p);
                 },
                 set(target, p, value, receiver) {
-                    refreshState();
-                    // 尝试重定向到 compatibleDataContext
+                    // 尝试重定向到 compatibleDataContext, this.a = 100;
                     if (Reflect.has(compatibleDataContext, p)) {
                         return Reflect.set(compatibleDataContext, p, value);
                     }
@@ -253,14 +262,32 @@ export default class OptionInstaller extends BehaviorInstaller {
             return new Proxy(compileTimeContext, {
                 get(target, p, receiver) {
                     if (p === '$props') {
-                        return Stream.of(props.map(prop => {
-                            return [prop, Reflect.get(compileTimeContext, prop)];
-                        })).collect(Collectors.toMap());
+                        const $props = {};
+                        Object.keys(Object.assign({}, (obj || {}).data, data)).filter(i => props.includes(i)).forEach(i => {
+                            Object.defineProperty($props, i, {
+                                get() {
+                                    return Reflect.get(target, i);
+                                },
+                                set(v) {
+                                    return Reflect.set(target, i, v);
+                                }
+                            })
+                        });
+                        return $props;
                     }
                     if (p === '$data') {
-                        return Stream.of(
-                            Object.entries(Object.assign({}, (obj || {}).data, data))
-                        ).filter(([name]) => !props.includes(name)).collect(Collectors.toMap());
+                        const $data = {};
+                        Object.keys(Object.assign({}, (obj || {}).data, data)).filter(i => !props.includes(i)).forEach(i => {
+                            Object.defineProperty($data, i, {
+                                get() {
+                                    return Reflect.get(target, i);
+                                },
+                                set(v) {
+                                    return Reflect.set(target, i, v);
+                                }
+                            })
+                        });
+                        return $data;
                     }
                     return Reflect.get(target, p);
                 },

@@ -78,25 +78,6 @@ export default class LifeCycleInstaller extends OptionInstaller {
     }
 
     definitionFilter(extender, context, options, defFields) {
-        if (isFunction(context.get('beforeCreate'))) {
-            const initContext = this.createInitializationContextSingleton();
-            const options = {
-                data: {}
-            };
-            // 检查是否安装ContextInstaller，methods被修改过
-            const methods = context.get('originalMethods') || context.get('methods');
-            context.get('beforeCreate').call(
-                initContext.get(
-                    options,
-                    context.get('state'),
-                    context.get('properties'),
-                    methods
-                )
-            );
-            if (Object.keys(options.data).length || Object.keys(options).length > 1) {
-                defFields.behaviors = (defFields.behaviors || []).concat(Behavior(options));
-            }
-        }
         this.behaviorLifeCycleDefinition(extender, context, options, defFields);
         this.compatibleLifeCycleDefinition(extender, context, options, defFields);
     }
