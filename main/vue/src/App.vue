@@ -6,6 +6,8 @@
       <router-link to="/props">Props</router-link>
       |
       <router-link to="/computed">Computed</router-link>
+      |
+      <router-link to="/watch">Watch</router-link>
     </div>
     <router-view/>
   </div>

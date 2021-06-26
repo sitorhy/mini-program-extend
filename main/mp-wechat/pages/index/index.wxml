@@ -17,4 +17,7 @@
     <navigator url="/pages/computed/index">
         <button type="primary">Computed</button>
     </navigator>
+    <navigator url="/pages/watch/index">
+        <button type="primary">Watch</button>
+    </navigator>
 </view>

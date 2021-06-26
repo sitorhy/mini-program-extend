@@ -91,7 +91,7 @@ export default class ComputedInstaller extends OptionInstaller {
                         } else if (Reflect.has(methods, p)) {
                             const method = Reflect.get(methods, p);
                             if (isFunction(method)) {
-                                return method.bind(computedContext);
+                                return method.bind(receiver);
                             }
                         }
                     }

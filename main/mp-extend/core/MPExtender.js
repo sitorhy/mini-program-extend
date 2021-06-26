@@ -80,8 +80,8 @@ export default class MPExtender {
                 const obj = Reflect.get(target, p);
                 if (Array.isArray(obj)) {
                     return new Proxy(obj, {
-                        get(arr, arrProp, receiver) {
-                            switch (arrProp) {
+                        get(arr, prop, receiver) {
+                            switch (prop) {
                                 case 'push':
                                 case 'pop':
                                 case 'shift':
@@ -89,7 +89,7 @@ export default class MPExtender {
                                 case 'splice':
                                 case 'sort':
                                 case 'reverse': {
-                                    return new Proxy(Reflect.get(arr, arrProp), {
+                                    return new Proxy(Reflect.get(arr, prop), {
                                         apply(target, thisArg, argArray) {
                                             const result = Reflect.apply(target, thisArg, argArray);
                                             if (isFunction(fnSetData)) {
@@ -102,7 +102,7 @@ export default class MPExtender {
                                     });
                                 }
                             }
-                            return Reflect.get(arr, arrProp);
+                            return Reflect.get(arr, prop);
                         }
                     });
                 }

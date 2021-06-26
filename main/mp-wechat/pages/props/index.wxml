@@ -28,6 +28,9 @@
     <text>c={{ c }}</text>
 </view>
 <view>
+    <text>e={{ e }}</text>
+</view>
+<view>
     <text>age=</text><text>{{  age }}</text>
 </view>
 <view>
