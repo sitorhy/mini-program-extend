@@ -107,6 +107,7 @@ export default class StateInstaller extends OptionInstaller {
      */
     attemptToInstantiateData(extender, properties, methods, context, options) {
         const data = context.get('data') || {};
+        ``
         const instData = {};
         if (isFunction(data)) {
             const instanceDataContext = extender.createInitializationContextSingleton();
@@ -122,10 +123,6 @@ export default class StateInstaller extends OptionInstaller {
             Object.assign(instData, data);
         }
         return instData;
-    }
-
-    attemptToInstantiateState(){
-
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
@@ -146,6 +143,18 @@ export default class StateInstaller extends OptionInstaller {
                 Stream.of(Object.entries(properties)).map(([prop, constructor]) => [prop, constructor.value]).collect(Collectors.toMap())
             )
         );
+
+        const beforeCreate = context.get('beforeCreate');
+        if (isFunction(beforeCreate)) {
+            beforeCreate.call(
+                extender.createInitializationContextSingleton().get(
+                    defFields,
+                    data,
+                    properties,
+                    methods
+                )
+            );
+        }
 
         Object.assign(defFields, {
             behaviors: (defFields.behaviors || []).concat(

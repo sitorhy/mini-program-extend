@@ -282,6 +282,9 @@ export default class MPExtender {
         );
     }
 
+    /**
+     * @returns {Singleton}
+     */
     createInitializationContextSingleton() {
         return new Singleton((obj, data, properties, methods, onMissingHandler) => {
             const compileTimeContext = this.createInitializationCompatibleContext(obj, data, properties, methods, onMissingHandler)
@@ -290,7 +293,7 @@ export default class MPExtender {
                 get(target, p, receiver) {
                     if (p === '$props') {
                         const $props = {};
-                        Object.keys(Object.assign({}, (obj || {}).data, data)).filter(i => props.includes(i)).forEach(i => {
+                        Object.keys(properties).forEach(i => {
                             Object.defineProperty($props, i, {
                                 get() {
                                     return Reflect.get(target, i);
@@ -298,7 +301,7 @@ export default class MPExtender {
                                 set(v) {
                                     return Reflect.set(target, i, v);
                                 }
-                            })
+                            });
                         });
                         return $props;
                     }
@@ -330,7 +333,7 @@ export default class MPExtender {
         installers.forEach(installer => {
             installer.install(this, this._context, options);
         });
-        
+
         const config = {
             behaviors: [
                 Behavior({

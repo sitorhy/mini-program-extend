@@ -13,6 +13,10 @@ export class Singleton {
         this._constructor = constructor;
     }
 
+    /**
+     * @param {any?} arguments
+     * @returns {undefined}
+     */
     get() {
         if (this._instance === undefined) {
             this._instance = this._constructor.apply(undefined, arguments);

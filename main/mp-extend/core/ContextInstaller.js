@@ -67,7 +67,7 @@ export default class ContextInstaller extends OptionInstaller {
         const getContext = (thisArg, fnSetData) => {
             return this.getRuntimeContext(thisArg, context, fnSetData);
         };
-        context.set('originalMethods', context.get('methods'));
+
         ['lifetimes', 'pageLifetimes', 'methods'].forEach(prop => {
             if (context.has(prop) && isPlainObject(context.get(prop))) {
                 context.set(prop,
