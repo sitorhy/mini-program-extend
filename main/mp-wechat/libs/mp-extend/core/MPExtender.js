@@ -51,6 +51,9 @@ export default class MPExtender {
         this.use(new ContextInstaller(), 100);
     }
 
+    /**
+     * @returns {OptionInstaller[]}
+     */
     get installers() {
         return this._installers.get();
     }

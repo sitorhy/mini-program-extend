@@ -21,8 +21,8 @@ export default class PropertiesInstaller extends OptionInstaller {
             attached() {
                 Object.entries(properties).filter(([, config]) => {
                     return isFunction(config.validator);
-                }).forEach(([prop, config]) => {
-                    config.validator.apply(this, [this.data[prop]]);
+                }).forEach(([prop, constructor]) => {
+                    constructor.validator.apply(this, [this.data[prop]]);
                 });
             }
         };
@@ -101,12 +101,12 @@ export default class PropertiesInstaller extends OptionInstaller {
                                 if (required === true) {
                                     if (newVal === null || newVal === undefined || newVal === '') {
                                         console.warn(`Missing required prop: "${prop}"`);
-                                    } else {
-                                        if (isFunction(validator)) {
-                                            if (!validator.call(this, newVal, oldVal)) {
-                                                console.warn(`${this.is}: custom validator failed for prop '${prop}'`);
-                                            }
-                                        }
+                                        return;
+                                    }
+                                }
+                                if (isFunction(validator)) {
+                                    if (!validator.call(this, newVal, oldVal)) {
+                                        console.warn(`${this.is}: custom validator failed for prop '${prop}'`);
                                     }
                                 }
                             };

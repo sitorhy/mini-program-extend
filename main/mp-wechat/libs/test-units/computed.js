@@ -1,5 +1,3 @@
-const isWx = !navigator;
-
 export default {
     mixins: [
         {

@@ -125,30 +125,17 @@ export default class StateInstaller extends OptionInstaller {
         return instData;
     }
 
-    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
-        const methods = context.get('methods');
-        const properties = this.attemptToInstantiateProps(extender, context, methods, options);
-        const data = this.attemptToInstantiateData(extender, properties, methods, context, options);
-
+    attemptToInstantiateState(extender, properties, data, methods, context, options) {
         const keys = new Set(Object.keys(properties));
-
         Optional.of(Object.keys(data).find(k => keys.has(k))).ifPresent((property) => {
             throw new Error(`The data property "${property}" is already declared as a prop. Use prop default value instead.`);
         });
-
-        context.set('state', Object.assign
-            (
-                {},
-                data,
-                Stream.of(Object.entries(properties)).map(([prop, constructor]) => [prop, constructor.value]).collect(Collectors.toMap())
-            )
-        );
 
         const beforeCreate = context.get('beforeCreate');
         if (isFunction(beforeCreate)) {
             beforeCreate.call(
                 extender.createInitializationContextSingleton().get(
-                    defFields,
+                    null,
                     data,
                     properties,
                     methods
@@ -156,13 +143,48 @@ export default class StateInstaller extends OptionInstaller {
             );
         }
 
-        Object.assign(defFields, {
-            behaviors: (defFields.behaviors || []).concat(
-                Behavior({
-                    data,
-                    properties
-                })
-            )
-        });
+        return Object.assign
+        (
+            {},
+            data,
+            Stream.of(Object.entries(properties)).map(([prop, constructor]) => [prop, constructor.value]).collect(Collectors.toMap())
+        );
+    }
+
+    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
+        const state = context.get('state');
+        const properties = Stream.of(Object.entries(context.get('properties')))
+            .map(([name, constructor]) => {
+                return [name, Object.assign(
+                    removeEmpty({
+                        type: constructor.type,
+                        optionalTypes: constructor.optionalTypes,
+                        observer: constructor.observer
+                    }),
+                    {
+                        value: state[name]
+                    }
+                )];
+            })
+            .collect(Collectors.toMap());
+
+        const keys = Object.keys(properties);
+
+        const data = Stream.of(Object.entries(state)).filter(([name]) => !keys.includes(name)).collect(Collectors.toMap());
+
+        defFields.behaviors = (defFields.behaviors || []).concat([
+            Behavior({
+                properties,
+                data
+            })
+        ]);
+    }
+
+    install(extender, context, options) {
+        const methods = context.get('methods');
+        const properties = this.attemptToInstantiateProps(extender, context, methods, options);
+        const data = this.attemptToInstantiateData(extender, properties, methods, context, options);
+        const state = this.attemptToInstantiateState(extender, properties, data, methods, context, options);
+        context.set('state', state);
     }
 }
