@@ -134,16 +134,6 @@ function collectObservers(path, handler, immediate, deep, instanceState, collect
  * deep - 加上 '.**' 后缀
  */
 export default class WatcherInstaller extends OptionInstaller {
-    _observers = {};
-
-    watch(expOfFn, callback, options) {
-
-    }
-
-    dynamicObserver() {
-
-    }
-
     selectData(data, path) {
         const iSp = path.indexOf('.');
         const target = iSp < 0 ? path : path.substring(0, iSp);
@@ -171,101 +161,7 @@ export default class WatcherInstaller extends OptionInstaller {
         });
     }
 
-    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
-        const observers = context.get('observers') || {};
-        const watch = context.get('watch');
-        const data = context.get('data');
-        const properties = context.get('properties');
-        const installer = this;
-
-        const instanceState = this.createInitializationCompatibleContext(data, properties, null);
-
-        Object.assign(observers, Object.hasOwnProperty.call(observers, '**') ? {
-            '**': Invocation(observers['**'], this.dynamicObserver)
-        } : {
-            '**': this.dynamicObserver
-        });
-
-        const paths = Object.keys(watch).filter(i => i !== '**');
-        if (paths.length > 0) {
-            const collection = new Map();
-            paths.forEach((i) => {
-                collectObservers(i, watch[i], false, false, instanceState, collection);
-            });
-
-            const onceWatchers = [];
-
-            Object.assign.apply(undefined, [
-                observers,
-                Stream.of([...collection]).filter(([, watchers]) => {
-                    return watchers.length > 0;
-                }).map(([path, watchers]) => {
-                    const oldValue = installer.selectMultiData(instanceState, path.split(','));
-                    const once = new OnceCompatibleWatcher(
-                        watchers,
-                        path,
-                        function () {
-                            watchers.forEach(w => {
-                                w.oldValue = oldValue;
-                            });
-                        }
-                    );
-                    watchers.unshift(once);
-                    onceWatchers.push(once);
-
-                    const observer = observers[path];
-                    return [path, function (...args) {
-                        if (isFunction(observer)) {
-                            observer.call(this, args);
-                        }
-                        watchers.forEach(w => {
-                            w.call(this, args);
-                        });
-                    }];
-                }).collect(Collectors.toMap())
-            ]);
-
-            Object.assign(defFields, {
-                behaviors: (defFields.behaviors || []).concat(
-                    Behavior(
-                        {
-                            lifetimes: {
-                                attached() {
-                                    const currentState = installer.createRuntimeCompatibleContext(this);
-                                    onceWatchers.filter(w => w.emitted === false).forEach(w => {
-                                        if (w.path) {
-                                            const paths = w.path.split(',');
-                                            if (paths.length) {
-                                                const currentValues = installer.selectMultiData(currentState, paths);
-                                                w.run(this, currentValues);
-                                                w.call(this, currentValues);
-                                            }
-                                        }
-                                    });
-                                    onceWatchers.splice(0).forEach(w => w.release());
-                                }
-                            }
-                        }
-                    )
-                )
-            });
-        }
-
-        Object.assign(defFields, {
-            observers
-        });
-    }
-
     install(extender, context, options) {
-        const {observers = null} = options;
-        context.set('observers', Object.assign.apply(
-            undefined,
-            [
-                this._observers,
-                ...extender.installers.map(i => i.observers()),
-                observers
-            ]
-        ));
-        context.set('watch', options.watch || {});
+
     }
 }

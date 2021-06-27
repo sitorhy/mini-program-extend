@@ -92,9 +92,9 @@ export default class MPExtender {
         this.use(new PropertiesInstaller(), 20);
         this.use(new DataInstaller(), 25);
         this.use(new StateInstaller(), 30);
-        //    this.use(new WatcherInstaller(),60);
         this.use(new ComputedInstaller(), 35);
-        this.use(new LifeCycleInstaller(), 40);
+        this.use(new WatcherInstaller(), 40);
+        this.use(new LifeCycleInstaller(), 45);
         this.use(new ContextInstaller(), 100);
     }
 
