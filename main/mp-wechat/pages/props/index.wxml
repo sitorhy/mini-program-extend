@@ -36,3 +36,6 @@
 <view>
     <text>foods=</text><text>{{  wxs.stringify(foods) }}</text>
 </view>
+<view>
+    <text>f=</text><text>{{  wxs.stringify(f) }}</text>
+</view>

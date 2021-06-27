@@ -10,7 +10,7 @@ import MixinInstaller from "./MixinInstaller";
 import LifeCycleInstaller from "./LifeCycleInstaller";
 
 import {Singleton} from "../libs/Singleton";
-import {isFunction, isPlainObject} from "../utils/common";
+import {isFunction, isPlainObject, isPrimitive} from "../utils/common";
 import equal from "../libs/fast-deep-equal/index";
 
 class InstallersSingleton extends Singleton {
@@ -33,6 +33,53 @@ class InstallersSingleton extends Singleton {
             }
         }
     }
+}
+
+function createEffectObject(target, onChanged = "", path = "") {
+    return new Proxy(
+        target,
+        {
+            get(target, p, receiver) {
+                const obj = Reflect.get(target, p, receiver);
+                if (isPrimitive(obj)) {
+                    return obj;
+                }
+                if (Array.isArray(target) && typeof p !== "symbol") {
+                    if (Number.isSafeInteger(Number.parseInt(p))) {
+                        return createEffectObject(obj, onChanged, `${path ? path : ''}[${p}]`);
+                    }
+                }
+                if (isFunction(obj)) {
+                    return createEffectObject(obj, function () {
+                        onChanged(path, target);
+                    }, `${path ? path + '.' : path}${p}`);
+                }
+                return createEffectObject(obj, onChanged, `${path ? path + '.' : path}${p}`);
+            },
+            set(target, p, value, receiver) {
+                if (Reflect.set(target, p, value, receiver)) {
+                    if (Array.isArray(target) && typeof p !== "symbol") {
+                        if (Number.isSafeInteger(Number.parseInt(p))) {
+                            onChanged(`${path ? path : ''}[${p}]`, value);
+                        } else {
+                            onChanged(`${path ? path + '.' : path}${p}`, value);
+                        }
+                    } else {
+                        onChanged(`${path ? path + '.' : path}${p}`, value);
+                    }
+                    return true;
+                }
+                return false;
+            },
+            apply(func, thisArg, argumentsList) {
+                const result = Reflect.apply(func, thisArg, argumentsList);
+                if (isFunction(onChanged)) {
+                    onChanged(path, target);
+                }
+                return result;
+            }
+        }
+    );
 }
 
 export default class MPExtender {
@@ -73,67 +120,33 @@ export default class MPExtender {
         const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
         const setters = isPlainObject(computed) ? Object.keys(computed).filter(i => isPlainObject(computed[i]) && isFunction(computed[i].set)) : [];
         let runtimeContext;
-        let runtimeDataContext;
 
-        runtimeDataContext = new Proxy(context.data, {
-            get(target, p, receiver) {
-                const obj = Reflect.get(target, p);
-                if (Array.isArray(obj)) {
-                    return new Proxy(obj, {
-                        get(arr, prop, receiver) {
-                            switch (prop) {
-                                case 'push':
-                                case 'pop':
-                                case 'shift':
-                                case 'unshift':
-                                case 'splice':
-                                case 'sort':
-                                case 'reverse': {
-                                    return new Proxy(Reflect.get(arr, prop), {
-                                        apply(target, thisArg, argArray) {
-                                            const result = Reflect.apply(target, thisArg, argArray);
-                                            if (isFunction(fnSetData)) {
-                                                fnSetData({[p]: obj});
-                                            } else {
-                                                Reflect.get(runtimeContext, 'setData').call(runtimeContext, {[p]: obj});
-                                            }
-                                            return result;
-                                        }
-                                    });
-                                }
-                            }
-                            return Reflect.get(arr, prop);
-                        }
-                    });
-                }
-                return obj;
-            },
-            set(target, p, value, receiver) {
-                target[p] = value;
-                if (isFunction(fnSetData)) {
-                    fnSetData({[p]: value});
-                } else {
-                    Reflect.get(runtimeContext, 'setData').call(runtimeContext, {[p]: value});
-                }
-                if (setters.includes(p)) {
-                    computed[p].set.call(runtimeContext, value);
-                }
-                getters.forEach((p) => {
-                    const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
-                    const curVal = Reflect.get(runtimeContext, p);
-                    const pValue = getter.call(runtimeContext);
-                    if (!equal(curVal, pValue)) {
-                        Reflect.set(runtimeDataContext, p, pValue);
-                    }
-                });
-                return true;
+        const runtimeDataContext = createEffectObject(context.data, function (path, value) {
+            if (isFunction(fnSetData)) {
+                fnSetData({[path]: value});
+            } else {
+                Reflect.get(runtimeContext, 'setData').call(runtimeContext, {[path]: value});
             }
+            if (setters.includes(path)) {
+                computed[path].set.call(runtimeContext, value);
+            }
+            getters.forEach((p) => {
+                const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
+                const curVal = Reflect.get(runtimeContext, p);
+                const pValue = getter.call(runtimeContext);
+                if (!equal(curVal, pValue)) {
+                    Reflect.set(runtimeDataContext, p, pValue);
+                }
+            });
         });
 
         runtimeContext = new Proxy(
             context,
             {
                 get(target, p, receiver) {
+                    if (p === 'data') {
+                        return runtimeDataContext;
+                    }
                     if (Reflect.has(target, p)) {
                         const prop = Reflect.get(target, p);
                         if (isFunction(prop)) {
@@ -233,17 +246,18 @@ export default class MPExtender {
                             onMissingHandler.call(undefined, p);
                         }
                     }
-                    return undefined;
+                    return Reflect.get(target, p);
                 },
                 set(target, p, value, receiver) {
                     // 状态命中，检查是否命中静态的props
                     if (isPlainObject(properties) && Reflect.has(properties, p)) {
                         properties[p].value = value;
-                        if (Reflect.has(state, p)) {
-                            state[p] = value;
-                        }
                         return true;
                     } else {
+                        if (Reflect.has(state, p)) {
+                            state[p] = value;
+                            return true;
+                        }
                         // 其余状态一律写入data
                         return Reflect.set(state, p, value);
                     }
@@ -256,7 +270,7 @@ export default class MPExtender {
             {
                 get(target, p, receiver) {
                     // 小程序形式读取状态 const a = this.state.a;
-                    if (p === 'state') {
+                    if (p === 'data') {
                         return compatibleDataContext;
                     }
                     // 重定向到methods
@@ -269,6 +283,7 @@ export default class MPExtender {
                     }
                     // Vue形式读取 const a = this.a;
                     if (Reflect.has(compatibleDataContext, p)) {
+                        // 初始化过程直接修改配置，无需同步数据，不需要创建EffectObject
                         return Reflect.get(compatibleDataContext, p);
                     }
                     // 读取 state 外的其他属性

@@ -57,14 +57,26 @@ export default {
             data() {
                 return {
                     c: this.a + this.b,
-                    e: 114514
+                    e: 114514,
+                    f: [{
+                        num: 114,
+                        obj: {
+                            num: 514
+                        }
+                    }, {
+                        num: 1919
+                    }]
                 };
             },
             mounted() {
                 this.e = 1919810;
-                console.log(this.e);
+                console.log(`e = ${this.e}`);
                 this.foods.push("Apple");
                 this.$data.e = 1145141919;
+
+                // 修改数组元素
+                this.f[0].num = 1919810;
+                this.f[0].obj.num = 114514;
 
                 console.log(this.$props);
                 console.log(this.$data);

@@ -10,6 +10,7 @@
     <p><span>e={{ e }}</span></p>
     <p><span>age={{ age }}</span></p>
     <p><span>foods={{ foods }}</span></p>
+    <p><span>f={{ f }}</span></p>
   </div>
 </template>
 
