@@ -11,7 +11,8 @@ export default {
                         f: {
                             g: 5
                         }
-                    }
+                    },
+                    f: [[100, 200], [300, 400]]
                 };
             },
             watch: {
@@ -47,7 +48,45 @@ export default {
                 ],
                 // watch vm.e.f's value: {g: 5}
                 'e.f': function (val, oldVal) { /* ... */
-                    console.log(`e.f handler1 = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
+                    console.log(`e.f handler = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
+                },
+
+                // 容错测试
+                'e.f.not.exists': {
+                    handler: function (val, oldVal) {
+                        console.log(`not exists handler = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
+                    },
+                    immediate: true
+                },
+                '.e.f': {
+                    handler: function (val, oldVal) {
+                        console.log(`.e.f = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
+                    },
+                    immediate: true
+                },
+                'e..f': {
+                    handler: function (val, oldVal) {
+                        console.log(`e..f = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
+                    },
+                    immediate: true
+                },
+                '': {
+                    handler: function (val, oldVal) {
+                        console.log(`empty = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
+                    },
+                    immediate: true
+                },
+                'f.0.1': {
+                    handler: function (val, oldVal) {
+                        console.log(`f.0 = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
+                    },
+                    immediate: true
+                },
+                'f.0.0.0.0.0': {
+                    handler: function (val, oldVal) {
+                        console.log(`f.0.0.0.0.0 = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
+                    },
+                    immediate: true
                 }
             },
             methods: {

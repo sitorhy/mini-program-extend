@@ -1,9 +1,7 @@
 import OptionInstaller from './OptionInstaller';
 import {Invocation} from "../libs/Invocation";
-import {isFunction, isNullOrEmpty, isPlainObject, isString} from "../utils/common";
+import {isFunction, isNullOrEmpty, isPlainObject, isPrimitive, isString} from "../utils/common";
 import {Collectors, Stream} from "../libs/Stream";
-
-const ARR_REG = /([\w\$]+)\[(\d+)\]/;
 
 class CompatibleWatcher {
     _oldValue = [];
@@ -65,31 +63,28 @@ class CompatibleWatcher {
  * deep - 加上 '.**' 后缀
  */
 export default class WatcherInstaller extends OptionInstaller {
-    selectData(data, path) {
-        const iSp = path.indexOf('.');
-        const target = iSp < 0 ? path : path.substring(0, iSp);
-        if (iSp > 0) {
-            return this.selectData(data[target], path.substring(iSp + 1));
-        } else {
-            if (target === '**') {
-                return data;
-            }
-            if (ARR_REG.test(target)) {
-                const [, arr, index] = ARR_REG.exec(target);
-                return data[arr][parseInt(index)];
-            } else {
-                return data[target]
-            }
-        }
-    }
 
-    selectMultiData(data, paths = []) {
-        if (isNullOrEmpty(data)) {
-            return [];
+    /**
+     * Vue 形式侦听器格式只包含数字字母和点运算符
+     * @param data
+     * @param path
+     * @returns {any|undefined}
+     */
+    selectData(data, path) {
+        if (!/[\w\.]+/.test(path)) {
+            throw new Error(`Failed watching path: "${path}" Watcher only accepts simple dot-delimited paths. For full control, use a function instead.`);
         }
-        return paths.map(path => {
-            return this.selectData(data, path);
-        });
+        if ((data === null || data === undefined || isPrimitive(data)) && path) {
+            return undefined;
+        }
+        const iDot = path.indexOf('.');
+        const prop = path.substring(0, iDot < 0 ? path.length : iDot);
+        const right = path.substring(prop.length + 1);
+        if (!right) {
+            return Reflect.get(data, prop);
+        } else {
+            return this.selectData(Reflect.get(data, prop), right);
+        }
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
@@ -141,22 +136,5 @@ export default class WatcherInstaller extends OptionInstaller {
         }).filter(([, watchers]) => watchers.length > 0).collect(Collectors.toMap());
 
         context.set('watch', watch);
-
-        const testData = {
-            a: 1,
-            b: 2,
-            c: 3,
-            d: 4,
-            e: {
-                f: {
-                    g: 5
-                }
-            },
-            f: [100, 200]
-        }
-
-        console.log(this.selectData(testData, 'f[1]'));
-        console.log(this.selectData(testData, 'e.f'));
-        console.log(this.selectData(testData, 'e.g'));
     }
 }
