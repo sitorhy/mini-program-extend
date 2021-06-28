@@ -22,7 +22,7 @@ class CompatibleWatcher {
 
     call(thisArg, args) {
         if (this._callback) {
-            this._callback.apply(thisArg, args.concat(this._oldValue || []));
+            this._callback.apply(thisArg, args.concat(this._oldValue));
         }
         this._oldValue = args;
     }
@@ -60,75 +60,6 @@ class CompatibleWatcher {
     }
 }
 
-class OnceCompatibleWatcher extends CompatibleWatcher {
-    _queue = [];
-    _emitted = false;
-    _immediateWatchers = undefined;
-
-    constructor(queue, path, callback = undefined) {
-        super(path, callback, true, false, []);
-        this._queue = queue;
-        this._immediateWatchers = queue.filter(w => w.immediate);
-    }
-
-    call(thisArg, args) {
-        if (this._emitted === false) {
-            super.call(thisArg, args);
-            this._emitted = true;
-        }
-    }
-
-    run(thisArg, args = []) {
-        if (this._immediateWatchers && this._immediateWatchers.length) {
-            this._immediateWatchers.forEach(function (w) {
-                w.call(thisArg, args);
-            });
-        }
-    }
-
-    release() {
-        this._queue.splice(this._queue.indexOf(this), 1);
-        this._queue = null;
-    }
-
-    get emitted() {
-        return this._emitted;
-    }
-}
-
-function collectObservers(path, handler, immediate, deep, instanceState, collection = new Map()) {
-    let callbacks = collection.get(path);
-    if (!callbacks) {
-        callbacks = [];
-        collection.set(path, callbacks);
-    }
-    if (isFunction(handler)) {
-        callbacks.push(new CompatibleWatcher(path, handler, immediate, deep));
-    } else if (isString(handler)) {
-        callbacks.push(new CompatibleWatcher(
-            path,
-            function () {
-                if (isFunction(this[handler])) {
-                    (this[handler]).apply(this, arguments);
-                }
-            },
-            immediate,
-            deep
-        ));
-    } else if (isPlainObject(handler)) {
-        const {deep = false, immediate = false} = handler;
-        if (deep === true) {
-            collectObservers(path + '.**', handler['handler'], immediate, false, instanceState, collection);
-        } else {
-            collectObservers(path, handler['handler'], immediate, false, instanceState, collection);
-        }
-    } else if (Array.isArray(handler)) {
-        handler.forEach(i => {
-            collectObservers(path, i, immediate, deep, instanceState, collection);
-        });
-    }
-}
-
 /**
  * immediate - 拦截 mounted/attached 前置执行
  * deep - 加上 '.**' 后缀
@@ -161,7 +92,71 @@ export default class WatcherInstaller extends OptionInstaller {
         });
     }
 
-    install(extender, context, options) {
+    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
 
+    }
+
+    /**
+     * 统一 Vue 格式的侦听器
+     * @param extender
+     * @param context
+     * @param options
+     */
+    install(extender, context, options) {
+        const watchers = Object.assign.apply(
+            undefined,
+            [
+                {},
+                ...extender.installers.map(i => i.watch()),
+                options.watch
+            ]
+        );
+        const watch = Stream.of(Object.entries(watchers)).map(([path, watcher]) => {
+            return [
+                path,
+                [].concat(watcher).map(w => {
+                    const normalize = {
+                        handler: null,
+                        deep: false,
+                        immediate: false
+                    };
+                    if (isString(w)) {
+                        normalize.handler = function () {
+                            const method = this[w];
+                            if (isFunction(method)) {
+                                method.apply(this, arguments);
+                            }
+                        };
+                    } else if (isFunction(w)) {
+                        normalize.handler = w;
+                    } else if (isPlainObject(w)) {
+                        const {immediate, deep, handler} = w;
+                        normalize.immediate = immediate === true;
+                        normalize.deep = deep === true;
+                        normalize.handler = handler;
+                    }
+                    return normalize;
+                }).filter(w => isFunction(w.handler))
+            ];
+        }).filter(([, watchers]) => watchers.length > 0).collect(Collectors.toMap());
+
+        context.set('watch', watch);
+
+        const testData = {
+            a: 1,
+            b: 2,
+            c: 3,
+            d: 4,
+            e: {
+                f: {
+                    g: 5
+                }
+            },
+            f: [100, 200]
+        }
+
+        console.log(this.selectData(testData, 'f[1]'));
+        console.log(this.selectData(testData, 'e.f'));
+        console.log(this.selectData(testData, 'e.g'));
     }
 }

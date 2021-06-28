@@ -21,7 +21,7 @@ export default class OptionInstaller extends BehaviorInstaller {
      * 返回值将直接注入最终配置
      * @param {MPExtender} extender
      * @param {Map<any,any>} context
-     * @param {[key:string]:any} options
+     * @param {Map<string,any>} options
      * @returns {{}}
      */
     build(extender, context, options) {
@@ -29,7 +29,11 @@ export default class OptionInstaller extends BehaviorInstaller {
     }
 
     computed() {
+        return null;
+    }
 
+    watch() {
+        return null;
     }
 
     beforeCreate() {
