@@ -51,13 +51,16 @@ export default {
                     console.log(`e.f handler = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
                 },
 
-                // 容错测试
+                // 以下全部为容错测试
                 'e.f.not.exists': {
                     handler: function (val, oldVal) {
                         console.log(`not exists handler = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
                     },
                     immediate: true
                 },
+
+                // 无意义的点运算符 小程序直接报错，Vue编译通过，虽然拿不到值
+                /*
                 '.e.f': {
                     handler: function (val, oldVal) {
                         console.log(`.e.f = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
@@ -70,12 +73,18 @@ export default {
                     },
                     immediate: true
                 },
+                */
+
+                // 小程序 空字符串直接报错，Vue 编译依然通过，虽然还是无意义地返回undefined
+                /*
                 '': {
                     handler: function (val, oldVal) {
                         console.log(`empty = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
                     },
                     immediate: true
                 },
+                */
+
                 'f.0.1': {
                     handler: function (val, oldVal) {
                         console.log(`f.0 = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
