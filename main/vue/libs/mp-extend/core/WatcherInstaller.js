@@ -87,8 +87,56 @@ export default class WatcherInstaller extends OptionInstaller {
         }
     }
 
-    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
+    transformToCompactField(rule) {
+        return rule.replace(/\.(\d+)/g, function () {
+            return `[${arguments[1]}]`;
+        });
+    }
 
+    staticWatchersDefinition(extender, context, options, defFields) {
+        const watch = context.get('watch');
+        const observers = Stream.of(Object.entries(watch)).map(([name, watchers]) => {
+            return [this.transformToCompactField(name), watchers];
+        }).collect(Collectors.toMap());
+        console.log(observers);
+
+        defFields.behaviors = (defFields.behaviors || []).concat(
+            Behavior({
+                properties: {
+                    ob1: {
+                        type: Number,
+                        value: 114514,
+                        observer() {
+                            console.log(`observer ob1 => ${JSON.stringify(arguments)}`);
+                        }
+                    }
+                },
+                observers: {
+                    ob1() {
+                        console.log(`ob1 => ${JSON.stringify(arguments)}`);
+                    }
+                },
+                lifetimes: {
+                    created() {
+                        console.log('初始化 ob1 => ' + this.data.ob1);
+                        console.log('---created---');
+                    },
+                    attached() {
+                        console.log('---attached---');
+                        this.setData({
+                            ob1: 1919810
+                        });
+                    }
+                }
+            })
+        );
+    }
+
+    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
+        const watch = context.get('watch');
+        if (watch && Object.keys(watch).length) {
+            this.staticWatchersDefinition(extender, context, options, defFields);
+        }
     }
 
     /**
