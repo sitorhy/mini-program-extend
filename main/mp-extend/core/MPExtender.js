@@ -41,7 +41,7 @@ function createEffectObject(target, onChanged = "", path = "") {
         {
             get(target, p, receiver) {
                 const obj = Reflect.get(target, p, receiver);
-                if (isPrimitive(obj)) {
+                if (isPrimitive(obj) || !target.propertyIsEnumerable(p)) {
                     return obj;
                 }
                 if (Array.isArray(target) && typeof p !== "symbol") {
@@ -54,7 +54,11 @@ function createEffectObject(target, onChanged = "", path = "") {
                         onChanged(path, target);
                     }, `${path ? path + '.' : path}${p}`);
                 }
-                return createEffectObject(obj, onChanged, `${path ? path + '.' : path}${p}`);
+                if (obj) {
+                    return createEffectObject(obj, onChanged, `${path ? path + '.' : path}${p}`);
+                } else {
+                    return obj;
+                }
             },
             set(target, p, value, receiver) {
                 if (Reflect.set(target, p, value, receiver)) {

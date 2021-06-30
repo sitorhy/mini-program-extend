@@ -87,7 +87,7 @@ export default {
 
                 'f.0.1': {
                     handler: function (val, oldVal) {
-                        console.log(`f.0 = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
+                        console.log(`f.0.1 = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
                     },
                     immediate: true
                 },
@@ -115,6 +115,8 @@ export default {
                 this.e.f = {
                     g: 114514
                 };
+
+                this.f.splice(0, 1, [100, 999]);
 
                 // 报错
                 /*

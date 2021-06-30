@@ -2,12 +2,14 @@ import OptionInstaller from './OptionInstaller';
 import {Invocation} from "../libs/Invocation";
 import {isFunction, isNullOrEmpty, isPlainObject, isPrimitive, isString} from "../utils/common";
 import {Collectors, Stream} from "../libs/Stream";
+import equal from "../libs/fast-deep-equal/index";
 
 const WatchSign = Symbol('__wxWatch__');
 
 class CompatibleWatcher {
     _oldValue = [];
     _callback = undefined;
+    _once = undefined;
     _immediate = false;
     _deep = false;
     _path = "";
@@ -16,13 +18,15 @@ class CompatibleWatcher {
      *
      * @param path - 使用Vue格式
      * @param callback - 自定义回调
+     * @param once - immediate 执行一次的回调，执行后销毁
      * @param immediate - 创建后是否立即执行，静态监听器必定为true
      * @param deep - 深度监听
      * @param oldValue - 初始值
      */
-    constructor(path, callback, immediate, deep, oldValue = []) {
+    constructor(path, callback, once, immediate, deep, oldValue = []) {
         this._callback = callback;
         this._immediate = immediate;
+        this._once = once;
         this._deep = deep;
         this._path = path;
         this._oldValue = oldValue;
@@ -33,6 +37,14 @@ class CompatibleWatcher {
             this._callback.apply(thisArg, args.concat(this._oldValue));
         }
         this._oldValue = args;
+    }
+
+    once(thisArg, args) {
+        if (this._once) {
+            this._once.apply(thisArg, args.concat(this._oldValue));
+            this._oldValue = args;
+            this._once = undefined;
+        }
     }
 
     get immediate() {
@@ -120,6 +132,10 @@ export default class WatcherInstaller extends OptionInstaller {
         });
     }
 
+    getCompactWatchers(thisArg, path) {
+        return Reflect.get(thisArg, WatchSign).get(path);
+    }
+
     /**
      * 对于静态监听器，编译期间便可确定旧值
      * @param extender
@@ -131,56 +147,82 @@ export default class WatcherInstaller extends OptionInstaller {
         const watch = context.get('watch');
         const state = context.get('state');
 
-        const staticWatchers = new Map();
+        const staticWatchers = Stream.of(Object.entries(watch)).map(([path, watchers]) => {
+            const compactPath = this.transformToCompactField(path);
 
-        // 依赖StateInstaller
-        if (state) {
-            const observers = Stream.of(Object.entries(watch)).map(([path, watchers]) => {
-                const oldValue = this.selectData(state, path);
-                const compactPath = this.transformToCompactField(path);
-
-                // 创建后立即执行（代理执行）,检查是否存在immediate为true的侦听器
-                staticWatchers.set(compactPath, new CompatibleWatcher(path, function () {
-
-                }, true, false, oldValue));
-
-                return [compactPath, watchers];
-            }).collect(Collectors.toMap());
-            console.log(observers);
-            console.log(staticWatchers)
-
-            const behavior = {
-                lifetimes: {
-                    created() {
-                        Object.defineProperty(this, WatchSign, {
-                            configurable: false,
-                            enumerable: false,
-                            value: staticWatchers,
-                            writable: false
-                        });
+            const watcher = new CompatibleWatcher(path, function (newValue, oldValue) {
+                if (!equal(newValue, oldValue)) {
+                    watchers.forEach(w => {
+                        w.handler.call(this, newValue, oldValue);
+                    });
+                }
+            }, function (newValue, oldValue) {
+                watchers.forEach(w => {
+                    if (w.immediate === true) {
+                        w.handler.call(this, newValue, oldValue);
                     }
+                });
+            }, true, false, undefined);
+
+            return [compactPath, watcher];
+        }).collect(Collectors.toMap(v => v[0], v => v[1], true));
+
+        const createWatchers = () => {
+            return staticWatchers;
+        };
+
+        const getWatchers = (thisArg, path) => {
+            return this.getCompactWatchers(thisArg, path);
+        };
+
+        const selectRuntimeState = (data, path) => {
+            return this.selectData(data, path);
+        };
+
+        const behavior = {
+            lifetimes: {
+                created() {
+                    Object.defineProperty(this, WatchSign, {
+                        configurable: false,
+                        enumerable: false,
+                        value: createWatchers(),
+                        writable: false
+                    });
                 },
-                observers: Stream.of(
-                    Object.keys(observers).map(path => {
-                        return [
-                            path,
-                            function (newValue) {
-                                console.log(`${path} => ${JSON.stringify(newValue)}`);
+                attached() {
+                    for (const compactPath of staticWatchers.keys()) {
+                        const watcher = getWatchers(this, compactPath);
+                        if (watcher) {
+                            const curValue = selectRuntimeState(this.data, watcher.path);
+
+                            // 设置侦听器初始值，并触发 immediate 侦听器
+                            watcher.once(this, [curValue]);
+                        }
+                    }
+                }
+            },
+            observers: Stream.of(
+                [...staticWatchers.keys()].map(compactPath => {
+                    return [
+                        compactPath,
+                        function (newValue) {
+                            const watcher = getWatchers(this, compactPath);
+                            if (watcher) {
+                                watcher.call(this, [newValue])
                             }
-                        ];
-                    })
-                ).collect(Collectors.toMap())
-            };
+                        }
+                    ];
+                })
+            ).collect(Collectors.toMap())
+        };
 
-            console.log(behavior)
-
-            defFields.behaviors = (defFields.behaviors || []).concat(Behavior(behavior));
-        }
+        defFields.behaviors = (defFields.behaviors || []).concat(Behavior(behavior));
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
         const watch = context.get('watch');
-        if (watch && Object.keys(watch).length) {
+        const state = context.get('state');
+        if (state && watch && Object.keys(watch).length) {
             this.staticWatchersDefinition(extender, context, options, defFields);
         }
     }
@@ -192,15 +234,18 @@ export default class WatcherInstaller extends OptionInstaller {
      * @param options
      */
     install(extender, context, options) {
-        const watchers = Object.assign.apply(
-            undefined,
-            [
-                {},
-                ...extender.installers.map(i => i.watch()),
-                options.watch
-            ]
-        );
-        const watch = Stream.of(Object.entries(watchers)).map(([path, watcher]) => {
+        const watch = Stream.of(
+            Object.entries(
+                Object.assign.apply(
+                    undefined,
+                    [
+                        {},
+                        ...extender.installers.map(i => i.watch()),
+                        options.watch
+                    ]
+                )
+            )
+        ).map(([path, watcher]) => {
             return [
                 path,
                 [].concat(watcher).map(w => {
@@ -222,7 +267,12 @@ export default class WatcherInstaller extends OptionInstaller {
                         const {immediate, deep, handler} = w;
                         normalize.immediate = immediate === true;
                         normalize.deep = deep === true;
-                        normalize.handler = handler;
+                        normalize.handler = isFunction(handler) ? handler : function () {
+                            const method = this[handler];
+                            if (isFunction(method)) {
+                                method.apply(this, arguments);
+                            }
+                        };
                     }
                     return normalize;
                 }).filter(w => isFunction(w.handler))
