@@ -59,6 +59,7 @@ export default class LifeCycleInstaller extends OptionInstaller {
             lifetimes: () => {
                 return {
                     created: function () {
+                        context.get('created').apply(this, arguments);
                         context.get('beforeMount').apply(this, arguments);
                     },
                     attached: function () {
@@ -82,6 +83,12 @@ export default class LifeCycleInstaller extends OptionInstaller {
         this.compatibleLifeCycleDefinition(extender, context, options, defFields);
     }
 
+    /**
+     * 聚集Installer生命周期拦截
+     * @param extender
+     * @param context
+     * @param options
+     */
     installBehaviorLifeCycle(extender, context, options) {
         const lifetimes = extender.installers.map(i => i.lifetimes(extender, context, options)).filter(i => !!i);
         const pageLifetimes = extender.installers.map(i => i.pageLifetimes(extender, context, options)).filter(i => !!i);
@@ -143,11 +150,24 @@ export default class LifeCycleInstaller extends OptionInstaller {
         }));
     }
 
+    /**
+     * 聚集Installer Vue格式的生命周期拦截
+     * @param extender
+     * @param context
+     * @param options
+     */
     installCompatibleLifeCycle(extender, context, options) {
         context.set("beforeCreate", (() => {
             const beforeCreateChain = extender.installers.map(i => i.beforeCreate).filter(i => isFunction(i));
             return function () {
                 beforeCreateChain.forEach(i => i.apply(this, arguments));
+            };
+        })());
+
+        context.set("created", (() => {
+            const createdChain = extender.installers.map(i => i.created).filter(i => isFunction(i));
+            return function () {
+                createdChain.forEach(i => i.apply(this, arguments));
             };
         })());
 
@@ -184,6 +204,11 @@ export default class LifeCycleInstaller extends OptionInstaller {
         context.set("beforeCreate", (() => {
             const {beforeCreate} = options;
             return Invocation(context.get('beforeCreate'), null, beforeCreate);
+        })());
+
+        context.set("created", (() => {
+            const {created} = options;
+            return Invocation(context.get('created'), null, created);
         })());
 
         context.set("beforeMount", (() => {

@@ -40,6 +40,10 @@ export default class OptionInstaller extends BehaviorInstaller {
 
     }
 
+    created() {
+
+    }
+
     beforeMount() {
 
     }
