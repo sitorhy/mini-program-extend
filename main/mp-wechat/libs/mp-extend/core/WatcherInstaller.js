@@ -2,6 +2,7 @@ import OptionInstaller from './OptionInstaller';
 import {isFunction, isPlainObject, isPrimitive, isString} from "../utils/common";
 import {Collectors, Stream} from "../libs/Stream";
 import equal from "../libs/fast-deep-equal/index";
+import {Invocation} from "../libs/Invocation";
 
 const StaticWatchSign = Symbol('__wxSWatch__');
 const DynamicWatchSign = Symbol('__wxDWatch__');
@@ -163,12 +164,18 @@ export default class WatcherInstaller extends OptionInstaller {
                 if (isFunction(expOrFn)) {
                     const watcher = new CompatibleWatcher(
                         '**',
-                        callback,
+                        function (newValue, oldValue) {
+                            if (!equal(newValue, oldValue)) {
+                                callback.call(this, newValue, oldValue);
+                            }
+                        },
                         callback,
                         options && options.immediate === true,
                         true,
                         undefined,
-                        expOrFn
+                        function () {
+                            return expOrFn.call(this);
+                        }
                     );
                     if (watcher.immediate) {
                         watcher.once(thisArg, [expOrFn.call(thisArg)]);
@@ -191,6 +198,7 @@ export default class WatcherInstaller extends OptionInstaller {
      */
     staticWatchersDefinition(extender, context, options, defFields) {
         const watch = context.get('watch');
+        const observers = context.get('observers');
 
         const staticWatchers = Stream.of(Object.entries(watch)).map(([path, watchers]) => {
             const observerPath = this.transformToObserverField(path);
@@ -224,14 +232,6 @@ export default class WatcherInstaller extends OptionInstaller {
             return this.selectData(data, path);
         };
 
-        const getDynamicWatchers = (thisArg) => {
-            return this.getDynamicWatchers(thisArg);
-        };
-
-        const injectDynamicWatchers = (thisArg) => {
-            this.dynamicWatchersDefinition(thisArg);
-        };
-
         const behavior = {
             lifetimes: {
                 created() {
@@ -249,8 +249,6 @@ export default class WatcherInstaller extends OptionInstaller {
                         writable: false
                     });
 
-                    injectDynamicWatchers(this);
-
                     for (const observerPath of staticWatchers.keys()) {
                         const watcher = getStaticWatcher(this, observerPath);
                         if (watcher) {
@@ -262,33 +260,27 @@ export default class WatcherInstaller extends OptionInstaller {
                     }
                 }
             },
-            observers: Object.assign(
-                Stream.of(
-                    [...staticWatchers.keys()].map(observerPath => {
-                        return [
-                            observerPath,
-                            function (newValue) {
-                                const watcher = getStaticWatcher(this, observerPath);
-                                if (watcher) {
-                                    watcher.call(this, [newValue])
-                                }
+            observers: Stream.of(
+                [...new Set(
+                    [
+                        ...Object.keys(observers),
+                        ...staticWatchers.keys()
+                    ]
+                )].map((observerPath) => {
+                    return [
+                        observerPath,
+                        Invocation(observers[observerPath], null, function (newValue) {
+                            const watcher = getStaticWatcher(this, observerPath);
+                            if (watcher) {
+                                watcher.call(this, [newValue])
                             }
-                        ];
-                    })
-                ).collect(Collectors.toMap()),
-                {
-                    '**': function () {
-                        for (const [path, w] of getDynamicWatchers(this)) {
-                            if (w.path === '**') {
-                                w.update(this);
-                            }
-                        }
-                    }
-                }
-            )
+                        })
+                    ];
+                })
+            ).collect(Collectors.toMap())
         };
 
-        defFields.behaviors = (defFields.behaviors || []).concat(Behavior(behavior));
+        defFields.behaviors = [Behavior(behavior)].concat((defFields.behaviors || []));
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
@@ -299,6 +291,18 @@ export default class WatcherInstaller extends OptionInstaller {
         }
     }
 
+    lifetimes(extender, context, options) {
+        const injectDynamicWatchers = (thisArg) => {
+            this.dynamicWatchersDefinition(thisArg);
+        };
+
+        return {
+            created() {
+                injectDynamicWatchers(this);
+            }
+        };
+    }
+
     /**
      * 统一 Vue 格式的侦听器
      * @param extender
@@ -306,6 +310,14 @@ export default class WatcherInstaller extends OptionInstaller {
      * @param options
      */
     install(extender, context, options) {
+        const getDynamicWatchers = (thisArg) => {
+            return this.getDynamicWatchers(thisArg);
+        };
+
+        const selectRuntimeState = (data, path) => {
+            return this.selectData(data, path);
+        };
+
         const watch = Stream.of(
             Object.entries(
                 Object.assign.apply(
@@ -351,6 +363,27 @@ export default class WatcherInstaller extends OptionInstaller {
             ];
         }).filter(([, watchers]) => watchers.length > 0).collect(Collectors.toMap());
 
+        const observers = Object.assign.apply(
+            undefined,
+            [
+                {},
+                ...extender.installers.map(i => i.observers()),
+                options.observers
+            ]
+        );
+
+        observers['**'] = Invocation(observers['**'], null, function () {
+            for (const [compactPath, watcher] of getDynamicWatchers(this)) {
+                if (typeof compactPath === "symbol") {
+                    watcher.update(this);
+                } else {
+                    const newValue = selectRuntimeState(this.data, compactPath);
+                    watcher.call(this, [newValue]);
+                }
+            }
+        });
+
         context.set('watch', watch);
+        context.set('observers', observers);
     }
 }

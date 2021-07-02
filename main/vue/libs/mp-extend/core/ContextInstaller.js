@@ -68,7 +68,9 @@ export default class ContextInstaller extends OptionInstaller {
             return this.getRuntimeContext(thisArg, context, fnSetData);
         };
 
-        ['lifetimes', 'pageLifetimes', 'methods'].forEach(prop => {
+        const watch = context.get('watch');
+
+        ['lifetimes', 'pageLifetimes', 'methods', 'observers'].forEach(prop => {
             if (context.has(prop) && isPlainObject(context.get(prop))) {
                 context.set(prop,
                     Stream.of(Object.entries(context.get(prop)))
@@ -81,6 +83,19 @@ export default class ContextInstaller extends OptionInstaller {
                 );
             }
         });
+
+        if (watch) {
+            for (const handlers of Object.values(watch)) {
+                handlers.forEach(i => {
+                    const handler = i.handler;
+                    if (isFunction(handler)) {
+                        i.handler = function () {
+                            handler.apply(getContext(this), arguments);
+                        }
+                    }
+                });
+            }
+        }
 
         [...context.keys()]
             .filter(prop => !['data', 'beforeCreate'].includes(prop) && isFunction(context.get(prop)))

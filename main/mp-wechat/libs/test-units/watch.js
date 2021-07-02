@@ -107,11 +107,11 @@ export default {
                 }
             },
             created() {
-                this.$watch(function () {
+                /*this.$watch(function () {
                     return this.f.reduce((s, i) => s + i.reduce((s2, i2) => s2 + i2, 0), 0);
                 }, function (val, oldVal) {
                     console.log(`$watch sum of f = ${oldVal} => ${val}`);
-                });
+                });*/
             },
             mounted() {
                 console.log('-- mounted --');
@@ -130,6 +130,12 @@ export default {
                 this.e = {
                     f: 1919810
                 };*/
+
+                console.log(this.f.reduce)
+
+                const sum =  this.f.reduce((s, i) => s + i.reduce((s2, i2) => s2 + i2, 0), 0);
+
+                console.log(sum)
             }
         }
     ]
