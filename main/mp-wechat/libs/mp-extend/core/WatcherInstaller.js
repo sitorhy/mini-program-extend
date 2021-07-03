@@ -20,7 +20,7 @@ class CompatibleWatcher {
      *
      * @param path - 使用Vue格式
      * @param callback - 自定义回调
-     * @param once - immediate 执行一次的回调，执行后销毁
+     * @param once - immediate 获取初始值时，触发一次回调
      * @param immediate - 创建后是否立即执行，静态监听器必定为true
      * @param deep - 深度监听
      * @param oldValue - 初始值
@@ -159,17 +159,25 @@ export default class WatcherInstaller extends OptionInstaller {
     }
 
     dynamicWatchersDefinition(thisArg) {
+        const selectRuntimeState = (data, path) => {
+            return this.selectData(data, path);
+        };
+
         if (!thisArg.$watch) {
             thisArg.$watch = function (expOrFn, callback, options) {
                 if (isFunction(expOrFn)) {
                     const watcher = new CompatibleWatcher(
-                        '**',
+                        undefined,
                         function (newValue, oldValue) {
                             if (!equal(newValue, oldValue)) {
                                 callback.call(this, newValue, oldValue);
                             }
                         },
-                        callback,
+                        function (newValue, oldValue) {
+                            if (watcher.immediate) {
+                                callback.call(this, newValue, oldValue);
+                            }
+                        },
                         options && options.immediate === true,
                         true,
                         undefined,
@@ -177,13 +185,35 @@ export default class WatcherInstaller extends OptionInstaller {
                             return expOrFn.call(this);
                         }
                     );
-                    if (watcher.immediate) {
-                        watcher.once(thisArg, [expOrFn.call(thisArg)]);
-                    }
+                    watcher.once(thisArg, [expOrFn.call(thisArg)]);
                     Reflect.get(thisArg, DynamicWatchSign).set(
                         Symbol('expOrFn'),
                         watcher
                     );
+                } else if (isString(expOrFn)) {
+                    const watcher = new CompatibleWatcher(
+                        expOrFn,
+                        function (newValue, oldValue) {
+                            if (!equal(newValue, oldValue)) {
+                                callback.call(this, newValue, oldValue);
+                            }
+                        },
+                        function (newValue, oldValue) {
+                            if (watcher.immediate) {
+                                callback.call(this, newValue, oldValue);
+                            }
+                        },
+                        options && options.immediate === true,
+                        true,
+                        undefined
+                    );
+                    watcher.once(thisArg, [selectRuntimeState(thisArg.data, expOrFn)]);
+                    Reflect.get(thisArg, DynamicWatchSign).set(
+                        Symbol('expOrFn'),
+                        watcher
+                    );
+                } else {
+                    throw new Error(`"${expOrFn}" is neither a string nor a function.`);
                 }
             }
         }
@@ -373,12 +403,15 @@ export default class WatcherInstaller extends OptionInstaller {
         );
 
         observers['**'] = Invocation(observers['**'], null, function () {
-            for (const [compactPath, watcher] of getDynamicWatchers(this)) {
-                if (typeof compactPath === "symbol") {
-                    watcher.update(this);
-                } else {
-                    const newValue = selectRuntimeState(this.data, compactPath);
-                    watcher.call(this, [newValue]);
+            const watchers = getDynamicWatchers(this);
+            if (watchers.size) {
+                for (const [compactPath, watcher] of watchers) {
+                    if (!watcher.path) {
+                        watcher.update(this);
+                    } else {
+                        const newValue = selectRuntimeState(this.data, watcher.path);
+                        watcher.call(this, [newValue]);
+                    }
                 }
             }
         });
