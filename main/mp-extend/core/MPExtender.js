@@ -35,52 +35,77 @@ class InstallersSingleton extends Singleton {
     }
 }
 
-function createEffectObject(target, onChanged = "", path = "") {
+function createEffectObject(root, target, onChanged = "", path = "") {
     return new Proxy(
         target,
         {
             get(target, p, receiver) {
-                const obj = Reflect.get(target, p, receiver);
-                if (isPrimitive(obj) || !target.propertyIsEnumerable(p)) {
-                    return obj;
-                }
-                if (Array.isArray(target) && typeof p !== "symbol") {
-                    if (Number.isSafeInteger(Number.parseInt(p))) {
-                        return createEffectObject(obj, onChanged, `${path ? path : ''}[${p}]`);
+                const value = Reflect.get(target, p, receiver);
+                if (isPrimitive(value) || !value || (typeof p === "symbol")) {
+                    // 不可枚举的值，直接返回
+                    return value;
+                } else if (isFunction(value)) {
+                    if (value === target.constructor) {
+                        return value;
+                    } else {
+                        if (Array.isArray(target)) {
+                            if (['push', 'unshift', 'pop', 'shift', 'splice', 'reverse', 'sort'].includes(p)) {
+                                return new Proxy(value, {
+                                    apply(func, thisArg, argumentsList) {
+                                        const result = Reflect.apply(func, thisArg, argumentsList);
+                                        if (isFunction(onChanged)) {
+                                            onChanged(path, target);
+                                        }
+                                        return result;
+                                    }
+                                });
+                            } else {
+                                return value;
+                            }
+                        } else {
+                            return new Proxy(value, {
+                                apply(func, thisArg, argumentsList) {
+                                    const result = Reflect.apply(func, thisArg, argumentsList);
+                                    if (isFunction(onChanged)) {
+                                        onChanged(path, target);
+                                    }
+                                    return result;
+                                }
+                            });
+                        }
                     }
-                }
-                if (isFunction(obj)) {
-                    return createEffectObject(obj, function () {
-                        onChanged(path, target);
-                    }, `${path ? path + '.' : path}${p}`);
-                }
-                if (obj) {
-                    return createEffectObject(obj, onChanged, `${path ? path + '.' : path}${p}`);
                 } else {
-                    return obj;
+                    if (Number.isSafeInteger(Number.parseInt(p))) {
+                        return createEffectObject(root, value, onChanged, `${path}[${p}]`);
+                    } else {
+                        return createEffectObject(root, value, onChanged, `${path ? path + '.' : ''}${p}`);
+                    }
                 }
             },
             set(target, p, value, receiver) {
                 if (Reflect.set(target, p, value, receiver)) {
-                    if (Array.isArray(target) && typeof p !== "symbol") {
-                        if (Number.isSafeInteger(Number.parseInt(p))) {
-                            onChanged(`${path ? path : ''}[${p}]`, value);
-                        } else {
-                            onChanged(`${path ? path + '.' : path}${p}`, value);
+                    if (isPrimitive(value) || !value || (typeof p === "symbol")) {
+                        if (isFunction(onChanged)) {
+                            onChanged(p, value);
+                        }
+                    } else if (isFunction(value)) {
+                        if (isFunction(onChanged)) {
+                            onChanged(p, value);
                         }
                     } else {
-                        onChanged(`${path ? path + '.' : path}${p}`, value);
+                        if (Number.isSafeInteger(Number.parseInt(p))) {
+                            if (isFunction(onChanged)) {
+                                onChanged(`${path}[${p}]`, value);
+                            }
+                        } else {
+                            if (isFunction(onChanged)) {
+                                onChanged(`${path ? path + '.' : ''}${p}`, value);
+                            }
+                        }
                     }
                     return true;
                 }
                 return false;
-            },
-            apply(func, thisArg, argumentsList) {
-                const result = Reflect.apply(func, thisArg, argumentsList);
-                if (isFunction(onChanged)) {
-                    onChanged(path, target);
-                }
-                return result;
             }
         }
     );
@@ -125,7 +150,7 @@ export default class MPExtender {
         const setters = isPlainObject(computed) ? Object.keys(computed).filter(i => isPlainObject(computed[i]) && isFunction(computed[i].set)) : [];
         let runtimeContext;
 
-        const runtimeDataContext = createEffectObject(context.data, function (path, value) {
+        const runtimeDataContext = createEffectObject(context.data, context.data, function (path, value) {
             if (isFunction(fnSetData)) {
                 fnSetData({[path]: value});
             } else {
