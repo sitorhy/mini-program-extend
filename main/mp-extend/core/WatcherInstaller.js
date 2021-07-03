@@ -167,7 +167,7 @@ export default class WatcherInstaller extends OptionInstaller {
             thisArg.$watch = function (expOrFn, callback, options) {
                 if (isFunction(expOrFn)) {
                     const watcher = new CompatibleWatcher(
-                        '**',
+                        undefined,
                         function (newValue, oldValue) {
                             if (!equal(newValue, oldValue)) {
                                 callback.call(this, newValue, oldValue);
@@ -209,9 +209,11 @@ export default class WatcherInstaller extends OptionInstaller {
                     );
                     watcher.once(thisArg, [selectRuntimeState(thisArg.data, expOrFn)]);
                     Reflect.get(thisArg, DynamicWatchSign).set(
-                        expOrFn,
+                        Symbol('expOrFn'),
                         watcher
                     );
+                } else {
+                    throw new Error(`"${expOrFn}" is neither a string nor a function.`);
                 }
             }
         }
@@ -400,14 +402,16 @@ export default class WatcherInstaller extends OptionInstaller {
             ]
         );
 
-
         observers['**'] = Invocation(observers['**'], null, function () {
-            for (const [compactPath, watcher] of getDynamicWatchers(this)) {
-                if (typeof compactPath === "symbol") {
-                    watcher.update(this);
-                } else {
-                    const newValue = selectRuntimeState(this.data, compactPath);
-                    watcher.call(this, [newValue]);
+            const watchers = getDynamicWatchers(this);
+            if (watchers.size) {
+                for (const [compactPath, watcher] of watchers) {
+                    if (!watcher.path) {
+                        watcher.update(this);
+                    } else {
+                        const newValue = selectRuntimeState(this.data, watcher.path);
+                        watcher.call(this, [newValue]);
+                    }
                 }
             }
         });
