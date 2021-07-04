@@ -4,6 +4,7 @@ import Home from '../views/Home.vue'
 import Props from '../views/Props.vue'
 import Computed from '../views/Computed.vue'
 import Watch from '../views/Watch.vue'
+import VueChecked from '../views/VueChecked.vue'
 
 Vue.use(VueRouter);
 
@@ -12,6 +13,11 @@ const routes = [
         path: '/',
         name: 'Home',
         component: Home
+    },
+    {
+      path: '/checked',
+      name: 'VueChecked',
+      component: VueChecked
     },
     {
         path: '/props',

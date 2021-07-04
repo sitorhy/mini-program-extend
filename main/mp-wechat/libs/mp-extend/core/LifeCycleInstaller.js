@@ -1,5 +1,5 @@
 import OptionInstaller from "./OptionInstaller";
-import {isFunction} from "../utils/common";
+import {isFunction, removeEmpty} from "../utils/common";
 import {Deconstruct} from "../libs/Deconstruct";
 import {Invocation} from "../libs/Invocation";
 
@@ -16,15 +16,13 @@ export default class LifeCycleInstaller extends OptionInstaller {
                     context.get('ready').apply(this, arguments);
                 };
             },
-            moved: () => {
-                return function () {
-                    context.get('moved').apply(this, arguments);
-                };
-            },
             lifetimes: () => {
                 return {
                     created: function () {
                         context.get('lifetimes').created.apply(this, arguments);
+                    },
+                    moved: () => {
+                        context.get('lifetimes').moved.apply(this, arguments);
                     },
                     attached: function () {
                         context.get('lifetimes').attached.apply(this, arguments);
@@ -59,7 +57,6 @@ export default class LifeCycleInstaller extends OptionInstaller {
             lifetimes: () => {
                 return {
                     created: function () {
-                        context.get('created').apply(this, arguments);
                         context.get('beforeMount').apply(this, arguments);
                     },
                     attached: function () {
@@ -100,18 +97,17 @@ export default class LifeCycleInstaller extends OptionInstaller {
             };
         })());
 
-        context.set("moved", (() => {
-            const movedChain = extender.installers.map(i => i.moved);
-            return function () {
-                movedChain.forEach(i => i.apply(this, arguments));
-            }
-        })());
-
         context.set("lifetimes", Deconstruct({}, {
             created: () => {
                 const createdChain = lifetimes.map(i => i.created).concat(extender.installers.map(i => i.created)).filter(i => isFunction(i));
                 return function () {
                     createdChain.forEach(i => i.apply(this, arguments));
+                };
+            },
+            moved: () => {
+                const movedChain = lifetimes.map(i => i.moved).concat(extender.installers.map(i => i.moved)).filter(i => isFunction(i));
+                return function () {
+                    movedChain.forEach(i => i.apply(this, arguments));
                 };
             },
             attached: () => {
@@ -164,13 +160,6 @@ export default class LifeCycleInstaller extends OptionInstaller {
             };
         })());
 
-        context.set("created", (() => {
-            const createdChain = extender.installers.map(i => i.created).filter(i => isFunction(i));
-            return function () {
-                createdChain.forEach(i => i.apply(this, arguments));
-            };
-        })());
-
         context.set("beforeMount", (() => {
             const beforeMountChain = extender.installers.map(i => i.beforeMount).filter(i => isFunction(i));
             return function () {
@@ -206,11 +195,6 @@ export default class LifeCycleInstaller extends OptionInstaller {
             return Invocation(context.get('beforeCreate'), null, beforeCreate);
         })());
 
-        context.set("created", (() => {
-            const {created} = options;
-            return Invocation(context.get('created'), null, created);
-        })());
-
         context.set("beforeMount", (() => {
             const {beforeMount} = options;
             return Invocation(context.get('beforeMount'), null, beforeMount);
@@ -232,9 +216,86 @@ export default class LifeCycleInstaller extends OptionInstaller {
         })());
     }
 
+    lifetimes(extender, context, options) {
+        const {
+            lifetimes,
+            created,
+            attached,
+            moved,
+            detached
+        } = options;
+
+        Deconstruct(options, {
+            created: null,
+            attached: null,
+            moved: null,
+            detached: null,
+            lifetimes: null
+        });
+
+        return {
+            created: lifetimes && lifetimes.created ? lifetimes.created : created,
+            attached: lifetimes && lifetimes.attached ? lifetimes.attached : attached,
+            moved: lifetimes && lifetimes.moved ? lifetimes.moved : moved,
+            detached: lifetimes && lifetimes.detached ? lifetimes.detached : detached
+        };
+    }
+
+    pageLifetimes(extender, context, options) {
+        const {
+            pageLifetimes,
+            onShow,
+            onHide,
+            onResize
+        } = options;
+
+        Deconstruct(options, {
+            onShow: null,
+            onHide: null,
+            onResize: null,
+            pageLifetimes: null
+        });
+
+        return {
+            show: pageLifetimes && pageLifetimes.show ? pageLifetimes.show : onShow,
+            hide: pageLifetimes && pageLifetimes.hide ? pageLifetimes.hide : onHide,
+            resize: pageLifetimes && pageLifetimes.resize ? pageLifetimes.resize : onResize
+        };
+    }
+
     install(extender, context, options) {
         this.installBehaviorLifeCycle(extender, context, options);
         this.installCompatibleLifeCycle(extender, context, options);
         this.installOptionsLifeCycle(extender, context, options);
+    }
+
+    build(extender, context, options) {
+        const {
+            onLoad,
+            onShow,
+            onReady,
+            onHide,
+            onUnload,
+            onPullDownRefresh,
+            onReachBottom,
+            onShareAppMessage,
+            onPageScroll,
+            onResize,
+            onTabItemTap
+        } = options;
+
+        return removeEmpty({
+            onLoad,
+            onShow,
+            onReady,
+            onHide,
+            onUnload,
+            onPullDownRefresh,
+            onReachBottom,
+            onShareAppMessage,
+            onPageScroll,
+            onResize,
+            onTabItemTap,
+        });
     }
 }

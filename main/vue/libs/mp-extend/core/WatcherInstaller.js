@@ -107,7 +107,7 @@ class CompatibleWatcher {
  * 在 attached 执行前，在created取得的值是a=114，attached后取得的值变为a=514，并且触发ob1 (114=>514)  ,ob2(514)，优先级ob1>ob2
  * 并且 触发器触发时机在 created 与 attached 之间
  *
- * 由于垃圾小程序新增的 observers配置 并不会传入旧值，想要兼容Vue获取旧值并保存，可以拦截created获取旧值，此时的属性值还没有被查询串值覆盖
+ * 由于小程序新增的 observers配置 并不会传入旧值，想要兼容Vue获取旧值并保存，可以拦截created获取旧值，此时的属性值还没有被查询串值覆盖
  * 并且created执行时所有侦听器还没有被执行，当侦听器执行时，可以顺利将传入的新值与旧值比对
  *
  */
@@ -405,7 +405,7 @@ export default class WatcherInstaller extends OptionInstaller {
         observers['**'] = Invocation(observers['**'], null, function () {
             const watchers = getDynamicWatchers(this);
             if (watchers.size) {
-                for (const [compactPath, watcher] of watchers) {
+                for (const [, watcher] of watchers) {
                     if (!watcher.path) {
                         watcher.update(this);
                     } else {

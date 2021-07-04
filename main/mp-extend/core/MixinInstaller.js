@@ -1,51 +1,95 @@
 import OptionInstaller from "./OptionInstaller";
 import {Deconstruct} from "../libs/Deconstruct";
 import {Blend} from "../libs/Blend";
+import {Collectors, Stream} from "../libs/Stream";
+import {Invocation} from "../libs/Invocation";
+import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
 
+/**
+ * 混合策略
+ * 默认行为：
+ * methods : 覆盖
+ * data: 覆盖
+ * props: 覆盖
+ * computed: 覆盖
+ * watch: 复合
+ * 生命周期: 复合
+ */
 export default class MixinInstaller extends OptionInstaller {
+    optionMergeMethods(toValue, fromValue) {
+        if (!toValue || !fromValue) {
+            return toValue || fromValue;
+        }
+        return Object.assign(toValue, fromValue);
+    }
+
+    optionMergeData(toValue, fromValue) {
+        if (!toValue || !fromValue) {
+            return toValue || fromValue;
+        }
+        return Blend(toValue, fromValue);
+    }
+
+    optionMergeProps(toValue, fromValue) {
+        if (!toValue || !fromValue) {
+            return toValue || fromValue;
+        }
+        return Object.assign(toValue, fromValue);
+    }
+
+    optionMergeComputed(toValue, fromValue) {
+        if (!toValue || !fromValue) {
+            return toValue || fromValue;
+        }
+        return Object.assign(toValue, fromValue);
+    }
+
+    optionMergeWatch(toValue, fromValue) {
+        if (!toValue || !fromValue) {
+            return toValue || fromValue;
+        }
+        return Object.assign(toValue, fromValue);
+    }
+
+    optionMergeLifeCycle(toValue, fromValue) {
+        if (!toValue || !fromValue) {
+            return toValue || fromValue;
+        }
+        const merge = {};
+        for (const l in toValue) {
+            merge[l] = Invocation(toValue[l], fromValue[l]);
+        }
+        return merge;
+    }
+
     install(extender, context, options) {
         const {mixins} = options;
 
-        if (Array.isArray(mixins) && mixins.length) {
-            mixins.forEach(m => {
-                if (m && Object.keys(m).length) {
-                    const {
-                        methods,
-                        props,
-                        properties,
-                        data,
-                        observers,
-                        watch,
-                        computed,
-                        ...members
-                    } = m;
-                    Object.assign(
-                        options,
-                        Deconstruct(m, {
-                            mixins: () => null,
-                            methods: (o) => {
-                                return Object.assign({}, methods, o.methods);
-                            },
-                            properties: (o) => {
-                                return Object.assign({}, props, properties, o.props, o.properties);
-                            },
-                            props: null,
-                            data: (o) => {
-                                return Blend(o.data, data);
-                            },
-                            observers: (o) => {
-                                return Object.assign({}, observers, o.observers);
-                            },
-                            watch: (o) => {
-                                return Object.assign({}, watch, o.watch);
-                            },
-                            computed: (o) => {
-                                return Object.assign({}, computed, o.computed);
-                            }
-                        }),
-                        members
-                    );
-                }
+        Deconstruct(options, {
+            mixins: null
+        });
+
+        if (Array.isArray(mixins)) {
+            mixins.forEach(mixin => {
+                Object.assign(
+                    options,
+                    {
+                        methods: this.optionMergeMethods(options.methods, mixin.methods),
+                        data: this.optionMergeData(options.data, mixin.data),
+                        props: this.optionMergeProps(options.props, mixin.props),
+                        properties: this.optionMergeProps(options.properties, mixin.properties),
+                        computed: this.optionMergeComputed(options.computed, mixin.computed),
+                        watch: this.optionMergeWatch(options.watch, mixin.watch)
+                    },
+                    this.optionMergeLifeCycle(
+                        Stream.of(
+                            RESERVED_LIFECYCLES_WORDS.map(i => [i, options[i]])
+                        ).collect(Collectors.toMap()),
+                        Stream.of(
+                            RESERVED_LIFECYCLES_WORDS.map(i => [i, mixin[i]])
+                        ).collect(Collectors.toMap())
+                    )
+                )
             });
         }
     }

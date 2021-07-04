@@ -3,6 +3,8 @@
     <div id="nav">
       <router-link to="/">Home</router-link>
       |
+      <router-link to="/checked">环境自检</router-link>
+      |
       <router-link to="/props">Props</router-link>
       |
       <router-link to="/computed">Computed</router-link>
