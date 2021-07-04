@@ -295,7 +295,7 @@ export default class LifeCycleInstaller extends OptionInstaller {
             onShareAppMessage,
             onPageScroll,
             onResize,
-            onTabItemTap,
+            onTabItemTap
         });
     }
 }

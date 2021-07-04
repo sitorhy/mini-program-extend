@@ -7,7 +7,7 @@ export default class OptionInstaller extends BehaviorInstaller {
     }
 
     /**
-     * 处理配置上下文
+     * 处理配置上下文，修改、规格化配置
      *
      * @param {MPExtender} extender
      * @param {Map<string,any>} context
