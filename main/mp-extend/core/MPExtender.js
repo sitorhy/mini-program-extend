@@ -84,22 +84,24 @@ function createEffectObject(root, target, onChanged = "", path = "") {
             },
             set(target, p, value, receiver) {
                 if (Reflect.set(target, p, value, receiver)) {
-                    if (isPrimitive(value) || !value || (typeof p === "symbol")) {
-                        if (isFunction(onChanged)) {
-                            onChanged(p, value);
-                        }
-                    } else if (isFunction(value)) {
-                        if (isFunction(onChanged)) {
-                            onChanged(p, value);
-                        }
+                    if (typeof p === "symbol") {
+                        return true;
                     } else {
-                        if (Number.isSafeInteger(Number.parseInt(p))) {
-                            if (isFunction(onChanged)) {
-                                onChanged(`${path}[${p}]`, value);
-                            }
-                        } else {
+                        if (isPrimitive(value) || !value) {
                             if (isFunction(onChanged)) {
                                 onChanged(`${path ? path + '.' : ''}${p}`, value);
+                            }
+                        } else if (isFunction(value)) {
+                            return true;
+                        } else {
+                            if (Number.isSafeInteger(Number.parseInt(p))) {
+                                if (isFunction(onChanged)) {
+                                    onChanged(`${path}[${p}]`, value);
+                                }
+                            } else {
+                                if (isFunction(onChanged)) {
+                                    onChanged(`${path ? path + '.' : ''}${p}`, value);
+                                }
                             }
                         }
                     }

@@ -11,6 +11,7 @@
     <p><span>age={{ age }}</span></p>
     <p><span>foods={{ foods }}</span></p>
     <p><span>f={{ f }}</span></p>
+    <p><span>f[0].obj.num2=</span><span>{{  f[0].obj.num2 }}</span></p>
   </div>
 </template>
 

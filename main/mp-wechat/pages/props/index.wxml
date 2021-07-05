@@ -39,3 +39,6 @@
 <view>
     <text>f=</text><text>{{  wxs.stringify(f) }}</text>
 </view>
+<view>
+    <text>f[0].obj.num2=</text><text>{{  f[0].obj.num2 }}</text>
+</view>
