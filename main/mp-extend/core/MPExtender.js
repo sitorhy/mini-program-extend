@@ -87,21 +87,15 @@ function createEffectObject(root, target, onChanged = "", path = "") {
                     if (typeof p === "symbol") {
                         return true;
                     } else {
-                        if (isPrimitive(value) || !value) {
+                        if (Number.isSafeInteger(Number.parseInt(p))) {
                             if (isFunction(onChanged)) {
-                                onChanged(`${path ? path + '.' : ''}${p}`, value);
+                                onChanged(`${path}[${p}]`, value);
                             }
-                        } else if (isFunction(value)) {
-                            return true;
                         } else {
-                            if (Number.isSafeInteger(Number.parseInt(p))) {
-                                if (isFunction(onChanged)) {
-                                    onChanged(`${path}[${p}]`, value);
-                                }
+                            if (Array.isArray(target) && p === 'length') {
+                                onChanged(path, target);
                             } else {
-                                if (isFunction(onChanged)) {
-                                    onChanged(`${path ? path + '.' : ''}${p}`, value);
-                                }
+                                onChanged(`${path ? path + '.' : ''}${p}`, value);
                             }
                         }
                     }

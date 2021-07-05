@@ -79,7 +79,9 @@ export default {
                 this.f[0].obj.num = 114514;
 
                 // 动态添加属性
-                this.f[0].obj.num2 = 1919;
+                this.f[0].obj.num2 = {
+                    num: 1919
+                };
 
                 console.log(this.$props);
                 console.log(this.$data);
