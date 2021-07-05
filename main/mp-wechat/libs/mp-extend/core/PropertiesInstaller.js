@@ -71,7 +71,9 @@ export default class PropertiesInstaller extends OptionInstaller {
                 }];
             } else if (isPlainObject(constructor)) {
                 const config = Object.assign({}, {
-                        type: Array.isArray(constructor.type) ? (constructor.type[0] || null) : (constructor.type || Object)
+                        type: Array.isArray(constructor.type) ? (constructor.type[0] || null) : (
+                            Array.isArray(constructor.optionalTypes) ? constructor.optionalTypes[0] : (constructor.type || Object)
+                        )
                     },
                     removeEmpty({
                         optionalTypes: Array.isArray(constructor.type) ? [...constructor.type].concat(

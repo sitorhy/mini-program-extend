@@ -316,7 +316,8 @@ export default class WatcherInstaller extends OptionInstaller {
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
         const watch = context.get('watch');
         const state = context.get('state');
-        if (state && watch && Object.keys(watch).length) {
+        const observers = context.get('observers');
+        if (state && watch && (Object.keys(watch).length || Object.keys(observers).length)) {
             this.staticWatchersDefinition(extender, context, options, defFields);
         }
     }
@@ -402,18 +403,20 @@ export default class WatcherInstaller extends OptionInstaller {
             ]
         );
 
-        observers['**'] = Invocation(observers['**'], null, function () {
-            const watchers = getDynamicWatchers(this);
-            if (watchers.size) {
-                for (const [, watcher] of watchers) {
-                    if (!watcher.path) {
-                        watcher.update(this);
-                    } else {
-                        const newValue = selectRuntimeState(this.data, watcher.path);
-                        watcher.call(this, [newValue]);
+        Object.assign(observers, {
+            '**': Invocation(observers['**'], null, function () {
+                const watchers = getDynamicWatchers(this);
+                if (watchers.size) {
+                    for (const [, watcher] of watchers) {
+                        if (!watcher.path) {
+                            watcher.update(this);
+                        } else {
+                            const newValue = selectRuntimeState(this.data, watcher.path);
+                            watcher.call(this, [newValue]);
+                        }
                     }
                 }
-            }
+            })
         });
 
         context.set('watch', watch);
