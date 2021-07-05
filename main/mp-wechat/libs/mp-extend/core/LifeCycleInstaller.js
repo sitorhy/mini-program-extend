@@ -279,9 +279,12 @@ export default class LifeCycleInstaller extends OptionInstaller {
             onPullDownRefresh,
             onReachBottom,
             onShareAppMessage,
+            onShareTimeline,
+            onAddToFavorites,
+            onTabItemTap,
             onPageScroll,
             onResize,
-            onTabItemTap
+            definitionFilter
         } = options;
 
         return removeEmpty({
@@ -293,9 +296,12 @@ export default class LifeCycleInstaller extends OptionInstaller {
             onPullDownRefresh,
             onReachBottom,
             onShareAppMessage,
+            onShareTimeline,
+            onAddToFavorites,
+            onTabItemTap,
             onPageScroll,
             onResize,
-            onTabItemTap
+            definitionFilter
         });
     }
 }

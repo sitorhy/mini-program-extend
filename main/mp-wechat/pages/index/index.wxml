@@ -11,7 +11,7 @@
 </view>
 
 <view class="container">
-    <navigator url="/pages/mp-checked/index">
+    <navigator url="/pages/mp-checked/index?word=hello">
         <button type="primary">环境自检</button>
     </navigator>
     <navigator url="/pages/props/index?name=田所浩二">

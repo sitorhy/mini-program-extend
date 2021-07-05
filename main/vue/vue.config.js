@@ -4,6 +4,9 @@ module.exports = {
             alias: {
                 'vue$': 'vue/dist/vue.esm.js'
             }
+        },
+        devServer: {
+            port: 9550
         }
     }
 }

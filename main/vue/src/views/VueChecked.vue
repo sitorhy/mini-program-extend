@@ -60,6 +60,15 @@ const WatchMixin = {
   }
 };
 
+const CustomMixin = {
+  customData: {
+    hi: 'VUE'
+  },
+  customMethod() {
+    console.log('114514');
+  }
+};
+
 export default {
   name: "VueChecked",
   mixins: [
@@ -68,7 +77,8 @@ export default {
     DataMixin,
     WatchMixin,
     ComputedMixin,
-    PropsMixin
+    PropsMixin,
+    CustomMixin
   ],
   props: {
     d: {
@@ -89,6 +99,10 @@ export default {
     this.test();
     console.log(this.$data);
     this.b = 300;
+
+    //Vue不允许游离于 methods , data 外定义的扩展
+    //console.log(this.customData);
+    //this.customMethod();
   },
   watch: {
     b(val, oldVal) {

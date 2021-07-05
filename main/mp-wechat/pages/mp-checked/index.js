@@ -1,65 +1,119 @@
 import MPExtender from "../../libs/mp-extend/core/MPExtender";
 
-Page(new MPExtender().extends({
+Page(new MPExtender().extends(
+    {
+        // Page properties 扩展特性，非原生，传值给组件
+        properties: {
+            word: {
+                type: String
+            }
+        },
 
-    /**
-     * 页面的初始数据
-     */
-    data: {},
+        // 自定义数据，不合并到data
+        customData: {
+            hi: 'MINA'
+        },
 
-    /**
-     * 生命周期函数--监听页面加载
-     */
-    onLoad: function (options) {
-        console.log('onLoad');
-    },
+        /**
+         * 页面的初始数据
+         */
+        data: {},
 
-    /**
-     * 生命周期函数--监听页面初次渲染完成
-     */
-    onReady: function () {
-        console.log('onReady');
-    },
+        /**
+         * 生命周期函数--监听页面加载
+         */
+        onLoad: function (options) {
+            console.log(options);
 
-    /**
-     * 生命周期函数--监听页面显示
-     */
-    onShow: function () {
-        console.log('onShow');
-    },
+            console.log(this.customData);
 
-    /**
-     * 生命周期函数--监听页面隐藏
-     */
-    onHide: function () {
-        console.log('onHide');
-    },
+            console.log('Page onLoad');
+            this.someMethod();
+        },
 
-    /**
-     * 生命周期函数--监听页面卸载
-     */
-    onUnload: function () {
-        console.log('onUnload');
-    },
+        /**
+         * 生命周期函数--监听页面初次渲染完成
+         */
+        onReady: function () {
+            console.log('Page onReady');
+        },
 
-    /**
-     * 页面相关事件处理函数--监听用户下拉动作
-     */
-    onPullDownRefresh: function () {
-        console.log('onPullDownRefresh');
-    },
+        /**
+         * 生命周期函数--监听页面显示
+         */
+        onShow: function () {
+            console.log('Page onShow');
+        },
 
-    /**
-     * 页面上拉触底事件的处理函数
-     */
-    onReachBottom: function () {
-        console.log('onReachBottom');
-    },
+        /**
+         * 生命周期函数--监听页面隐藏
+         */
+        onHide: function () {
+            console.log('Page onHide');
+        },
 
-    /**
-     * 用户点击右上角分享
-     */
-    onShareAppMessage: function () {
-        console.log('onShareAppMessage');
+        /**
+         * 生命周期函数--监听页面卸载
+         */
+        onUnload: function () {
+            console.log('Page onUnload');
+        },
+
+        /**
+         * 页面相关事件处理函数--监听用户下拉动作
+         */
+        onPullDownRefresh: function () {
+            console.log('Page onPullDownRefresh');
+        },
+
+        /**
+         * 页面上拉触底事件的处理函数
+         */
+        onReachBottom: function () {
+            console.log('Page onReachBottom');
+        },
+
+        /**
+         * 用户点击右上角分享
+         */
+        onShareAppMessage: function (e) {
+            console.log('Page onShareAppMessage');
+            console.log(e);
+
+            return {
+                title: '转发',
+                query: 'a=1&b=2',
+                path: '/mp-checked/index?a=1&b=2'
+            };
+        },
+
+        onShareTimeline: function (e) {
+            console.log('Page onShareTimeline');
+            console.log(e);
+
+            return {
+                title: '朋友圈',
+                query: 'a=1&b=2'
+            };
+        },
+
+        onAddToFavorites: function (e) {
+            console.log('Page onAddToFavorites');
+            console.log(e);
+
+            return {
+                title: '收藏测试',
+                query: 'a=1&b=2',
+            }
+        },
+
+        onPageScroll(e) {
+            console.log('Page onPageScroll');
+            console.log(e);
+        },
+
+        someMethod: function () {
+            console.log('Page Method Called');
+        }
     }
-}));
+));

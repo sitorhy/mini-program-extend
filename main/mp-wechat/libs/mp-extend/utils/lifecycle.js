@@ -1,5 +1,5 @@
 /**
- * 声明周期保留字
+ * 声明周期保留字，自定义方法避免使用以下名称
  * @type {string[]}
  */
 
@@ -12,9 +12,12 @@ const RESERVED_LIFECYCLES_WORDS = [
     "onPullDownRefresh",
     "onReachBottom",
     "onShareAppMessage",
+    "onAddToFavorites",
+    "onShareTimeline",
+    "onTabItemTap",
     "onPageScroll",
     "onResize",
-    "onTabItemTap",
+    "definitionFilter",
     "attached",
     "moved",
     "detached",

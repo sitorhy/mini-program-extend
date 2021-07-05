@@ -1,10 +1,13 @@
 import OptionInstaller from "./OptionInstaller";
-import {Deconstruct} from "../libs/Deconstruct";
 import {Blend} from "../libs/Blend";
 import {Collectors, Stream} from "../libs/Stream";
 import {Invocation} from "../libs/Invocation";
 import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
-import {removeEmpty} from "../utils/common";
+import RESERVED_OPTIONS_WORDS from "../utils/options";
+import {isFunction, removeEmpty} from "../utils/common";
+
+const LIFECYCLES_WORDS = new Set(RESERVED_LIFECYCLES_WORDS);
+const OPTIONS_WORDS = new Set(RESERVED_OPTIONS_WORDS);
 
 /**
  * 混合策略
@@ -90,12 +93,32 @@ export default class MixinInstaller extends OptionInstaller {
         return merge;
     }
 
+    optionMergePageCustomMethods(options) {
+        const methods = Stream.of(Object.entries(options)).filter(([name, func]) => {
+            return isFunction(func) && !OPTIONS_WORDS.has(name) && !LIFECYCLES_WORDS.has(name);
+        }).collect(Collectors.toMap());
+
+        const methodKeys = Object.keys(methods);
+
+        if (methodKeys.length > 0) {
+            methodKeys.forEach(k => {
+                delete options[k];
+            });
+
+            options.methods = this.optionMergeMethods(options.methods, methods);
+        }
+    }
+
+    optionMergePageCustomData(options) {
+        return Stream.of(Object.entries(options)).filter(([name, data]) => {
+            return !isFunction(data) && !OPTIONS_WORDS.has(name) && !LIFECYCLES_WORDS.has(name);
+        }).collect(Collectors.toMap());
+    }
+
     install(extender, context, options) {
         const {mixins} = options;
 
-        Deconstruct(options, {
-            mixins: null
-        });
+        delete options['mixins'];
 
         if (Array.isArray(mixins)) {
             mixins.forEach(mixin => {
@@ -120,9 +143,11 @@ export default class MixinInstaller extends OptionInstaller {
                             RESERVED_LIFECYCLES_WORDS.map(i => [i, mixin[i]])
                         ).collect(Collectors.toMap())
                     )
-                )
+                );
             });
         }
+
+        this.optionMergePageCustomMethods(options);
     }
 
     build(extender, context, o) {
@@ -138,12 +163,17 @@ export default class MixinInstaller extends OptionInstaller {
             return Object.assign(s, i.options());
         }, {});
 
+        const pageCustomData = this.optionMergePageCustomData(o);
+
         return removeEmpty(
-            {
-                relations: this.optionMergeRelations(relations, o.relations),
-                externalClasses: this.optionMergeExternalClasses(externalClasses, o.externalClasses),
-                options: this.optionMergeOptions(options, o.options)
-            }
+            Object.assign(
+                {
+                    relations: this.optionMergeRelations(relations, o.relations),
+                    externalClasses: this.optionMergeExternalClasses(externalClasses, o.externalClasses),
+                    options: this.optionMergeOptions(options, o.options),
+                },
+                pageCustomData
+            )
         );
     }
 }

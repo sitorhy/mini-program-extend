@@ -1,0 +1,5 @@
+<view>
+    <view>
+        <text>word = </text><text>{{ word }}</text>
+    </view>
+</view>

@@ -1,1 +1,3 @@
-/* pages/mp-checked/index.wxss */
+view {
+    text-align: center;
+}

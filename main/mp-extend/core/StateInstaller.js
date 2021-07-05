@@ -135,7 +135,7 @@ export default class StateInstaller extends OptionInstaller {
         if (isFunction(beforeCreate)) {
             beforeCreate.call(
                 extender.createInitializationContextSingleton().get(
-                    null,
+                    options,
                     data,
                     properties,
                     methods
