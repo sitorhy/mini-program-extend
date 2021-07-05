@@ -47,6 +47,12 @@ export default {
                         return this.a * this.b;
                     }
                 },
+                dd: {
+                    type: Number,
+                    default() {
+                        return this.d * this.d;
+                    }
+                },
                 foods: {
                     type: Array,
                     default() {

@@ -25,6 +25,9 @@
     <text>d={{ d }}</text>
 </view>
 <view>
+    <text>dd={{ dd }}</text>
+</view>
+<view>
     <text>c={{ c }}</text>
 </view>
 <view>

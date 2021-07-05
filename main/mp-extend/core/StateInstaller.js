@@ -1,7 +1,7 @@
 import OptionInstaller from './OptionInstaller';
 
 import {Stream, Collectors} from '../libs/Stream';
-import {isFunction, isPlainObject, isPrimitive, removeEmpty} from '../utils/common';
+import {isFunction, removeEmpty} from '../utils/common';
 import {Optional} from "../libs/Optional";
 
 /**
@@ -9,7 +9,7 @@ import {Optional} from "../libs/Optional";
  */
 export default class StateInstaller extends OptionInstaller {
     /**
-     * 属性初始化不允许调用 methods, 不允许访问 data，可以访问props自身
+     * 属性初始化不允许调用 methods, 不允许访问 data，可以访问props自身但不允许交叉引用
      * @param extender
      * @param context
      * @param methods
@@ -18,81 +18,42 @@ export default class StateInstaller extends OptionInstaller {
      */
     attemptToInstantiateProps(extender, context, methods, options) {
         const properties = context.get('properties') || {};
-        const props = {};
 
-        const computedProps = Stream.of(Object.entries(properties))
-            .filter(([, constructor]) => isPlainObject(constructor) && isFunction(constructor['default']))
-            .map(([name]) => name)
-            .collect(Collectors.toSet());
-
-        const instanceProps = Stream.of(Object.entries(properties))
-            .filter(([, constructor]) => (
-                isPlainObject(constructor) && !isFunction(constructor['default']))
-                || isFunction(constructor)
-                || constructor === null
-            )
-            .map(([name, constructor]) => {
-                if (constructor === null) {
-                    props[name] = null;
-                } else if (isFunction(constructor)) {
-                    props[name] = constructor;
-                } else {
-                    const prop = removeEmpty({
-                        type: constructor.type,
-                        optionalTypes: constructor.optionalTypes,
-                        observer: constructor.observer
-                    });
-                    props[name] = Object.assign(prop, {
-                        value: constructor.value
-                    });
-                }
-                return [name, constructor['value']];
-            })
-            .collect(Collectors.toMap());
-
-        Object.entries(properties).forEach(([name, constructor]) => {
-            if (isPrimitive(constructor)) {
-                throw new Error(`The "${name}" property should be a constructor`);
-            }
-        });
-
-        let crossReferenceOrEnd = true;
-        let checkContextMissing = false;
-
-        const instancePropsContext = extender.createInitializationContextSingleton();
-
-        while (crossReferenceOrEnd) {
-            const limit = computedProps.size;
-            checkContextMissing = false;
-            for (const name of computedProps) {
-                const constructor = properties[name];
-                const value = (constructor['default']).call(
-                    instancePropsContext.get(
-                        null,
-                        instanceProps,
-                        methods,
-                        () => {
-                            checkContextMissing = true;
+        const propsContext = new Proxy(
+            {},
+            {
+                get(target, p, receiver) {
+                    if (Reflect.has(properties, p)) {
+                        const prop = Reflect.get(properties, p);
+                        if (Reflect.has(prop, 'value')) {
+                            return prop.value;
+                        } else if (isFunction(prop['default'])) {
+                            return prop['default'].call(receiver);
+                        } else {
+                            return prop['default'];
                         }
-                    )
-                );
-                instanceProps[name] = value;
-                if (!checkContextMissing) {
-                    computedProps.delete(name);
-                    const prop = removeEmpty({
-                        type: constructor.type,
-                        optionalTypes: constructor.optionalTypes,
-                        observer: constructor.observer
-                    });
-                    props[name] = Object.assign(prop, {
-                        value
-                    });
+                    }
+                    return undefined;
                 }
             }
-            crossReferenceOrEnd = limit !== computedProps.size;
-        }
+        );
 
-        return props;
+        return Stream.of(Object.entries(properties)).map(([name, constructor]) => {
+            const normalize = {
+                type: constructor.type,
+                optionalTypes: constructor.optionalTypes,
+                observer: constructor.observer,
+                value: constructor.value
+            };
+            if (Reflect.has(constructor, 'value')) {
+                normalize.value = constructor.value;
+            } else if (isFunction(constructor['default'])) {
+                normalize.value = constructor['default'].call(propsContext);
+            } else {
+                normalize.value = constructor['default'];
+            }
+            return [name, normalize];
+        }).collect(Collectors.toMap());
     }
 
 

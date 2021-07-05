@@ -85,9 +85,9 @@ export default class ComputedInstaller extends OptionInstaller {
                     if (Reflect.has(computed, p)) {
                         const expr = Reflect.get(computed, p);
                         if (isFunction(expr)) {
-                            return expr.call(computedContext);
+                            return expr.call(receiver);
                         } else if (isPlainObject(expr) && isFunction(expr.get)) {
-                            return (expr.get).call(computedContext);
+                            return (expr.get).call(receiver);
                         } else if (Reflect.has(methods, p)) {
                             const method = Reflect.get(methods, p);
                             if (isFunction(method)) {
@@ -105,7 +105,7 @@ export default class ComputedInstaller extends OptionInstaller {
             if (isFunction(expr)) {
                 return [name, expr.call(computedContext)];
             }
-            return null;
+            return undefined;
         }).filter(i => !!i).collect(Collectors.toMap());
     }
 

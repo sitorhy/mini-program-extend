@@ -6,6 +6,7 @@
     <p><span>obj={{ obj }}</span></p>
     <p><span>name={{ name }}</span></p>
     <p><span>d={{ d }}</span></p>
+    <p><span>dd={{ dd }}</span></p>
     <p><span>c={{ c }}</span></p>
     <p><span>e={{ e }}</span></p>
     <p><span>age={{ age }}</span></p>
