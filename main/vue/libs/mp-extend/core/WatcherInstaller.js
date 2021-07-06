@@ -163,8 +163,8 @@ export default class WatcherInstaller extends OptionInstaller {
             return this.selectData(data, path);
         };
 
-        if (!thisArg.$watch) {
-            thisArg.$watch = function (expOrFn, callback, options) {
+        if (!Object.hasOwnProperty.call(thisArg, '$watch')) {
+            const $watch = function (expOrFn, callback, options) {
                 if (isFunction(expOrFn)) {
                     const watcher = new CompatibleWatcher(
                         undefined,
@@ -215,7 +215,15 @@ export default class WatcherInstaller extends OptionInstaller {
                 } else {
                     throw new Error(`"${expOrFn}" is neither a string nor a function.`);
                 }
-            }
+            };
+
+            Object.defineProperty(thisArg, '$watch', {
+                configurable: false,
+                enumerable: false,
+                get() {
+                    return $watch;
+                }
+            })
         }
     }
 

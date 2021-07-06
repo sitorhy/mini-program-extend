@@ -7,9 +7,6 @@ import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
 
 const RTCSign = Symbol('__wxRTC__');
 
-const LIFECYCLES_WORDS = new Set(RESERVED_LIFECYCLES_WORDS);
-const OPTIONS_WORDS = new Set(RESERVED_OPTIONS_WORDS);
-
 /**
  * 兼容从this直接访问data的语法
  * this.data.id === this.id (true)
@@ -31,42 +28,82 @@ export default class ContextInstaller extends OptionInstaller {
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
         const createContext = () => {
-            return extender.createRuntimeContextSingleton((prop) => {
-                return ["$options", "$root"].includes(prop);
-            }, (prop, runtimeContext) => {
-                switch (prop) {
-                    case "$options": {
-                        return Stream.of(Object.entries(options))
-                            .filter(([p]) => !OPTIONS_WORDS.has(p) && !LIFECYCLES_WORDS.has(p))
-                            .collect(Collectors.toMap());
-                    }
-                    case "$root": {
-                        return getCurrentPages().find(p => p['__wxWebviewId__'] === runtimeContext['__wxWebviewId__']);
-                    }
-                }
-                return undefined;
-            });
+            return extender.createRuntimeContextSingleton();
         };
 
         const initContext = (thisArg, fnSetData) => {
-            if (!thisArg.$set) {
-                thisArg.$set = function (target, propertyName, value) {
+
+            if (!Object.hasOwnProperty.call(thisArg, '$set')) {
+                const $set = function (target, propertyName, value) {
                     Reflect.set(target, propertyName, value);
                     return value;
-                }
+                };
+
+                Object.defineProperty(thisArg, '$set', {
+                    configurable: false,
+                    enumerable: false,
+                    get() {
+                        return $set;
+                    }
+                });
             }
-            if (!thisArg.$delete) {
-                thisArg.$delete = function (target, propertyName) {
+
+            if (!Object.hasOwnProperty.call(thisArg, '$delete')) {
+                const $delete = function (target, propertyName) {
                     Reflect.deleteProperty(target, propertyName);
-                }
+                };
+
+                Object.defineProperty(thisArg, '$delete', {
+                    configurable: false,
+                    enumerable: false,
+                    get() {
+                        return $delete;
+                    }
+                });
             }
-            if (!thisArg.$nextTick) {
-                thisArg.$nextTick = function (callback) {
+
+            if (!Object.hasOwnProperty.call(thisArg, '$nextTick')) {
+                const $nextTick = function (callback) {
                     if (isFunction(callback)) {
                         wx.nextTick(callback);
                     }
-                }
+                };
+
+                Object.defineProperty(thisArg, '$nextTick', {
+                    configurable: false,
+                    enumerable: false,
+                    get() {
+                        return $nextTick;
+                    }
+                });
             }
+
+            if (!Object.hasOwnProperty.call(thisArg, '$root')) {
+                Object.defineProperty(thisArg, '$root', {
+                    configurable: false,
+                    enumerable: false,
+                    get() {
+                        return getCurrentPages().find(p => p['__wxWebviewId__'] === this['__wxWebviewId__']);
+                    }
+                });
+            }
+
+            if (!Object.hasOwnProperty.call(thisArg, '$options')) {
+                Object.defineProperty(thisArg, '$options', {
+                    configurable: false,
+                    enumerable: false,
+                    get() {
+                        if (options) {
+                            return Stream.of(Object.entries(options))
+                                .filter(([p]) => !RESERVED_OPTIONS_WORDS.has(p) && !RESERVED_LIFECYCLES_WORDS.has(p))
+                                .collect(Collectors.toMap());
+                        } else {
+                            return {};
+                        }
+                    }
+                });
+            }
+
             return this.getRuntimeContext(thisArg, context, fnSetData);
         };
 
@@ -74,6 +111,7 @@ export default class ContextInstaller extends OptionInstaller {
             this.releaseRuntimeContext(thisArg);
         };
 
+        // 必须置顶该 behavior created 最先执行 而 detached 最后执行，使上下文最后释放
         defFields.behaviors = [
             Behavior({
                 lifetimes: {

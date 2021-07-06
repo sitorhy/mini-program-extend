@@ -209,6 +209,7 @@ export default class MPExtender {
 
     /**
      * 扩展运行时上下文
+     * @param {object} options - 筛选配置，只读可以忽略
      * @param { function (prop:string):boolean } predicate - 拦截属性
      * @param { function (prop:string,runtimeContext:Proxy):object } supplier - 返回拦截属性的值
      * @returns {Singleton}
@@ -233,6 +234,7 @@ export default class MPExtender {
                         });
                         return $props;
                     }
+
                     if (p === '$data') {
                         const $data = {};
                         Object.keys(Reflect.get(target, 'data')).filter(i => !props.includes(i)).forEach(i => {
@@ -247,9 +249,11 @@ export default class MPExtender {
                         });
                         return $data;
                     }
+
                     if (isFunction(predicate) && isFunction(supplier) && predicate(p) === true) {
                         return supplier(p, runtimeContext);
                     }
+
                     return Reflect.get(target, p);
                 }
             });
