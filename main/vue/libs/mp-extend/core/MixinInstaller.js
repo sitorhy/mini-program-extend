@@ -6,9 +6,6 @@ import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
 import RESERVED_OPTIONS_WORDS from "../utils/options";
 import {isFunction, removeEmpty} from "../utils/common";
 
-const LIFECYCLES_WORDS = new Set(RESERVED_LIFECYCLES_WORDS);
-const OPTIONS_WORDS = new Set(RESERVED_OPTIONS_WORDS);
-
 /**
  * 混合策略
  * 默认行为：
@@ -95,7 +92,7 @@ export default class MixinInstaller extends OptionInstaller {
 
     optionMergePageCustomMethods(options) {
         const methods = Stream.of(Object.entries(options)).filter(([name, func]) => {
-            return isFunction(func) && !OPTIONS_WORDS.has(name) && !LIFECYCLES_WORDS.has(name);
+            return isFunction(func) && !RESERVED_LIFECYCLES_WORDS.has(name) && !RESERVED_OPTIONS_WORDS.has(name);
         }).collect(Collectors.toMap());
 
         const methodKeys = Object.keys(methods);
@@ -111,7 +108,7 @@ export default class MixinInstaller extends OptionInstaller {
 
     optionMergePageCustomData(options) {
         return Stream.of(Object.entries(options)).filter(([name, data]) => {
-            return !isFunction(data) && !OPTIONS_WORDS.has(name) && !LIFECYCLES_WORDS.has(name);
+            return !isFunction(data) && !RESERVED_OPTIONS_WORDS.has(name) && !RESERVED_LIFECYCLES_WORDS.has(name);
         }).collect(Collectors.toMap());
     }
 
@@ -137,10 +134,10 @@ export default class MixinInstaller extends OptionInstaller {
                     },
                     this.optionMergeLifeCycle(
                         Stream.of(
-                            RESERVED_LIFECYCLES_WORDS.map(i => [i, options[i]])
+                            [...RESERVED_LIFECYCLES_WORDS].map(i => [i, options[i]])
                         ).collect(Collectors.toMap()),
                         Stream.of(
-                            RESERVED_LIFECYCLES_WORDS.map(i => [i, mixin[i]])
+                            [...RESERVED_LIFECYCLES_WORDS].map(i => [i, mixin[i]])
                         ).collect(Collectors.toMap())
                     )
                 );
