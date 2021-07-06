@@ -31,7 +31,8 @@ const RESERVED_LIFECYCLES_WORDS = [
     "deactivated",
     "beforeDestroy",
     "destroyed",
-    "errorCaptured"
+    "errorCaptured",
+    "error"
 ];
 
 export default RESERVED_LIFECYCLES_WORDS;

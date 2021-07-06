@@ -113,6 +113,10 @@ Page(new MPExtender().extends(
             console.log(e);
         },
 
+        onResize() {
+            console.log('Page onResize');
+        },
+
         someMethod: function () {
             console.log('Page Method Called');
         }

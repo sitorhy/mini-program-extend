@@ -4,6 +4,8 @@ Component(new MPExtender().extends(
     {
         customOption: 'foo',
 
+        externalClasses: ['font-cls'],
+
         properties: {
             word: {
                 type: String
