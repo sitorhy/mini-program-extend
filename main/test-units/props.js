@@ -98,7 +98,7 @@ export default {
 
                 // 添加属性
                 this.h.h3 = 1919;
-
+                
                 console.log(this.$set(this.h, 'h4', 810));
 
                 this.$delete(this.h, 'h4');
