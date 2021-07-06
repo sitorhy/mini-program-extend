@@ -209,9 +209,11 @@ export default class MPExtender {
 
     /**
      * 扩展运行时上下文
+     * @param { function (prop:string):boolean } predicate - 拦截属性
+     * @param { function (prop:string,runtimeContext:Proxy):object } supplier - 返回拦截属性的值
      * @returns {Singleton}
      */
-    createRuntimeContextSingleton() {
+    createRuntimeContextSingleton(predicate = null, supplier = null) {
         return new Singleton((thisArg, properties, computed, fnSetData) => {
             const runtimeContext = this.createRuntimeCompatibleContext(thisArg, computed, fnSetData);
             const props = Object.keys(properties || {});
@@ -245,6 +247,9 @@ export default class MPExtender {
                         });
                         return $data;
                     }
+                    if (isFunction(predicate) && isFunction(supplier) && predicate(p) === true) {
+                        return supplier(p, runtimeContext);
+                    }
                     return Reflect.get(target, p);
                 }
             });
@@ -257,10 +262,9 @@ export default class MPExtender {
      * @param state - 小程序格式，不能传函数
      * @param properties - 小程序格式，不能使用生成函数
      * @param methods - 依赖方法
-     * @param onMissingHandler - 参数命中失败时回调
      * @returns {any}
      */
-    createInitializationCompatibleContext(obj, state, properties, methods, onMissingHandler) {
+    createInitializationCompatibleContext(obj, state, properties, methods) {
         const compatibleDataContext = new Proxy(
             (obj || {}),
             {
@@ -275,10 +279,6 @@ export default class MPExtender {
                     }
                     if (properties && Reflect.has(properties, p)) {
                         return properties[p].value;
-                    } else {
-                        if (isFunction(onMissingHandler)) {
-                            onMissingHandler.call(undefined, p);
-                        }
                     }
                     return Reflect.get(target, p);
                 },
@@ -338,8 +338,8 @@ export default class MPExtender {
      * @returns {Singleton}
      */
     createInitializationContextSingleton() {
-        return new Singleton((obj, data, properties, methods, onMissingHandler) => {
-            const compileTimeContext = this.createInitializationCompatibleContext(obj, data, properties, methods, onMissingHandler)
+        return new Singleton((obj, data, properties, methods) => {
+            const compileTimeContext = this.createInitializationCompatibleContext(obj, data, properties, methods)
             const props = Object.keys(properties);
             return new Proxy(compileTimeContext, {
                 get(target, p, receiver) {

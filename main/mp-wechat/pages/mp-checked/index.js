@@ -28,6 +28,7 @@ Page(new MPExtender().extends(
             console.log(this.customData);
 
             console.log('Page onLoad');
+
             this.someMethod();
         },
 

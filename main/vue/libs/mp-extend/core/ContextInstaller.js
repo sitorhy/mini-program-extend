@@ -2,8 +2,13 @@ import OptionInstaller from './OptionInstaller';
 
 import {Stream, Collectors} from '../libs/Stream';
 import {isFunction, isPlainObject} from '../utils/common';
+import RESERVED_OPTIONS_WORDS from "../utils/options";
+import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
 
 const RTCSign = Symbol('__wxRTC__');
+
+const LIFECYCLES_WORDS = new Set(RESERVED_LIFECYCLES_WORDS);
+const OPTIONS_WORDS = new Set(RESERVED_OPTIONS_WORDS);
 
 /**
  * 兼容从this直接访问data的语法
@@ -26,10 +31,42 @@ export default class ContextInstaller extends OptionInstaller {
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
         const createContext = () => {
-            return extender.createRuntimeContextSingleton();
+            return extender.createRuntimeContextSingleton((prop) => {
+                return ["$options", "$root"].includes(prop);
+            }, (prop, runtimeContext) => {
+                switch (prop) {
+                    case "$options": {
+                        return Stream.of(Object.entries(options))
+                            .filter(([p]) => !OPTIONS_WORDS.has(p) && !LIFECYCLES_WORDS.has(p))
+                            .collect(Collectors.toMap());
+                    }
+                    case "$root": {
+                        return getCurrentPages().find(p => p['__wxWebviewId__'] === runtimeContext['__wxWebviewId__']);
+                    }
+                }
+                return undefined;
+            });
         };
 
         const initContext = (thisArg, fnSetData) => {
+            if (!thisArg.$set) {
+                thisArg.$set = function (target, propertyName, value) {
+                    Reflect.set(target, propertyName, value);
+                    return value;
+                }
+            }
+            if (!thisArg.$delete) {
+                thisArg.$delete = function (target, propertyName) {
+                    Reflect.deleteProperty(target, propertyName);
+                }
+            }
+            if (!thisArg.$nextTick) {
+                thisArg.$nextTick = function (callback) {
+                    if (isFunction(callback)) {
+                        wx.nextTick(callback);
+                    }
+                }
+            }
             return this.getRuntimeContext(thisArg, context, fnSetData);
         };
 
@@ -70,14 +107,17 @@ export default class ContextInstaller extends OptionInstaller {
 
         const watch = context.get('watch');
 
-        ['lifetimes', 'pageLifetimes', 'methods', 'observers'].forEach(prop => {
+        ['lifetimes', 'pageLifetimes', 'methods', 'observers', 'lifecycle'].forEach(prop => {
             if (context.has(prop) && isPlainObject(context.get(prop))) {
                 context.set(prop,
                     Stream.of(Object.entries(context.get(prop)))
                         .filter(([, func]) => isFunction(func))
                         .map(([name, func]) => {
                             return [name, function () {
-                                func.apply(getContext(this), arguments);
+                                if (isFunction(func)) {
+                                    return func.apply(getContext(this), arguments);
+                                }
+                                return undefined;
                             }];
                         }).collect(Collectors.toMap())
                 );

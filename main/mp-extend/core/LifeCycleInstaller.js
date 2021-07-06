@@ -267,9 +267,7 @@ export default class LifeCycleInstaller extends OptionInstaller {
         this.installBehaviorLifeCycle(extender, context, options);
         this.installCompatibleLifeCycle(extender, context, options);
         this.installOptionsLifeCycle(extender, context, options);
-    }
 
-    build(extender, context, options) {
         const {
             onLoad,
             onShow,
@@ -284,24 +282,38 @@ export default class LifeCycleInstaller extends OptionInstaller {
             onTabItemTap,
             onPageScroll,
             onResize,
-            definitionFilter
+            ready,
+            error
         } = options;
 
-        return removeEmpty({
-            onLoad,
-            onShow,
-            onReady,
-            onHide,
-            onUnload,
-            onPullDownRefresh,
-            onReachBottom,
-            onShareAppMessage,
-            onShareTimeline,
-            onAddToFavorites,
-            onTabItemTap,
-            onPageScroll,
-            onResize,
-            definitionFilter
-        });
+        context.set('lifecycle', removeEmpty({
+                onLoad,
+                onShow,
+                onReady,
+                onHide,
+                onUnload,
+                onPullDownRefresh,
+                onReachBottom,
+                onShareAppMessage,
+                onShareTimeline,
+                onAddToFavorites,
+                onTabItemTap,
+                onPageScroll,
+                onResize,
+                ready,
+                error
+            })
+        );
+    }
+
+    build(extender, context, options) {
+        const {definitionFilter} = options;
+        return Object.assign(
+            {},
+            context.get('lifecycle'),
+            removeEmpty({
+                definitionFilter
+            })
+        );
     }
 }
