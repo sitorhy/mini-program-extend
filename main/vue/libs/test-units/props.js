@@ -71,7 +71,11 @@ export default {
                         }
                     }, {
                         num: 1919
-                    }]
+                    }],
+                    h: {
+                        h1: 100,
+                        h2: 200
+                    }
                 };
             },
             mounted() {
@@ -88,6 +92,12 @@ export default {
                 this.f[0].obj.num2 = {
                     num: 1919
                 };
+
+                // 删除测试
+                delete this.h.h2;
+
+                // 添加属性
+                this.h.h3 = 1919;
 
                 console.log(this.$props);
                 console.log(this.$data);

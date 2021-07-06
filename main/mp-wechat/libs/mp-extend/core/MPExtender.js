@@ -102,6 +102,15 @@ function createEffectObject(root, target, onChanged = "", path = "") {
                     return true;
                 }
                 return false;
+            },
+            deleteProperty(target, p) {
+                if (Reflect.deleteProperty(target, p)) {
+                    if (isFunction(onChanged)) {
+                        onChanged(`${path}`, target);
+                    }
+                    return true;
+                }
+                return false;
             }
         }
     );

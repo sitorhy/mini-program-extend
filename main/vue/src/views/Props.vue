@@ -13,6 +13,7 @@
     <p><span>foods={{ foods }}</span></p>
     <p><span>f={{ f }}</span></p>
     <p><span>f[0].obj.num2=</span><span>{{  f[0].obj.num2 }}</span></p>
+    <p><span>h={{ h }}</span></p>
   </div>
 </template>
 
