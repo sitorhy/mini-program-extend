@@ -31,7 +31,9 @@ function deleteFile(location, targetSubDir) {
         `main/vue/libs/${targetSubDir}/`.replace(/\\/g, '/')
     ];
     dest.forEach(i => {
-        fs.unlink(i);
+        fs.unlink(i, function () {
+            console.log(`unlink "${location}"`);
+        });
     });
 }
 

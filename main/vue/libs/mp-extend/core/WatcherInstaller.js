@@ -18,13 +18,13 @@ class CompatibleWatcher {
 
     /**
      *
-     * @param path - 使用Vue格式
-     * @param callback - 自定义回调
-     * @param once - immediate 获取初始值时，触发一次回调
-     * @param immediate - 创建后是否立即执行，静态监听器必定为true
+     * @param path - 使用 Vue格式
+     * @param callback - 必须，自定义回调
+     * @param once - 必须，初始化函数，传入初始值，仅执行一次
+     * @param immediate - 非必须，仅标记作用，创建后是否立即执行，取决于once实现
      * @param deep - 深度监听
-     * @param oldValue - 初始值
-     * @param getter - 值生成器
+     * @param oldValue - 在call未调用完毕前为当前值
+     * @param {function (...args):any} getter - 值生成器，自定义值的获取逻辑
      */
     constructor(path, callback, once, immediate, deep, oldValue = [], getter = null) {
         this._callback = callback;
@@ -325,6 +325,7 @@ export default class WatcherInstaller extends OptionInstaller {
         const watch = context.get('watch');
         const state = context.get('state');
         const observers = context.get('observers');
+
         if (state && watch && (Object.keys(watch).length || Object.keys(observers).length)) {
             this.staticWatchersDefinition(extender, context, options, defFields);
         }

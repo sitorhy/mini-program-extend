@@ -2,8 +2,6 @@ import OptionInstaller from './OptionInstaller';
 
 import {Stream, Collectors} from '../libs/Stream';
 import {isFunction, isPlainObject} from '../utils/common';
-import RESERVED_OPTIONS_WORDS from "../utils/options";
-import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
 
 const RTCSign = Symbol('__wxRTC__');
 
@@ -32,78 +30,6 @@ export default class ContextInstaller extends OptionInstaller {
         };
 
         const initContext = (thisArg, fnSetData) => {
-
-            if (!Object.hasOwnProperty.call(thisArg, '$set')) {
-                const $set = function (target, propertyName, value) {
-                    Reflect.set(target, propertyName, value);
-                    return value;
-                };
-
-                Object.defineProperty(thisArg, '$set', {
-                    configurable: false,
-                    enumerable: false,
-                    get() {
-                        return $set;
-                    }
-                });
-            }
-
-            if (!Object.hasOwnProperty.call(thisArg, '$delete')) {
-                const $delete = function (target, propertyName) {
-                    Reflect.deleteProperty(target, propertyName);
-                };
-
-                Object.defineProperty(thisArg, '$delete', {
-                    configurable: false,
-                    enumerable: false,
-                    get() {
-                        return $delete;
-                    }
-                });
-            }
-
-            if (!Object.hasOwnProperty.call(thisArg, '$nextTick')) {
-                const $nextTick = function (callback) {
-                    if (isFunction(callback)) {
-                        wx.nextTick(callback);
-                    }
-                };
-
-                Object.defineProperty(thisArg, '$nextTick', {
-                    configurable: false,
-                    enumerable: false,
-                    get() {
-                        return $nextTick;
-                    }
-                });
-            }
-
-            if (!Object.hasOwnProperty.call(thisArg, '$root')) {
-                Object.defineProperty(thisArg, '$root', {
-                    configurable: false,
-                    enumerable: false,
-                    get() {
-                        return getCurrentPages().find(p => p['__wxWebviewId__'] === this['__wxWebviewId__']);
-                    }
-                });
-            }
-
-            if (!Object.hasOwnProperty.call(thisArg, '$options')) {
-                Object.defineProperty(thisArg, '$options', {
-                    configurable: false,
-                    enumerable: false,
-                    get() {
-                        if (options) {
-                            return Stream.of(Object.entries(options))
-                                .filter(([p]) => !RESERVED_OPTIONS_WORDS.has(p) && !RESERVED_LIFECYCLES_WORDS.has(p))
-                                .collect(Collectors.toMap());
-                        } else {
-                            return {};
-                        }
-                    }
-                });
-            }
-
             return this.getRuntimeContext(thisArg, context, fnSetData);
         };
 

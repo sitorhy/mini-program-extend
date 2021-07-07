@@ -12,7 +12,14 @@ export default {
                             g: 5
                         }
                     },
-                    f: [[100, 200], [300, 400]]
+                    f: [[100, 200], [300, 400]],
+                    g: {
+                        h: 100,
+                        i: {
+                            j: 200,
+                            k: 300
+                        }
+                    }
                 };
             },
             watch: {
@@ -49,6 +56,13 @@ export default {
                 // watch vm.e.f's value: {g: 5}
                 'e.f': function (val, oldVal) { /* ... */
                     console.log(`e.f handler = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
+                },
+
+                g: {
+                    handler: function (val, oldVal) { /* ... */
+                        console.log(`g deep handler = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
+                    },
+                    deep: true
                 },
 
                 // 以下全部为容错测试
@@ -134,6 +148,8 @@ export default {
                 };
 
                 this.f.splice(0, 1, [100, 999]);
+                this.g.h = 200;
+                this.g.i.j = 300;
 
                 // 报错
                 /*

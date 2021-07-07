@@ -6,7 +6,7 @@ import {Invocation} from "../libs/Invocation";
 /**
  * 专有生命周期 onLoad onShow 不在统合范畴，使用 pageLifetimes 代替
  * 专有声明周期 onLoad onShow onReady 在 Page 中使用不会与框架的 pageLifetimes 冲突
- * 优先级 Vue的生命周期 < Installer 生命周期
+ * 优先级 Vue的生命周期 < 原生生命周期
  */
 export default class LifeCycleInstaller extends OptionInstaller {
     behaviorLifeCycleDefinition(extender, context, options, defFields) {

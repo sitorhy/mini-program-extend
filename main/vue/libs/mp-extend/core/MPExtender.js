@@ -12,6 +12,7 @@ import LifeCycleInstaller from "./LifeCycleInstaller";
 import {Singleton} from "../libs/Singleton";
 import {isFunction, isPlainObject, isPrimitive} from "../utils/common";
 import equal from "../libs/fast-deep-equal/index";
+import InstanceInstaller from "./InstanceInstaller";
 
 class InstallersSingleton extends Singleton {
     /**
@@ -129,6 +130,7 @@ export default class MPExtender {
         this.use(new ComputedInstaller(), 35);
         this.use(new WatcherInstaller(), 40);
         this.use(new LifeCycleInstaller(), 45);
+        this.use(new InstanceInstaller(), 95);
         this.use(new ContextInstaller(), 100);
     }
 
