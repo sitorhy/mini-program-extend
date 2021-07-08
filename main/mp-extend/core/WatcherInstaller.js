@@ -38,15 +38,15 @@ class CompatibleWatcher {
 
     call(thisArg, args) {
         if (this._callback) {
-            this._callback.apply(thisArg, args.concat(this._oldValue));
+            this._callback.apply(thisArg, args.concat(this.oldValue));
         }
-        this._oldValue = args;
+        this.oldValue = args;
     }
 
     once(thisArg, args) {
         if (this._once) {
-            this._once.apply(thisArg, args.concat(this._oldValue));
-            this._oldValue = args;
+            this._once.apply(thisArg, args.concat(this.oldValue));
+            this.oldValue = args;
             this._once = undefined;
         }
     }
@@ -238,25 +238,52 @@ export default class WatcherInstaller extends OptionInstaller {
         const watch = context.get('watch');
         const observers = context.get('observers');
 
-        const staticWatchers = Stream.of(Object.entries(watch)).map(([path, watchers]) => {
+        const staticWatchers = new Map();
+
+        Object.entries(watch).forEach(([path, watchers]) => {
             const observerPath = this.transformToObserverField(path);
 
-            const watcher = new CompatibleWatcher(path, function (newValue, oldValue) {
-                if (!equal(newValue, oldValue)) {
-                    watchers.forEach(w => {
-                        w.handler.call(this, newValue, oldValue);
-                    });
-                }
-            }, function (newValue, oldValue) {
-                watchers.forEach(w => {
-                    if (w.immediate === true) {
-                        w.handler.call(this, newValue, oldValue);
-                    }
-                });
-            }, true, false, undefined);
+            const deepWatchers = watchers.filter(w => w.deep === true);
+            const shallowWatchers = watchers.filter(w => w.deep !== true);
 
-            return [observerPath, watcher];
-        }).collect(Collectors.toMap(v => v[0], v => v[1], true));
+            if (deepWatchers.length) {
+                staticWatchers.set(`${observerPath}.**`, new CompatibleWatcher(
+                    path,
+                    function (newValue, oldValue) {
+                        if (!equal(newValue, oldValue)) {
+                            deepWatchers.forEach(w => {
+                                w.handler.call(this, newValue, oldValue);
+                            });
+                        }
+                    },
+                    function (newValue, oldValue) {
+                        deepWatchers.forEach(w => {
+                            if (w.immediate === true) {
+                                w.handler.call(this, newValue, oldValue);
+                            }
+                        });
+                    }, true, true, undefined));
+            }
+
+            if (shallowWatchers.length) {
+                staticWatchers.set(observerPath, new CompatibleWatcher(
+                    path,
+                    function (newValue, oldValue) {
+                        if (!equal(newValue, oldValue)) {
+                            shallowWatchers.forEach(w => {
+                                w.handler.call(this, newValue, oldValue);
+                            });
+                        }
+                    },
+                    function (newValue, oldValue) {
+                        shallowWatchers.forEach(w => {
+                            if (w.immediate === true) {
+                                w.handler.call(this, newValue, oldValue);
+                            }
+                        });
+                    }, true, false, undefined));
+            }
+        });
 
         const createStaticWatchers = () => {
             return staticWatchers;
