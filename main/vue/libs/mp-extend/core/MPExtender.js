@@ -8,11 +8,11 @@ import ContextInstaller from './ContextInstaller';
 import ComputedInstaller from "./ComputedInstaller";
 import MixinInstaller from "./MixinInstaller";
 import LifeCycleInstaller from "./LifeCycleInstaller";
+import InstanceInstaller from "./InstanceInstaller";
 
 import {Singleton} from "../libs/Singleton";
 import {isFunction, isPlainObject, isPrimitive} from "../utils/common";
 import equal from "../libs/fast-deep-equal/index";
-import InstanceInstaller from "./InstanceInstaller";
 
 class InstallersSingleton extends Singleton {
     /**

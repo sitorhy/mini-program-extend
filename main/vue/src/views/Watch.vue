@@ -5,6 +5,8 @@
     <p><span>c={{ c }}</span></p>
     <p><span>d={{ d }}</span></p>
     <p><span>e={{ e }}</span></p>
+    <p><span>f={{ f }}</span></p>
+    <p><span>g={{ g }}</span></p>
   </div>
 </template>
 

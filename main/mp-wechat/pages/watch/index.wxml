@@ -21,3 +21,9 @@
 <view>
     <text>e=</text><text>{{ wxs.stringify(e) }}</text>
 </view>
+<view>
+    <text>f=</text><text>{{ wxs.stringify(f) }}</text>
+</view>
+<view>
+    <text>g=</text><text>{{ wxs.stringify(g) }}</text>
+</view>

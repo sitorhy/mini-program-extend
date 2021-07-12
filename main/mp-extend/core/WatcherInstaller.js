@@ -139,6 +139,60 @@ export default class WatcherInstaller extends OptionInstaller {
         }
     }
 
+    selectPathRoot(path) {
+        const v = /^[\w]+/.exec(path);
+        if (v) {
+            return v[0];
+        }
+        const d = /^\[(\d+)\]+/.exec(path);
+        if (d) {
+            return d[1];
+        }
+        const i = /^\.(\d+)/.exec(path);
+        if (i) {
+            return i[1];
+        }
+        return null;
+    }
+
+    shallowCopyObject(obj, path, assignment) {
+        let root;
+        let pathRight = path;
+        let rootVal = obj;
+        while ((root = this.selectPathRoot(pathRight)) !== null) {
+            const tryNum = Number.parseInt(root);
+            if (Number.isSafeInteger(tryNum)) {
+                rootVal = Reflect.get(rootVal, tryNum);
+                assignment = Reflect.get(assignment, tryNum);
+                if (pathRight[0] === '.') {
+                    pathRight = pathRight.substring(root.length + 1);
+                } else {
+                    pathRight = pathRight.substring(root.length + 2);
+                }
+            } else {
+                const val = Reflect.get(rootVal, root);
+                if (!isPrimitive(val)) {
+                    if (Array.isArray(val)) {
+                        assignment[root] = val.concat([]);
+                    } else {
+                        Reflect.set(assignment, root, val);
+                    }
+                } else {
+                    Reflect.set(assignment, root, val);
+                }
+                rootVal = val;
+                assignment = assignment[root];
+                pathRight = pathRight.substring(root.length);
+            }
+        }
+
+        const nextPath = pathRight.replace(/^\./, '');
+        if (nextPath) {
+            return this.shallowCopyObject(rootVal, nextPath, assignment);
+        }
+        return rootVal;
+    }
+
     /**
      * 转换Vue的格式为小程序格式
      * @param rule
@@ -294,8 +348,11 @@ export default class WatcherInstaller extends OptionInstaller {
         };
 
         const selectRuntimeState = (data, path) => {
-            return this.selectData(data, path);
+            const assigment = {};
+            return this.shallowCopyObject(data, path, assigment);
         };
+
+        console.log(staticWatchers)
 
         const behavior = {
             lifetimes: {

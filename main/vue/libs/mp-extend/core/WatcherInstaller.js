@@ -38,15 +38,15 @@ class CompatibleWatcher {
 
     call(thisArg, args) {
         if (this._callback) {
-            this._callback.apply(thisArg, args.concat(this._oldValue));
+            this._callback.apply(thisArg, args.concat(this.oldValue));
         }
-        this._oldValue = args;
+        this.oldValue = args;
     }
 
     once(thisArg, args) {
         if (this._once) {
-            this._once.apply(thisArg, args.concat(this._oldValue));
-            this._oldValue = args;
+            this._once.apply(thisArg, args.concat(this.oldValue));
+            this.oldValue = args;
             this._once = undefined;
         }
     }
@@ -137,6 +137,60 @@ export default class WatcherInstaller extends OptionInstaller {
         } else {
             return this.selectData(Reflect.get(data, prop), right);
         }
+    }
+
+    selectPathRoot(path) {
+        const v = /^[\w]+/.exec(path);
+        if (v) {
+            return v[0];
+        }
+        const d = /^\[(\d+)\]+/.exec(path);
+        if (d) {
+            return d[1];
+        }
+        const i = /^\.(\d+)/.exec(path);
+        if (i) {
+            return i[1];
+        }
+        return null;
+    }
+
+    shallowCopyObject(obj, path, assignment) {
+        let root;
+        let pathRight = path;
+        let rootVal = obj;
+        while ((root = this.selectPathRoot(pathRight)) !== null) {
+            const tryNum = Number.parseInt(root);
+            if (Number.isSafeInteger(tryNum)) {
+                rootVal = Reflect.get(rootVal, tryNum);
+                assignment = Reflect.get(assignment, tryNum);
+                if (pathRight[0] === '.') {
+                    pathRight = pathRight.substring(root.length + 1);
+                } else {
+                    pathRight = pathRight.substring(root.length + 2);
+                }
+            } else {
+                const val = Reflect.get(rootVal, root);
+                if (!isPrimitive(val)) {
+                    if (Array.isArray(val)) {
+                        assignment[root] = val.concat([]);
+                    } else {
+                        Reflect.set(assignment, root, val);
+                    }
+                } else {
+                    Reflect.set(assignment, root, val);
+                }
+                rootVal = val;
+                assignment = assignment[root];
+                pathRight = pathRight.substring(root.length);
+            }
+        }
+
+        const nextPath = pathRight.replace(/^\./, '');
+        if (nextPath) {
+            return this.shallowCopyObject(rootVal, nextPath, assignment);
+        }
+        return rootVal;
     }
 
     /**
@@ -238,25 +292,52 @@ export default class WatcherInstaller extends OptionInstaller {
         const watch = context.get('watch');
         const observers = context.get('observers');
 
-        const staticWatchers = Stream.of(Object.entries(watch)).map(([path, watchers]) => {
+        const staticWatchers = new Map();
+
+        Object.entries(watch).forEach(([path, watchers]) => {
             const observerPath = this.transformToObserverField(path);
 
-            const watcher = new CompatibleWatcher(path, function (newValue, oldValue) {
-                if (!equal(newValue, oldValue)) {
-                    watchers.forEach(w => {
-                        w.handler.call(this, newValue, oldValue);
-                    });
-                }
-            }, function (newValue, oldValue) {
-                watchers.forEach(w => {
-                    if (w.immediate === true) {
-                        w.handler.call(this, newValue, oldValue);
-                    }
-                });
-            }, true, false, undefined);
+            const deepWatchers = watchers.filter(w => w.deep === true);
+            const shallowWatchers = watchers.filter(w => w.deep !== true);
 
-            return [observerPath, watcher];
-        }).collect(Collectors.toMap(v => v[0], v => v[1], true));
+            if (deepWatchers.length) {
+                staticWatchers.set(`${observerPath}.**`, new CompatibleWatcher(
+                    path,
+                    function (newValue, oldValue) {
+                        if (!equal(newValue, oldValue)) {
+                            deepWatchers.forEach(w => {
+                                w.handler.call(this, newValue, oldValue);
+                            });
+                        }
+                    },
+                    function (newValue, oldValue) {
+                        deepWatchers.forEach(w => {
+                            if (w.immediate === true) {
+                                w.handler.call(this, newValue, oldValue);
+                            }
+                        });
+                    }, true, true, undefined));
+            }
+
+            if (shallowWatchers.length) {
+                staticWatchers.set(observerPath, new CompatibleWatcher(
+                    path,
+                    function (newValue, oldValue) {
+                        if (!equal(newValue, oldValue)) {
+                            shallowWatchers.forEach(w => {
+                                w.handler.call(this, newValue, oldValue);
+                            });
+                        }
+                    },
+                    function (newValue, oldValue) {
+                        shallowWatchers.forEach(w => {
+                            if (w.immediate === true) {
+                                w.handler.call(this, newValue, oldValue);
+                            }
+                        });
+                    }, true, false, undefined));
+            }
+        });
 
         const createStaticWatchers = () => {
             return staticWatchers;
@@ -267,8 +348,11 @@ export default class WatcherInstaller extends OptionInstaller {
         };
 
         const selectRuntimeState = (data, path) => {
-            return this.selectData(data, path);
+            const assigment = {};
+            return this.shallowCopyObject(data, path, assigment);
         };
+
+        console.log(staticWatchers)
 
         const behavior = {
             lifetimes: {
