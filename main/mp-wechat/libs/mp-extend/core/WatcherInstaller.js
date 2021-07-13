@@ -155,42 +155,45 @@ export default class WatcherInstaller extends OptionInstaller {
         return null;
     }
 
-    shallowCopyObject(obj, path, assignment) {
-        let root;
-        let pathRight = path;
-        let rootVal = obj;
-        while ((root = this.selectPathRoot(pathRight)) !== null) {
-            const tryNum = Number.parseInt(root);
-            if (Number.isSafeInteger(tryNum)) {
-                rootVal = Reflect.get(rootVal, tryNum);
-                assignment = Reflect.get(assignment, tryNum);
-                if (pathRight[0] === '.') {
-                    pathRight = pathRight.substring(root.length + 1);
-                } else {
-                    pathRight = pathRight.substring(root.length + 2);
-                }
-            } else {
-                const val = Reflect.get(rootVal, root);
-                if (!isPrimitive(val)) {
-                    if (Array.isArray(val)) {
-                        assignment[root] = val.concat([]);
+    shallowCopyObject(obj, path) {
+        if (!obj || isPrimitive(obj)) {
+            return obj;
+        }
+
+        const copy = {};
+
+        if (path) {
+            let pathRight = path;
+            let copyPosition = copy;
+            let objPosition = obj;
+
+            while (pathRight && objPosition && !isPrimitive(objPosition)) {
+                const root = this.selectPathRoot(pathRight);
+                const tryNum = Number.parseInt(root);
+
+                const prop = Reflect.get(objPosition, root);
+                Reflect.set(copyPosition, root, Array.isArray(prop) ?
+                    [...prop] : (
+                        !prop || isPrimitive(prop) ? prop : {...prop}
+                    )
+                );
+
+                if (Number.isSafeInteger(tryNum)) {
+                    if (pathRight[0] === '.') {
+                        pathRight = pathRight.substring(root.length + 1).replace(/^\./, '');
                     } else {
-                        Reflect.set(assignment, root, val);
+                        pathRight = pathRight.substring(root.length + 2).replace(/^\./, '');
                     }
                 } else {
-                    Reflect.set(assignment, root, val);
+                    pathRight = pathRight.substring(root.length).replace(/^\./, '');
                 }
-                rootVal = val;
-                assignment = assignment[root];
-                pathRight = pathRight.substring(root.length);
+
+                objPosition = Reflect.get(objPosition, root);
+                copyPosition = Reflect.get(copyPosition, root);
             }
         }
 
-        const nextPath = pathRight.replace(/^\./, '');
-        if (nextPath) {
-            return this.shallowCopyObject(rootVal, nextPath, assignment);
-        }
-        return rootVal;
+        return copy;
     }
 
     /**
@@ -214,7 +217,8 @@ export default class WatcherInstaller extends OptionInstaller {
 
     dynamicWatchersDefinition(thisArg) {
         const selectRuntimeState = (data, path) => {
-            return this.selectData(data, path);
+            const followState = this.shallowCopyObject(data, path);
+            return this.selectData(followState, path);
         };
 
         if (!Object.hasOwnProperty.call(thisArg, '$watch')) {
@@ -348,11 +352,9 @@ export default class WatcherInstaller extends OptionInstaller {
         };
 
         const selectRuntimeState = (data, path) => {
-            const assigment = {};
-            return this.shallowCopyObject(data, path, assigment);
+            const followState = this.shallowCopyObject(data, path);
+            return this.selectData(followState, path);
         };
-
-        console.log(staticWatchers)
 
         const behavior = {
             lifetimes: {
@@ -439,7 +441,8 @@ export default class WatcherInstaller extends OptionInstaller {
         };
 
         const selectRuntimeState = (data, path) => {
-            return this.selectData(data, path);
+            const followState = this.shallowCopyObject(data, path);
+            return this.selectData(followState, path);
         };
 
         const watch = Stream.of(

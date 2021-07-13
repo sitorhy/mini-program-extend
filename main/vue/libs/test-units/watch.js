@@ -31,7 +31,7 @@ export default {
                 // 该回调会在任何被侦听的对象的 property 改变时被调用，不论其被嵌套多深
                 c: {
                     handler: function (val, oldVal) { /* ... */
-                        console.log(`c handler = ${oldVal} => ${val}`);
+                        console.log(`deep c handler = ${oldVal} => ${val}`);
                     },
                     deep: true
                 },
