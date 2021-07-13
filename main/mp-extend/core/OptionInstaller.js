@@ -52,6 +52,14 @@ export default class OptionInstaller extends BehaviorInstaller {
 
     }
 
+    beforeUpdate(state) {
+
+    }
+
+    updated() {
+
+    }
+
     beforeDestroy() {
 
     }

@@ -13,6 +13,7 @@ import InstanceInstaller from "./InstanceInstaller";
 import {Singleton} from "../libs/Singleton";
 import {isFunction, isPlainObject, isPrimitive} from "../utils/common";
 import equal from "../libs/fast-deep-equal/index";
+import {UpdateInstaller} from "./UpdateInstaller";
 
 class InstallersSingleton extends Singleton {
     /**
@@ -34,6 +35,63 @@ class InstallersSingleton extends Singleton {
             }
         }
     }
+}
+
+function selectPathRoot(path) {
+    const v = /^[\w]+/.exec(path);
+    if (v) {
+        return v[0];
+    }
+    const d = /^\[(\d+)\]+/.exec(path);
+    if (d) {
+        return d[1];
+    }
+    const i = /^\.(\d+)/.exec(path);
+    if (i) {
+        return i[1];
+    }
+    return null;
+}
+
+function shallowCopyObject(obj, path) {
+    if (!obj || isPrimitive(obj)) {
+        return obj;
+    }
+
+    const copy = {};
+
+    if (path) {
+        let pathRight = path;
+        let copyPosition = copy;
+        let objPosition = obj;
+
+        while (pathRight && objPosition && !isPrimitive(objPosition)) {
+            const root = selectPathRoot(pathRight);
+            const tryNum = Number.parseInt(root);
+
+            const prop = Reflect.get(objPosition, root);
+            Reflect.set(copyPosition, root, Array.isArray(prop) ?
+                [...prop] : (
+                    !prop || isPrimitive(prop) ? prop : {...prop}
+                )
+            );
+
+            if (Number.isSafeInteger(tryNum)) {
+                if (pathRight[0] === '.') {
+                    pathRight = pathRight.substring(root.length + 1).replace(/^\./, '');
+                } else {
+                    pathRight = pathRight.substring(root.length + 2).replace(/^\./, '');
+                }
+            } else {
+                pathRight = pathRight.substring(root.length).replace(/^\./, '');
+            }
+
+            objPosition = Reflect.get(objPosition, root);
+            copyPosition = Reflect.get(copyPosition, root);
+        }
+    }
+
+    return copy;
 }
 
 function createEffectObject(root, target, onChanged = "", path = "") {
@@ -131,7 +189,8 @@ export default class MPExtender {
         this.use(new WatcherInstaller(), 40);
         this.use(new LifeCycleInstaller(), 45);
         this.use(new InstanceInstaller(), 95);
-        this.use(new ContextInstaller(), 100);
+        this.use(new ContextInstaller(), 200);
+        this.use(new UpdateInstaller(), 300);
     }
 
     /**
@@ -158,6 +217,11 @@ export default class MPExtender {
         let runtimeContext;
 
         const runtimeDataContext = createEffectObject(context.data, context.data, function (path, value) {
+            console.log(`*** || ${path}`)
+
+            const payload = shallowCopyObject(context.data,path);
+            console.log(JSON.stringify(payload))
+
             if (isFunction(fnSetData)) {
                 fnSetData({[path]: value});
             } else {

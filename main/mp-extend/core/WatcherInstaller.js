@@ -139,63 +139,6 @@ export default class WatcherInstaller extends OptionInstaller {
         }
     }
 
-    selectPathRoot(path) {
-        const v = /^[\w]+/.exec(path);
-        if (v) {
-            return v[0];
-        }
-        const d = /^\[(\d+)\]+/.exec(path);
-        if (d) {
-            return d[1];
-        }
-        const i = /^\.(\d+)/.exec(path);
-        if (i) {
-            return i[1];
-        }
-        return null;
-    }
-
-    shallowCopyObject(obj, path) {
-        if (!obj || isPrimitive(obj)) {
-            return obj;
-        }
-
-        const copy = {};
-
-        if (path) {
-            let pathRight = path;
-            let copyPosition = copy;
-            let objPosition = obj;
-
-            while (pathRight && objPosition && !isPrimitive(objPosition)) {
-                const root = this.selectPathRoot(pathRight);
-                const tryNum = Number.parseInt(root);
-
-                const prop = Reflect.get(objPosition, root);
-                Reflect.set(copyPosition, root, Array.isArray(prop) ?
-                    [...prop] : (
-                        !prop || isPrimitive(prop) ? prop : {...prop}
-                    )
-                );
-
-                if (Number.isSafeInteger(tryNum)) {
-                    if (pathRight[0] === '.') {
-                        pathRight = pathRight.substring(root.length + 1).replace(/^\./, '');
-                    } else {
-                        pathRight = pathRight.substring(root.length + 2).replace(/^\./, '');
-                    }
-                } else {
-                    pathRight = pathRight.substring(root.length).replace(/^\./, '');
-                }
-
-                objPosition = Reflect.get(objPosition, root);
-                copyPosition = Reflect.get(copyPosition, root);
-            }
-        }
-
-        return copy;
-    }
-
     /**
      * 转换Vue的格式为小程序格式
      * @param rule
@@ -217,8 +160,7 @@ export default class WatcherInstaller extends OptionInstaller {
 
     dynamicWatchersDefinition(thisArg) {
         const selectRuntimeState = (data, path) => {
-            const followState = this.shallowCopyObject(data, path);
-            return this.selectData(followState, path);
+            return this.selectData(data, path);
         };
 
         if (!Object.hasOwnProperty.call(thisArg, '$watch')) {
@@ -352,8 +294,7 @@ export default class WatcherInstaller extends OptionInstaller {
         };
 
         const selectRuntimeState = (data, path) => {
-            const followState = this.shallowCopyObject(data, path);
-            return this.selectData(followState, path);
+            return this.selectData(data, path);
         };
 
         const behavior = {
@@ -395,6 +336,10 @@ export default class WatcherInstaller extends OptionInstaller {
                         observerPath,
                         Invocation(observers[observerPath], null, function (newValue) {
                             const watcher = getStaticWatcher(this, observerPath);
+                            if (watcher && watcher.deep) {
+                                console.log(`|- ${observerPath} => ${JSON.stringify(watcher.oldValue[0])}`)
+                                console.log(`|---- ${observerPath} => ${JSON.stringify(newValue)}`)
+                            }
                             if (watcher) {
                                 watcher.call(this, [newValue])
                             }
@@ -415,6 +360,10 @@ export default class WatcherInstaller extends OptionInstaller {
         if (state && watch && (Object.keys(watch).length || Object.keys(observers).length)) {
             this.staticWatchersDefinition(extender, context, options, defFields);
         }
+    }
+
+    beforeUpdate(state) {
+        console.log(`before => ${JSON.stringify(state)}`);
     }
 
     lifetimes(extender, context, options) {
@@ -441,8 +390,7 @@ export default class WatcherInstaller extends OptionInstaller {
         };
 
         const selectRuntimeState = (data, path) => {
-            const followState = this.shallowCopyObject(data, path);
-            return this.selectData(followState, path);
+            return this.selectData(data, path);
         };
 
         const watch = Stream.of(
