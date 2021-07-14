@@ -21,18 +21,18 @@ export class UpdateInstaller extends OptionInstaller {
                             configurable: false
                         });
                         this.setData = function (data, callback) {
-                            beforeUpdate(data);
+                            beforeUpdate.call(this);
                             return originalSetData.call(this, data, function () {
-                                updated();
+                                updated.call(this);
                                 if (isFunction(callback)) {
-                                    callback();
+                                    callback.call(this);
                                 }
                             });
                         };
                     },
                     detached() {
                         this.setData = Reflect.get(this, SetDataSign);
-                        Object.deleteProperty(this, SetDataSign);
+                        Reflect.deleteProperty(this, SetDataSign);
                     }
                 }
             })
@@ -40,13 +40,13 @@ export class UpdateInstaller extends OptionInstaller {
     }
 
     install(extender, context, options) {
-        const beforeUpdateChain = extender.installers.map(i => i.beforeUpdate);
-        const updatedChain = extender.installers.map(i => i.updated);
-        context.set('beforeUpdate', function (state) {
-            beforeUpdateChain.forEach(i => i(state));
+        const beforeUpdateChain = extender.installers.map(i => i.beforeUpdate).concat(options.beforeUpdate).filter(i => !!i);
+        const updatedChain = extender.installers.map(i => i.updated).concat(options.updated).filter(i => !!i);
+        context.set('beforeUpdate', function () {
+            beforeUpdateChain.forEach(i => i.call(this));
         });
         context.set('updated', function () {
-            updatedChain.forEach(i => i());
+            updatedChain.forEach(i => i.call(this));
         });
     }
 }

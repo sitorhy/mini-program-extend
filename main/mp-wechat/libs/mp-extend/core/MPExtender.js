@@ -62,10 +62,10 @@ function shallowCopyObject(obj, path, value) {
 
     if (path) {
         let pathRight = path;
-        let copyPosition = copy;
-        let objPosition = obj;
+        let copyPointer = copy;
+        let objPointer = obj;
 
-        while (pathRight && objPosition && !isPrimitive(objPosition)) {
+        while (pathRight && objPointer && !isPrimitive(objPointer)) {
             const root = selectPathRoot(pathRight);
             const tryNum = Number.parseInt(root);
 
@@ -79,22 +79,22 @@ function shallowCopyObject(obj, path, value) {
                 pathRight = pathRight.substring(root.length).replace(/^\./, '');
             }
 
-            const prop = Reflect.get(objPosition, root);
-            Reflect.set(copyPosition, root, !pathRight ? value : (Array.isArray(prop) ?
+            const prop = Reflect.get(objPointer, root);
+            Reflect.set(copyPointer, root, !pathRight ? value : (Array.isArray(prop) ?
                 [...prop] : (
                     !prop || isPrimitive(prop) ? prop : {...prop}
                 ))
             );
 
-            objPosition = Reflect.get(objPosition, root);
-            copyPosition = Reflect.get(copyPosition, root);
+            objPointer = Reflect.get(objPointer, root);
+            copyPointer = Reflect.get(copyPointer, root);
         }
     }
 
     return copy;
 }
 
-function createEffectObject(root, target, onChanged = "", path = "") {
+function createReactiveObject(root, target, onChanged = "", path = "") {
     return new Proxy(
         target,
         {
@@ -125,9 +125,9 @@ function createEffectObject(root, target, onChanged = "", path = "") {
                     }
                 } else {
                     if (Number.isSafeInteger(Number.parseInt(p))) {
-                        return createEffectObject(root, value, onChanged, `${path}[${p}]`);
+                        return createReactiveObject(root, value, onChanged, `${path}[${p}]`);
                     } else {
-                        return createEffectObject(root, value, onChanged, `${path ? path + '.' : ''}${p}`);
+                        return createReactiveObject(root, value, onChanged, `${path ? path + '.' : ''}${p}`);
                     }
                 }
             },
@@ -203,7 +203,7 @@ export default class MPExtender {
         const setters = isPlainObject(computed) ? Object.keys(computed).filter(i => isPlainObject(computed[i]) && isFunction(computed[i].set)) : [];
         let runtimeContext;
 
-        const runtimeDataContext = createEffectObject(context.data, context.data, function (path, value) {
+        const runtimeDataContext = createReactiveObject(context.data, context.data, function (path, value) {
             const followState = shallowCopyObject(context.data, path, value);
             if (isFunction(fnSetData)) {
                 fnSetData(followState);

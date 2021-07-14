@@ -17,7 +17,20 @@ Page(new MPExtender().extends(
         /**
          * 页面的初始数据
          */
-        data: {},
+        data: {
+            foods: ['apple', 'orange'],
+            a: {
+                b: {
+                    c: 999
+                }
+            }
+        },
+
+        observers: {
+            foods: function (val) {
+                console.log(`${JSON.stringify(val)}`);
+            }
+        },
 
         /**
          * 生命周期函数--监听页面加载
@@ -119,6 +132,19 @@ Page(new MPExtender().extends(
 
         someMethod: function () {
             console.log('Page Method Called');
+
+            //  setData 兼容性
+            this.setData({
+                'a.b.c': 114514
+            }, () => {
+                console.log(this.data.a.b.c);
+            });
+
+            this.setData({
+                'foods[1]': 'banana'
+            }, () => {
+                console.log(this.data.foods.join(','));
+            });
         }
     }
 ));
