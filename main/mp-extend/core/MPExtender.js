@@ -91,12 +91,6 @@ function shallowCopyObject(obj, path, value) {
         }
     }
 
-    console.log('---- copy ' + path );
-    if(path==='f'){
-        console.log('1111111')
-    }
-    console.log(copy)
-
     return copy;
 }
 
@@ -114,20 +108,9 @@ function createEffectObject(root, target, onChanged = "", path = "") {
                         return value;
                     } else {
                         if (Array.isArray(target)) {
-                            if (['push', 'unshift', 'pop', 'shift', 'splice', 'reverse', 'sort'].includes(p)) {
-                                console.log(`|------- ${p}`);
-                                return new Proxy(value, {
-                                    apply(func, thisArg, argumentsList) {
-                                        const result = Reflect.apply(func, thisArg, argumentsList);
-                                        if (isFunction(onChanged)) {
-                                            onChanged(path, target);
-                                        }
-                                        return result;
-                                    }
-                                });
-                            } else {
-                                return value;
-                            }
+                            // 数组 splice / push 执行后会自动 触发 set
+                            // 例如 data = {a:[1,2,3]} a.push(4) , 会触发 data.a = [1,2,3,4]
+                            return value;
                         } else {
                             return new Proxy(value, {
                                 apply(func, thisArg, argumentsList) {
@@ -158,7 +141,7 @@ function createEffectObject(root, target, onChanged = "", path = "") {
                         }
                     } else {
                         if (Array.isArray(target) && p === 'length') {
-                            onChanged(path, target);
+                            Reflect.set(target, p, value, receiver);
                         } else {
                             onChanged(`${path ? path + '.' : ''}${p}`, value);
                         }
@@ -194,7 +177,7 @@ export default class MPExtender {
         this.use(new LifeCycleInstaller(), 45);
         this.use(new InstanceInstaller(), 95);
         this.use(new ContextInstaller(), 200);
-  //      this.use(new UpdateInstaller(), 300);
+        this.use(new UpdateInstaller(), 300);
     }
 
     /**
@@ -222,20 +205,10 @@ export default class MPExtender {
 
         const runtimeDataContext = createEffectObject(context.data, context.data, function (path, value) {
             const followState = shallowCopyObject(context.data, path, value);
-
-            console.log(`| ---- path = ${path}`);
-            console.log(value);
-            console.log('|--------|');
-            console.log(followState);
-            console.log('*******');
-
             if (isFunction(fnSetData)) {
-                console.log(followState)
                 fnSetData(followState);
-           //     fnSetData({[path]:value});
             } else {
                 Reflect.get(runtimeContext, 'setData').call(runtimeContext, followState);
-             //   Reflect.get(runtimeContext, 'setData').call(runtimeContext, {[path]:value});
             }
             if (setters.includes(path)) {
                 computed[path].set.call(runtimeContext, value);
