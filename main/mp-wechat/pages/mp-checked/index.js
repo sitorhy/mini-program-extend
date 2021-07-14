@@ -27,8 +27,8 @@ Page(new MPExtender().extends(
         },
 
         observers: {
-            foods: function (val) {
-                console.log(`${JSON.stringify(val)}`);
+            'foods.**': function (val) {
+                console.log(`observer of foods ${JSON.stringify(val)}`);
             }
         },
 
