@@ -336,10 +336,6 @@ export default class WatcherInstaller extends OptionInstaller {
                         observerPath,
                         Invocation(observers[observerPath], null, function (newValue) {
                             const watcher = getStaticWatcher(this, observerPath);
-                            if (watcher && watcher.deep) {
-                                console.log(`|- ${observerPath} => ${JSON.stringify(watcher.oldValue[0])}`)
-                                console.log(`|---- ${observerPath} => ${JSON.stringify(newValue)}`)
-                            }
                             if (watcher) {
                                 watcher.call(this, [newValue])
                             }
@@ -360,10 +356,6 @@ export default class WatcherInstaller extends OptionInstaller {
         if (state && watch && (Object.keys(watch).length || Object.keys(observers).length)) {
             this.staticWatchersDefinition(extender, context, options, defFields);
         }
-    }
-
-    beforeUpdate(state) {
-        console.log(`before => ${JSON.stringify(state)}`);
     }
 
     lifetimes(extender, context, options) {

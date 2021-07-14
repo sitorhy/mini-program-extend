@@ -44,11 +44,11 @@ export default {
                 e: [
                     'handle1',
                     function handle2(val, oldVal) { /* ... */
-                        console.log(`e handle2 = ${oldVal} => ${val}`);
+                        console.log(`e handle2 = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
                     },
                     {
                         handler: function handle3(val, oldVal) { /* ... */
-                            console.log(`e handle3 = ${oldVal} => ${val}`);
+                            console.log(`e handle3 = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
                         },
                         /* ... */
                     }
@@ -113,11 +113,11 @@ export default {
                 }
             },
             methods: {
-                handler1: function handle3(val, oldVal) { /* ... */
-                    console.log(`e handler1 = ${oldVal} => ${val}`);
+                handler1: function (val, oldVal) { /* ... */
+                    console.log(`e handler1 = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
                 },
                 someMethod(val) {
-                    console.log(`someMethod = ${val}`);
+                    console.log(`someMethod = ${JSON.stringify(val)}`);
                 }
             },
             created() {
