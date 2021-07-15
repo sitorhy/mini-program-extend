@@ -113,8 +113,8 @@ export default {
                 }
             },
             methods: {
-                handler1: function (val, oldVal) { /* ... */
-                    console.log(`e handler1 = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
+                handle1: function (val, oldVal) { /* ... */
+                    console.log(`e handle1 = ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
                 },
                 someMethod(val) {
                     console.log(`someMethod = ${JSON.stringify(val)}`);

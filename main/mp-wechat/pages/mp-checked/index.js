@@ -29,6 +29,9 @@ Page(new MPExtender().extends(
         observers: {
             'foods.**': function (val) {
                 console.log(`observer of foods ${JSON.stringify(val)}`);
+            },
+            a: function (val) {
+                console.log(`observer of a ${JSON.stringify(val)}`);
             }
         },
 
@@ -133,12 +136,22 @@ Page(new MPExtender().extends(
         someMethod: function () {
             console.log('Page Method Called');
 
-            //  setData 兼容性
+            //  setData 兼容性 , 不触发 a 监听器
             this.setData({
                 'a.b.c': 114514
-            }, () => {
-                console.log(this.data.a.b.c);
             });
+
+            // 触发 a 监听器
+            /*
+            this.setData({
+                a: {
+                    b: {
+                        c: 1919
+                    }
+                }
+            });
+            */
+
 
             this.setData({
                 'foods[1]': 'banana'
