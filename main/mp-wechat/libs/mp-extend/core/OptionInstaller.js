@@ -52,11 +52,20 @@ export default class OptionInstaller extends BehaviorInstaller {
 
     }
 
-    beforeUpdate() {
+    /**
+     * Installer 内部使用，作为保留字已被排除出 Options
+     * 响应 setData 执行前的行为
+     * @param data setData 提交数据
+     */
+    beforeUpdate(data) {
 
     }
 
-    updated() {
+    /**
+     * Installer 内部使用，作为保留字已被排除出 Options
+     * @param data
+     */
+    updated(data) {
 
     }
 
