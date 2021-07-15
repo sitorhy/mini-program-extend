@@ -9,11 +9,13 @@ import ComputedInstaller from "./ComputedInstaller";
 import MixinInstaller from "./MixinInstaller";
 import LifeCycleInstaller from "./LifeCycleInstaller";
 import InstanceInstaller from "./InstanceInstaller";
+import UpdateInstaller from "./UpdateInstaller";
 
 import {Singleton} from "../libs/Singleton";
-import {isFunction, isPlainObject, isPrimitive} from "../utils/common";
+import {isFunction, isPlainObject} from "../utils/common";
+import {createReactiveObject} from "../utils/object";
+
 import equal from "../libs/fast-deep-equal/index";
-import {UpdateInstaller} from "./UpdateInstaller";
 
 class InstallersSingleton extends Singleton {
     /**
@@ -35,131 +37,6 @@ class InstallersSingleton extends Singleton {
             }
         }
     }
-}
-
-function selectPathRoot(path) {
-    const v = /^[\w]+/.exec(path);
-    if (v) {
-        return v[0];
-    }
-    const d = /^\[(\d+)\]+/.exec(path);
-    if (d) {
-        return d[1];
-    }
-    const i = /^\.(\d+)/.exec(path);
-    if (i) {
-        return i[1];
-    }
-    return null;
-}
-
-function shallowCopyObject(obj, path, value) {
-    if (!obj || isPrimitive(obj)) {
-        return obj;
-    }
-
-    const copy = {};
-
-    if (path) {
-        let pathRight = path;
-        let copyPosition = copy;
-        let objPosition = obj;
-
-        while (pathRight && objPosition && !isPrimitive(objPosition)) {
-            const root = selectPathRoot(pathRight);
-            const tryNum = Number.parseInt(root);
-
-            if (Number.isSafeInteger(tryNum)) {
-                if (pathRight[0] === '.') {
-                    pathRight = pathRight.substring(root.length + 1).replace(/^\./, '');
-                } else {
-                    pathRight = pathRight.substring(root.length + 2).replace(/^\./, '');
-                }
-            } else {
-                pathRight = pathRight.substring(root.length).replace(/^\./, '');
-            }
-
-            const prop = Reflect.get(objPosition, root);
-            Reflect.set(copyPosition, root, !pathRight ? value : (Array.isArray(prop) ?
-                [...prop] : (
-                    !prop || isPrimitive(prop) ? prop : {...prop}
-                ))
-            );
-
-            objPosition = Reflect.get(objPosition, root);
-            copyPosition = Reflect.get(copyPosition, root);
-        }
-    }
-
-    return copy;
-}
-
-function createEffectObject(root, target, onChanged = "", path = "") {
-    return new Proxy(
-        target,
-        {
-            get(target, p, receiver) {
-                const value = Reflect.get(target, p, receiver);
-                if (isPrimitive(value) || !value || (typeof p === "symbol")) {
-                    // 不可枚举的值，直接返回
-                    return value;
-                } else if (isFunction(value)) {
-                    if (value === target.constructor) {
-                        return value;
-                    } else {
-                        if (Array.isArray(target)) {
-                            // 数组 splice / push 执行后会自动 触发 set
-                            // 例如 data = {a:[1,2,3]} a.push(4) , 会触发 data.a = [1,2,3,4]
-                            return value;
-                        } else {
-                            return new Proxy(value, {
-                                apply(func, thisArg, argumentsList) {
-                                    const result = Reflect.apply(func, thisArg, argumentsList);
-                                    if (isFunction(onChanged)) {
-                                        onChanged(path, target);
-                                    }
-                                    return result;
-                                }
-                            });
-                        }
-                    }
-                } else {
-                    if (Number.isSafeInteger(Number.parseInt(p))) {
-                        return createEffectObject(root, value, onChanged, `${path}[${p}]`);
-                    } else {
-                        return createEffectObject(root, value, onChanged, `${path ? path + '.' : ''}${p}`);
-                    }
-                }
-            },
-            set(target, p, value, receiver) {
-                if (typeof p === "symbol") {
-                    return Reflect.set(target, p, value, receiver);
-                } else {
-                    if (Number.isSafeInteger(Number.parseInt(p))) {
-                        if (isFunction(onChanged)) {
-                            onChanged(`${path}[${p}]`, value);
-                        }
-                    } else {
-                        if (Array.isArray(target) && p === 'length') {
-                            Reflect.set(target, p, value, receiver);
-                        } else {
-                            onChanged(`${path ? path + '.' : ''}${p}`, value);
-                        }
-                    }
-                    return true;
-                }
-            },
-            deleteProperty(target, p) {
-                if (Reflect.deleteProperty(target, p)) {
-                    if (isFunction(onChanged)) {
-                        onChanged(`${path}`, target);
-                    }
-                    return true;
-                }
-                return false;
-            }
-        }
-    );
 }
 
 export default class MPExtender {
@@ -203,12 +80,11 @@ export default class MPExtender {
         const setters = isPlainObject(computed) ? Object.keys(computed).filter(i => isPlainObject(computed[i]) && isFunction(computed[i].set)) : [];
         let runtimeContext;
 
-        const runtimeDataContext = createEffectObject(context.data, context.data, function (path, value) {
-            const followState = shallowCopyObject(context.data, path, value);
+        const runtimeDataContext = createReactiveObject(context.data, context.data, function (path, value) {
             if (isFunction(fnSetData)) {
-                fnSetData(followState);
+                fnSetData({[path]: value});
             } else {
-                Reflect.get(runtimeContext, 'setData').call(runtimeContext, followState);
+                Reflect.get(runtimeContext, 'setData').call(runtimeContext, {[path]: value});
             }
             if (setters.includes(path)) {
                 computed[path].set.call(runtimeContext, value);

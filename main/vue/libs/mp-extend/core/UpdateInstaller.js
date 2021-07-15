@@ -3,7 +3,7 @@ import {isFunction} from "../utils/common";
 
 const SetDataSign = Symbol("__wxSetData__");
 
-export class UpdateInstaller extends OptionInstaller {
+export default class UpdateInstaller extends OptionInstaller {
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
         const beforeUpdate = context.get('beforeUpdate');
         const updated = context.get('updated');

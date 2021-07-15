@@ -52,7 +52,7 @@ export default class OptionInstaller extends BehaviorInstaller {
 
     }
 
-    beforeUpdate(state) {
+    beforeUpdate() {
 
     }
 
