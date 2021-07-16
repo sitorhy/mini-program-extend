@@ -30,7 +30,7 @@ Page(new MPExtender().extends(
             'foods.**': function (val) {
                 console.log(`observer of foods ${JSON.stringify(val)}`);
             },
-            a: function (val) {
+            'a': function (val) {
                 console.log(`observer of a ${JSON.stringify(val)}`);
             }
         },
@@ -138,7 +138,7 @@ Page(new MPExtender().extends(
 
             //  setData 兼容性 , 不触发 a 监听器
             this.setData({
-                'a.b.c': 114514
+                'a.b.c': 1919
             });
 
             // 触发 a 监听器

@@ -21,9 +21,9 @@ export default class UpdateInstaller extends OptionInstaller {
                             configurable: false
                         });
                         this.setData = function (data, callback) {
-                            beforeUpdate.call(this, data);
+                            beforeUpdate(this, data);
                             return originalSetData.call(this, data, function () {
-                                updated.call(this, data);
+                                updated(this, data);
                                 if (isFunction(callback)) {
                                     callback.call(this);
                                 }
@@ -40,13 +40,13 @@ export default class UpdateInstaller extends OptionInstaller {
     }
 
     install(extender, context, options) {
-        const beforeUpdateChain = extender.installers.map(i => i.beforeUpdate).filter(i => !!i);
-        const updatedChain = extender.installers.map(i => i.updated).filter(i => !!i);
-        context.set('beforeUpdate', function (data) {
-            beforeUpdateChain.forEach(i => i.call(this, data));
+        const beforeUpdateChain = extender.installers.map(i => i.beforeUpdate.bind(i)).filter(i => !!i);
+        const updatedChain = extender.installers.map(i => i.updated.bind(i)).filter(i => !!i);
+        context.set('beforeUpdate', function (context, data) {
+            beforeUpdateChain.forEach(i => i(context, data));
         });
         context.set('updated', function (data) {
-            updatedChain.forEach(i => i.call(this, data));
+            updatedChain.forEach(i => i(context, data));
         });
     }
 }

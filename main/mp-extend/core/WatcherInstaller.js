@@ -3,6 +3,7 @@ import {isFunction, isPlainObject, isPrimitive, isString} from "../utils/common"
 import {Collectors, Stream} from "../libs/Stream";
 import equal from "../libs/fast-deep-equal/index";
 import {Invocation} from "../libs/Invocation";
+import {traceObject} from "../utils/object";
 
 const StaticWatchSign = Symbol('__wxSWatch__');
 const DynamicWatchSign = Symbol('__wxDWatch__');
@@ -148,6 +149,25 @@ export default class WatcherInstaller extends OptionInstaller {
         return rule.replace(/\.(\d+)/g, function () {
             return `[${arguments[1]}]`;
         });
+    }
+
+    /**
+     * { 'a.b':{c:100}, a:{b:{c:999}} }
+     *
+     * 数据是否谁触发深层比对路径
+     * @param data - { 'a.b':{ c:100 }  } path = 'a.b.c' 时 小程序不会触发 a 侦听器，但会触发 a.** 侦听器
+     * @param path - Vue 格式，任何 watch 配置的相关的侦听器都是为了兼容Vue格式存在
+     * @param cur
+     */
+    matchDeepWatcherPath(data, path, cur = "") {
+        const keys = Object.keys(data);
+        for (const k of keys) {
+            const full = `${cur ? cur + '.' : ''}${k}`;
+            if (full.startsWith(path) || path.startsWith(k)) {
+
+            }
+        }
+        return false;
     }
 
     getStaticWatcher(thisArg, path) {
@@ -346,6 +366,20 @@ export default class WatcherInstaller extends OptionInstaller {
         };
 
         defFields.behaviors = [Behavior(behavior)].concat((defFields.behaviors || []));
+    }
+
+    beforeUpdate(runtimeContext, data) {
+        const staticDeepWatchers = Reflect.get(runtimeContext, StaticWatchSign);
+        for (const [, watcher] of staticDeepWatchers) {
+            if (watcher.deep) {
+                const depth = this.matchDeepWatcherPath(data, watcher.path);
+                if (depth) {
+                    console.log(`depth = ${depth}`);
+                    // const trace = traceObject(runtimeContext.data, watcher.path, true, false);
+                    //   watcher.oldValue = this.selectData(trace, watcher.path);
+                }
+            }
+        }
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {

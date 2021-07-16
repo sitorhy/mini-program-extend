@@ -48,7 +48,7 @@ function splitPath(path) {
  * @param value 目标值
  * @returns {{}|*}
  */
-export function shallowCopyObject(obj, path, deep, override, value) {
+export function traceObject(obj, path, deep, override, value) {
     if (!obj || isPrimitive(obj)) {
         return obj;
     }
