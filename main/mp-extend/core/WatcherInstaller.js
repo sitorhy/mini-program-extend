@@ -152,7 +152,7 @@ export default class WatcherInstaller extends OptionInstaller {
     }
 
     /**
-     * { 'a.b':{c:100}, a:{b:{c:999}} }
+     * g.h.i : g deep / g.h deep
      *
      * 数据是否谁触发深层比对路径
      * @param data - { 'a.b':{ c:100 }  } path = 'a.b.c' 时 小程序不会触发 a 侦听器，但会触发 a.** 侦听器
@@ -160,14 +160,29 @@ export default class WatcherInstaller extends OptionInstaller {
      * @param cur
      */
     matchDeepWatcherPath(data, path, cur = "") {
+        if (!path) {
+            return data;
+        }
         const keys = Object.keys(data);
+        let match = null;
         for (const k of keys) {
             const full = `${cur ? cur + '.' : ''}${k}`;
-            if (full.startsWith(path) || path.startsWith(k)) {
-
+            if (full.startsWith(path) || path.startsWith(full)) {
+                const prop = data[k];
+                if (!prop || isPrimitive(prop)) {
+                    if (!match) { // 同层级选择其中一条路径
+                        match = full;
+                    }
+                } else {
+                    // 检查是否存在下一级
+                    const nextMatch = this.matchDeepWatcherPath(prop, path, full);
+                    if (nextMatch) {
+                        match = nextMatch;
+                    }
+                }
             }
         }
-        return false;
+        return match;
     }
 
     getStaticWatcher(thisArg, path) {
@@ -258,54 +273,54 @@ export default class WatcherInstaller extends OptionInstaller {
         const watch = context.get('watch');
         const observers = context.get('observers');
 
-        const staticWatchers = new Map();
-
-        Object.entries(watch).forEach(([path, watchers]) => {
-            const observerPath = this.transformToObserverField(path);
-
-            const deepWatchers = watchers.filter(w => w.deep === true);
-            const shallowWatchers = watchers.filter(w => w.deep !== true);
-
-            if (deepWatchers.length) {
-                staticWatchers.set(`${observerPath}.**`, new CompatibleWatcher(
-                    path,
-                    function (newValue, oldValue) {
-                        if (!equal(newValue, oldValue)) {
-                            deepWatchers.forEach(w => {
-                                w.handler.call(this, newValue, oldValue);
-                            });
-                        }
-                    },
-                    function (newValue, oldValue) {
-                        deepWatchers.forEach(w => {
-                            if (w.immediate === true) {
-                                w.handler.call(this, newValue, oldValue);
-                            }
-                        });
-                    }, true, true, undefined));
-            }
-
-            if (shallowWatchers.length) {
-                staticWatchers.set(observerPath, new CompatibleWatcher(
-                    path,
-                    function (newValue, oldValue) {
-                        if (!equal(newValue, oldValue)) {
-                            shallowWatchers.forEach(w => {
-                                w.handler.call(this, newValue, oldValue);
-                            });
-                        }
-                    },
-                    function (newValue, oldValue) {
-                        shallowWatchers.forEach(w => {
-                            if (w.immediate === true) {
-                                w.handler.call(this, newValue, oldValue);
-                            }
-                        });
-                    }, true, false, undefined));
-            }
-        });
-
         const createStaticWatchers = () => {
+            const staticWatchers = new Map();
+
+            Object.entries(watch).forEach(([path, watchers]) => {
+                const observerPath = this.transformToObserverField(path);
+
+                const deepWatchers = watchers.filter(w => w.deep === true);
+                const shallowWatchers = watchers.filter(w => w.deep !== true);
+
+                if (deepWatchers.length) {
+                    staticWatchers.set(`${observerPath}.**`, new CompatibleWatcher(
+                        path,
+                        function (newValue, oldValue) {
+                            if (!equal(newValue, oldValue)) {
+                                deepWatchers.forEach(w => {
+                                    w.handler.call(this, newValue, oldValue);
+                                });
+                            }
+                        },
+                        function (newValue, oldValue) {
+                            deepWatchers.forEach(w => {
+                                if (w.immediate === true) {
+                                    w.handler.call(this, newValue, oldValue);
+                                }
+                            });
+                        }, true, true, undefined));
+                }
+
+                if (shallowWatchers.length) {
+                    staticWatchers.set(observerPath, new CompatibleWatcher(
+                        path,
+                        function (newValue, oldValue) {
+                            if (!equal(newValue, oldValue)) {
+                                shallowWatchers.forEach(w => {
+                                    w.handler.call(this, newValue, oldValue);
+                                });
+                            }
+                        },
+                        function (newValue, oldValue) {
+                            shallowWatchers.forEach(w => {
+                                if (w.immediate === true) {
+                                    w.handler.call(this, newValue, oldValue);
+                                }
+                            });
+                        }, true, false, undefined));
+                }
+            });
+
             return staticWatchers;
         };
 
@@ -320,10 +335,12 @@ export default class WatcherInstaller extends OptionInstaller {
         const behavior = {
             lifetimes: {
                 created() {
+                    const staticWatchers = createStaticWatchers();
+
                     Object.defineProperty(this, StaticWatchSign, {
                         configurable: false,
                         enumerable: false,
-                        value: createStaticWatchers(),
+                        value: staticWatchers,
                         writable: false
                     });
 
@@ -343,13 +360,33 @@ export default class WatcherInstaller extends OptionInstaller {
                             watcher.once(this, [curValue]);
                         }
                     }
+                },
+                detached() {
+                    Reflect.deleteProperty(this, StaticWatchSign);
+                    Reflect.deleteProperty(this, DynamicWatchSign);
                 }
             },
             observers: Stream.of(
                 [...new Set(
                     [
                         ...Object.keys(observers),
-                        ...staticWatchers.keys()
+                        ...Stream.of(Object.entries(watch)).flatMap(([path, watchers]) => {
+                            const deepWatchers = watchers.filter(w => w.deep === true);
+                            const shallowWatchers = watchers.filter(w => w.deep !== true);
+                            const observerPath = this.transformToObserverField(path);
+
+                            const paths = [];
+
+                            if (deepWatchers.length) {
+                                paths.push(`${observerPath}.**`);
+                            }
+
+                            if (shallowWatchers.length) {
+                                paths.push(`${observerPath}`);
+                            }
+
+                            return paths;
+                        })
                     ]
                 )].map((observerPath) => {
                     return [
@@ -368,18 +405,25 @@ export default class WatcherInstaller extends OptionInstaller {
         defFields.behaviors = [Behavior(behavior)].concat((defFields.behaviors || []));
     }
 
-    beforeUpdate(runtimeContext, data) {
-        const staticDeepWatchers = Reflect.get(runtimeContext, StaticWatchSign);
-        for (const [, watcher] of staticDeepWatchers) {
+    updateDeepWatcherRef(runtimeContext, watchers, data) {
+        for (const [, watcher] of watchers) {
             if (watcher.deep) {
-                const depth = this.matchDeepWatcherPath(data, watcher.path);
-                if (depth) {
-                    console.log(`depth = ${depth}`);
-                    // const trace = traceObject(runtimeContext.data, watcher.path, true, false);
-                    //   watcher.oldValue = this.selectData(trace, watcher.path);
+                if (watcher.path) { // 是否函数式侦听器，函数式侦听器由 '**' 侦听器负责
+                    const depth = this.matchDeepWatcherPath(data, watcher.path);
+                    if (depth) {
+                        const trace = traceObject(runtimeContext.data, depth, true, false);
+                        watcher.oldValue = this.selectData(trace, watcher.path);
+                    }
                 }
             }
         }
+    }
+
+    beforeUpdate(runtimeContext, data) {
+        const staticWatchers = Reflect.get(runtimeContext, StaticWatchSign);
+        this.updateDeepWatcherRef(runtimeContext, staticWatchers, data);
+        const dynamicWatchers = Reflect.get(runtimeContext, DynamicWatchSign);
+        this.updateDeepWatcherRef(runtimeContext, dynamicWatchers, data);
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {

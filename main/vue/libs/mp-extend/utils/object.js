@@ -1,5 +1,10 @@
 import {isFunction, isPrimitive} from "./common";
 
+/**
+ * 解析路径根对象名称
+ * @param path
+ * @returns {string|null}
+ */
 function selectPathRoot(path) {
     const v = /^[\w]+/.exec(path);
     if (v) {
@@ -16,6 +21,11 @@ function selectPathRoot(path) {
     return null;
 }
 
+/**
+ * 分解路径
+ * @param path
+ * @returns {*[]}
+ */
 function splitPath(path) {
     const paths = [];
 
@@ -40,15 +50,16 @@ function splitPath(path) {
 }
 
 /**
- * 沿路径拷贝对象
+ * 沿路径复制对象
+ *
  * @param obj 根对象
  * @param path 路径 , 支持 a.b.c[0] 或 a.b.c.0
- * @param deep 是否深拷贝
+ * @param clone 是否重新创建对象引用
  * @param override 是否覆盖目标值
  * @param value 目标值
  * @returns {{}|*}
  */
-export function traceObject(obj, path, deep, override, value) {
+export function traceObject(obj, path, clone, override, value) {
     if (!obj || isPrimitive(obj)) {
         return obj;
     }
@@ -59,7 +70,7 @@ export function traceObject(obj, path, deep, override, value) {
     for (let i = 0; i < paths.length; ++i) {
         const p = paths[i];
         objPointer = Reflect.get(objPointer, p);
-        const pointer = deep ? (!objPointer || isPrimitive(objPointer) ? objPointer : (
+        const pointer = clone ? (!objPointer || isPrimitive(objPointer) ? objPointer : (
             Array.isArray(objPointer) ? [...objPointer] : {...objPointer}
         )) : objPointer;
         Reflect.set(copyPointer, p, i === paths.length - 1 ? (override ? value : pointer) : pointer);
@@ -73,6 +84,7 @@ export function traceObject(obj, path, deep, override, value) {
 
 /**
  * 创建反应式对象
+ *
  * @param root 根对象
  * @param target 目标对象
  * @param onChanged 拦截对象修改行为，只读可以不实现
