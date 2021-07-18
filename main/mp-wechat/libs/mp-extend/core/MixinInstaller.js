@@ -113,9 +113,13 @@ export default class MixinInstaller extends OptionInstaller {
     }
 
     install(extender, context, options) {
-        const {mixins} = options;
+        let {mixins, 'extends': __extends__} = options;
+        if (__extends__) {
+            mixins = (mixins || []).unshift(__extends__);
+        }
 
         delete options['mixins'];
+        delete options['extends'];
 
         if (Array.isArray(mixins)) {
             mixins.forEach(mixin => {

@@ -1,4 +1,4 @@
-import MPExtender from "../../libs/mp-extend/core/MPExtender";
 import Watch from "../../libs/test-units/watch";
+import {PageEx} from "../../libs/mp-extend/extend";
 
-Page(new MPExtender().extends(Watch));
+export default PageEx(Watch);
