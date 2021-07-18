@@ -6,6 +6,8 @@ import equal from "../libs/fast-deep-equal/index";
 
 const RTCSign = Symbol('__wxRTC__');
 const CMPCSign = Symbol('__wxCMPC__');
+const CMPCSetterSign = Symbol("__wxCMPC_SETTER__");
+const CMPCGetterSign = Symbol("__wxCMPC_GETTER__");
 
 class ComputedSourceSingleton extends Singleton {
     _source = undefined;
@@ -109,19 +111,62 @@ export default class ComputedInstaller extends OptionInstaller {
         }).filter(i => !!i).collect(Collectors.toMap());
     }
 
+    beforeUpdate(extender, context, options, instance, data) {
+        const computed = context.get('computed');
+        const setters = Reflect.get(instance, CMPCSetterSign);
+        const getters = Reflect.get(instance, CMPCGetterSign);
+
+        const setterIncludes = Object.keys(data).filter(i => setters.includes(i));
+
+        const originalSetData = instance.setData;
+
+        // setData数据是否包含计算属性，调用对应的setter触发器
+        if (setterIncludes.length) {
+            setterIncludes.forEach((i) => {
+                (computed[i].set).call(
+                    this.getRuntimeContext(instance, context, originalSetData.bind(instance)),
+                    data[i]
+                );
+            });
+        }
+
+        // 刷新计算属性的值
+        const nextCalculated = {};
+        getters.forEach((p) => {
+            const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
+            // 获取当前值
+            const curVal = Reflect.get(this.getRuntimeContext(instance, context, originalSetData.bind(instance)), p);
+
+            // 计算下一个值
+            const pValue = getter.call(
+                this.getComputedContext(
+                    instance,
+                    context,
+                    originalSetData.bind(instance),
+                    data
+                )
+            );
+
+            // 深度比较，必须，否则会死循环
+            if (!equal(curVal, pValue)) {
+                nextCalculated[p] = pValue;
+            }
+        });
+
+        // 合并新的计算属性值到data中
+        Object.assign(data, nextCalculated);
+    }
+
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
         const state = context.get('state');
         const computed = context.get('computed');
 
+        const setters = Object.keys(computed).filter(i => isPlainObject(computed[i]) && isFunction(computed[i].set));
+        const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
+
         // 检查是否安装StateInstaller
         if (isPlainObject(state)) {
             const calculated = this.attemptToInstantiateCalculated(extender, context, options, defFields, definitionFilterArr);
-            const setters = Object.keys(computed).filter(i => isPlainObject(computed[i]) && isFunction(computed[i].set));
-            const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
-
-            const getContext = (thisArg, fnSetData) => {
-                return this.getRuntimeContext(thisArg, context, fnSetData);
-            };
 
             const createContext = () => {
                 return extender.createRuntimeContextSingleton();
@@ -131,16 +176,24 @@ export default class ComputedInstaller extends OptionInstaller {
                 this.releaseRuntimeContext(thisArg);
             };
 
-            const getCMPC = (thisArg, fnSetData, source) => {
-                return this.getComputedContext(thisArg, context, fnSetData, source);
-            };
-
-            const createCMPC = () => {
+            const createCMPC = (thisArg) => {
+                Object.defineProperty(thisArg, CMPCGetterSign, {
+                    value: getters,
+                    enumerable: false,
+                    configurable: false
+                });
+                Object.defineProperty(thisArg, CMPCSetterSign, {
+                    value: setters,
+                    enumerable: false,
+                    configurable: false
+                });
                 return new ComputedSourceSingleton();
             };
 
             const releaseCMPC = (thisArg) => {
                 this.releaseComputedContext(thisArg);
+                Reflect.deleteProperty(thisArg, CMPCGetterSign);
+                Reflect.deleteProperty(thisArg, CMPCSetterSign);
             };
 
             defFields.behaviors = [
@@ -157,44 +210,9 @@ export default class ComputedInstaller extends OptionInstaller {
                             Object.defineProperty(this, CMPCSign, {
                                 configurable: false,
                                 enumerable: false,
-                                value: createCMPC(),
+                                value: createCMPC(this),
                                 writable: false
                             });
-
-                            const originalSetData = this.setData;
-                            // 当已setData形式触发计算属性时
-                            this.setData = function (data, callback) {
-                                const setterIncludes = Object.keys(data).filter(i => setters.includes(i));
-
-                                // setData数据是否包含计算属性，调用对应的setter触发器
-                                if (setterIncludes.length) {
-                                    setterIncludes.forEach((i) => {
-                                        (computed[i].set).call(getContext(this, originalSetData.bind(this)), data[i]);
-                                    });
-                                }
-
-                                // 刷新计算属性的值
-                                const nextCalculated = {};
-                                getters.forEach((p) => {
-                                    const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
-                                    // 获取当前值
-                                    const curVal = Reflect.get(getContext(this, originalSetData.bind(this)), p);
-                                    // 计算下一个值
-                                    const pValue = getter.call(getCMPC(this, originalSetData.bind(this), data));
-                                    // 深度比较，必须，否则会死循环
-                                    if (!equal(curVal, pValue)) {
-                                        nextCalculated[p] = pValue;
-                                    }
-                                });
-
-                                // 合并新的计算属性值到data中
-                                Object.assign(data, nextCalculated);
-                                originalSetData.call(this, data, function () {
-                                    if (isFunction(callback)) {
-                                        callback.call(getContext(this, originalSetData.bind(this)));
-                                    }
-                                });
-                            };
                         }
                     }
                 })

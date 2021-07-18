@@ -419,11 +419,11 @@ export default class WatcherInstaller extends OptionInstaller {
         }
     }
 
-    beforeUpdate(runtimeContext, data) {
-        const staticWatchers = Reflect.get(runtimeContext, StaticWatchSign);
-        this.updateDeepWatcherRef(runtimeContext, staticWatchers, data);
-        const dynamicWatchers = Reflect.get(runtimeContext, DynamicWatchSign);
-        this.updateDeepWatcherRef(runtimeContext, dynamicWatchers, data);
+    beforeUpdate(extender, context, options, instance, data) {
+        const staticWatchers = Reflect.get(instance, StaticWatchSign);
+        this.updateDeepWatcherRef(instance, staticWatchers, data);
+        const dynamicWatchers = Reflect.get(instance, DynamicWatchSign);
+        this.updateDeepWatcherRef(instance, dynamicWatchers, data);
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {

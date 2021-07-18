@@ -54,19 +54,25 @@ export default class OptionInstaller extends BehaviorInstaller {
     /**
      * Installer 内部使用，作为保留字已被排除出 Options
      * 响应 setData 执行前的行为
+     * @param extender
+     * @param context
+     * @param options
      * @param runtimeContext 运行时上下文，Page / Component实例
      * @param data setData 提交数据
      */
-    beforeUpdate(runtimeContext, data) {
+    beforeUpdate(extender, context, options, runtimeContext, data) {
 
     }
 
     /**
      * Installer 内部使用，作为保留字已被排除出 Options
+     * @param extender
+     * @param context
+     * @param options
      * @param runtimeContext 运行时上下文，Page / Component实例
      * @param data 提交数据，已修改的状态自行从 this.data 获取
      */
-    updated(runtimeContext, data) {
+    updated(extender, context, options, runtimeContext, data) {
 
     }
 
