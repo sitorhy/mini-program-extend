@@ -1,4 +1,4 @@
-import {isFunction} from '../utils/common';
+import {isFunction} from "../utils/common";
 
 function applyFunctions(functions, args) {
     functions.forEach((func) => {

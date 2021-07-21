@@ -4,8 +4,8 @@ import {Collectors, Stream} from "../libs/Stream";
 import {Singleton} from "../libs/Singleton";
 import equal from "../libs/fast-deep-equal/index";
 
-const RTCSign = Symbol('__wxRTC__');
-const CMPCSign = Symbol('__wxCMPC__');
+const RTCSign = Symbol("__wxRTC__");
+const CMPCSign = Symbol("__wxCMPC__");
 const CMPCSetterSign = Symbol("__wxCMPC_SETTER__");
 const CMPCGetterSign = Symbol("__wxCMPC_GETTER__");
 
@@ -49,7 +49,7 @@ class ComputedSourceSingleton extends Singleton {
 export default class ComputedInstaller extends OptionInstaller {
     getRuntimeContext(thisArg, context, fnSetData) {
         if (Reflect.has(thisArg, RTCSign)) {
-            return Reflect.get(thisArg, RTCSign).get(thisArg, context.get('properties'), context.get('computed'), fnSetData);
+            return Reflect.get(thisArg, RTCSign).get(thisArg, context.get("properties"), context.get("computed"), fnSetData);
         }
         return thisArg;
     }
@@ -73,9 +73,9 @@ export default class ComputedInstaller extends OptionInstaller {
     }
 
     attemptToInstantiateCalculated(extender, context, options, defFields, definitionFilterArr) {
-        const computed = context.get('computed');
-        const methods = context.get('methods');
-        const state = Object.assign({}, context.get('state')); // 复制结果集，避免修改原值
+        const computed = context.get("computed");
+        const methods = context.get("methods");
+        const state = Object.assign({}, context.get("state")); // 复制结果集，避免修改原值
 
         const computedContext = new Proxy(
             {},
@@ -112,7 +112,7 @@ export default class ComputedInstaller extends OptionInstaller {
     }
 
     beforeUpdate(extender, context, options, instance, data) {
-        const computed = context.get('computed');
+        const computed = context.get("computed");
         const setters = Reflect.get(instance, CMPCSetterSign);
         const getters = Reflect.get(instance, CMPCGetterSign);
 
@@ -158,8 +158,8 @@ export default class ComputedInstaller extends OptionInstaller {
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
-        const state = context.get('state');
-        const computed = context.get('computed');
+        const state = context.get("state");
+        const computed = context.get("computed");
 
         const setters = Object.keys(computed).filter(i => isPlainObject(computed[i]) && isFunction(computed[i].set));
         const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
@@ -232,7 +232,7 @@ export default class ComputedInstaller extends OptionInstaller {
 
     install(extender, context, options) {
         const {computed = null} = options;
-        context.set('computed', Object.assign.apply(
+        context.set("computed", Object.assign.apply(
             undefined,
             [
                 {},

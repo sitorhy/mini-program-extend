@@ -1,4 +1,4 @@
-import {isNull, isFunction} from '../utils/common';
+import {isNull, isFunction} from "../utils/common";
 
 export class Optional {
     constructor(value, options) {
@@ -18,7 +18,7 @@ export class Optional {
 
     get() {
         if (this.isNull(this._value)) {
-            throw new Error('optional is empty');
+            throw new Error("optional is empty");
         }
         return this._value;
     }
@@ -30,7 +30,7 @@ export class Optional {
     ifPresent(consumer) {
         if (!this.isNull(this._value)) {
             if (!isFunction(consumer)) {
-                throw new Error('consumer is not a function');
+                throw new Error("consumer is not a function");
             }
             consumer(this._value);
         }
@@ -38,7 +38,7 @@ export class Optional {
 
     filter(predicate) {
         if (!isFunction(predicate)) {
-            throw new Error('predicate is not a function');
+            throw new Error("predicate is not a function");
         }
         if (!this.isNull(this._value) && predicate(this._value)) {
             return Optional.of(this._value, this.o);
@@ -48,7 +48,7 @@ export class Optional {
 
     map(mapper) {
         if (!isFunction(mapper)) {
-            throw new Error('mapper is not a function');
+            throw new Error("mapper is not a function");
         }
         if (this.isNull(this._value)) {
             return Optional.of(undefined, this.o);
@@ -59,7 +59,7 @@ export class Optional {
 
     peek(peeker) {
         if (!isFunction(peeker)) {
-            throw new Error('peeker is not a function');
+            throw new Error("peeker is not a function");
         }
 
         if (this.isNull(this._value)) {
@@ -77,7 +77,7 @@ export class Optional {
 
     orElseGet(supplier) {
         if (!isFunction(supplier)) {
-            throw new Error('supplier is not a function');
+            throw new Error("supplier is not a function");
         }
         if (this.isNull(this._value)) {
             return supplier();
@@ -89,12 +89,12 @@ export class Optional {
     ifPresentOrElse(action, emptyAction) {
         if (!this.isNull(this._value)) {
             if (!isFunction(action)) {
-                throw new Error('action is not a function')
+                throw new Error("action is not a function")
             }
             action(this._value)
         } else {
             if (!isFunction(emptyAction)) {
-                throw new Error('emptyAction is not a function')
+                throw new Error("emptyAction is not a function")
             }
             emptyAction();
         }
@@ -103,7 +103,7 @@ export class Optional {
     or(optionalSupplier) {
         if (this.isNull(this._value)) {
             if (!isFunction(optionalSupplier)) {
-                throw new Error('optionalSupplier is not a function')
+                throw new Error("optionalSupplier is not a function")
             }
             return optionalSupplier();
         }

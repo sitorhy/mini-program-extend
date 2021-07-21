@@ -1,4 +1,4 @@
-import BehaviorInstaller from './BehaviorInstaller';
+import BehaviorInstaller from "./BehaviorInstaller";
 
 export default class OptionInstaller extends BehaviorInstaller {
     constructor() {

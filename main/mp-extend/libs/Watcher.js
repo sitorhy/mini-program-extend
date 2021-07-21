@@ -1,5 +1,5 @@
-import equal from './fast-deep-equal/index';
-import {isFunction, isString} from '../utils/common';
+import equal from "./fast-deep-equal/index";
+import {isFunction, isString} from "../utils/common";
 
 class ValueWatcher {
     name = null;
@@ -40,7 +40,7 @@ export class Watcher {
 
     constructor(subFields) {
         if (isString(subFields)) {
-            subFields.split(',').forEach(i => {
+            subFields.split(",").forEach(i => {
                 const name = i.trim();
                 return this.watchers.set(name, new ValueWatcher(name));
             });

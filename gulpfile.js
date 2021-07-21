@@ -2,16 +2,16 @@ const gulp = require("gulp");
 const fs = require("fs");
 const path = require("path");
 const uglify = require("gulp-uglify");
+const babel = require("gulp-babel");
 
 const LIB_HOME = path.join("main", "mp-extend");
 const TEST_UNITS_HOME = path.join("main", "test-units");
 
-
 function copyFile(location, targetSubDir) {
     const dir = path.dirname(location);
     const dest = [
-        `main/mp-wechat/libs/${targetSubDir}/`.replace(/\\/g, '/'),
-        `main/vue/libs/${targetSubDir}/`.replace(/\\/g, '/')
+        `main/mp-wechat/libs/${targetSubDir}/`.replace(/\\/g, "/"),
+        `main/vue/libs/${targetSubDir}/`.replace(/\\/g, "/")
     ];
     const index = dir.indexOf(targetSubDir);
     if (index >= 0) {
@@ -27,8 +27,8 @@ function copyFile(location, targetSubDir) {
 
 function deleteFile(location, targetSubDir) {
     const dest = [
-        `main/mp-wechat/libs/${targetSubDir}/`.replace(/\\/g, '/'),
-        `main/vue/libs/${targetSubDir}/`.replace(/\\/g, '/')
+        `main/mp-wechat/libs/${targetSubDir}/`.replace(/\\/g, "/"),
+        `main/vue/libs/${targetSubDir}/`.replace(/\\/g, "/")
     ];
     dest.forEach(i => {
         fs.unlink(i, function () {
@@ -46,27 +46,68 @@ gulp.task("deploy", async () => {
     }).pipe(gulp.dest(`main/mp-wechat/libs/test-units/`));
 });
 
-gulp.task("dev", gulp.series(['deploy'], async () => {
+gulp.task("dev", gulp.series(["deploy"], async () => {
     const libWatcher = gulp.watch(LIB_HOME);
     const testWatcher = gulp.watch(TEST_UNITS_HOME);
-    libWatcher.on('change', function (location, stats) {
+    libWatcher.on("change", function (location, stats) {
         copyFile(location, "mp-extend");
     });
-    testWatcher.on('change', function (location, stats) {
+    testWatcher.on("change", function (location, stats) {
         copyFile(location, "test-units");
     });
 
-    libWatcher.on('add', function (location, stats) {
+    libWatcher.on("add", function (location, stats) {
         copyFile(location, "mp-extend");
     });
-    testWatcher.on('add', function (location, stats) {
+    testWatcher.on("add", function (location, stats) {
         copyFile(location, "test-units");
     });
 
-    libWatcher.on('unlink', function (location, stats) {
+    libWatcher.on("unlink", function (location, stats) {
         deleteFile(location, "mp-extend");
     });
-    testWatcher.on('unlink', function (location, stats) {
+    testWatcher.on("unlink", function (location, stats) {
         deleteFile(location, "test-units");
     });
 }));
+
+gulp.task("build", async () => {
+    if (!fs.existsSync("dist")) {
+        fs.mkdirSync("dist");
+    }
+    const info = JSON.parse(fs.readFileSync("package.json"));
+    const {
+        name,
+        version,
+        repository,
+        author,
+        license
+    } = info;
+
+    gulp.src("main/mp-extend/**/*.js")
+        .pipe(babel({
+            presets: ["@babel/env"],
+            comments: false
+        }))
+        .pipe(uglify())
+        .pipe(gulp.dest("dist/miniprogram_dist/wechat"));
+
+    gulp.src("LICENSE")
+        .pipe(gulp.dest("dist"));
+
+    gulp.src("main/mp-extend/**/LICENSE")
+        .pipe(gulp.dest("dist/miniprogram_dist/wechat"));
+
+    gulp.src("main/mp-extend/**/*.d.ts")
+        .pipe(gulp.dest("dist/miniprogram_dist/wechat"));
+
+    fs.writeFileSync("dist/package.json", JSON.stringify({
+        name,
+        version,
+        repository,
+        author,
+        license
+    }, null, 2), {
+        flag: "w"
+    });
+});

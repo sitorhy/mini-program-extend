@@ -1,4 +1,4 @@
-import OptionInstaller from './OptionInstaller';
+import OptionInstaller from "./OptionInstaller";
 
 export default class MethodsInstaller extends OptionInstaller {
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
@@ -6,7 +6,7 @@ export default class MethodsInstaller extends OptionInstaller {
             behaviors: (defFields.behaviors || []).concat(
                 Behavior(
                     {
-                        methods: context.get('methods')
+                        methods: context.get("methods")
                     }
                 )
             )
@@ -15,7 +15,7 @@ export default class MethodsInstaller extends OptionInstaller {
 
     install(extender, context, options) {
         const {methods = null} = options;
-        context.set('methods', Object.assign.apply(
+        context.set("methods", Object.assign.apply(
             undefined,
             [
                 {},

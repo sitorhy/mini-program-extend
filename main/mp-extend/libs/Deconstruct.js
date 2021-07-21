@@ -1,4 +1,4 @@
-import {isFunction, isNullOrEmpty} from '../utils/common';
+import {isFunction, isNullOrEmpty} from "../utils/common";
 
 export function Deconstruct(target, resolvers, copy = false) {
     const keys = Object.keys(resolvers);

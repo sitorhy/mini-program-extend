@@ -1,9 +1,9 @@
-import OptionInstaller from './OptionInstaller';
+import OptionInstaller from "./OptionInstaller";
 
-import {Stream, Collectors} from '../libs/Stream';
-import {isFunction, isPlainObject} from '../utils/common';
+import {Stream, Collectors} from "../libs/Stream";
+import {isFunction, isPlainObject} from "../utils/common";
 
-const RTCSign = Symbol('__wxRTC__');
+const RTCSign = Symbol("__wxRTC__");
 
 /**
  * 兼容从this直接访问data的语法
@@ -12,7 +12,7 @@ const RTCSign = Symbol('__wxRTC__');
 export default class ContextInstaller extends OptionInstaller {
     getRuntimeContext(thisArg, context, fnSetData) {
         if (Reflect.has(thisArg, RTCSign)) {
-            return Reflect.get(thisArg, RTCSign).get(thisArg, context.get('properties'), context.get('computed'), fnSetData);
+            return Reflect.get(thisArg, RTCSign).get(thisArg, context.get("properties"), context.get("computed"), fnSetData);
         }
         return thisArg;
     }
@@ -69,9 +69,9 @@ export default class ContextInstaller extends OptionInstaller {
             return this.getRuntimeContext(thisArg, context, fnSetData);
         };
 
-        const watch = context.get('watch');
+        const watch = context.get("watch");
 
-        ['lifetimes', 'pageLifetimes', 'methods', 'observers', 'lifecycle'].forEach(prop => {
+        ["lifetimes", "pageLifetimes", "methods", "observers", "lifecycle"].forEach(prop => {
             if (context.has(prop) && isPlainObject(context.get(prop))) {
                 context.set(prop,
                     Stream.of(Object.entries(context.get(prop)))
@@ -102,7 +102,7 @@ export default class ContextInstaller extends OptionInstaller {
         }
 
         [...context.keys()]
-            .filter(prop => !['data', 'beforeCreate'].includes(prop) && isFunction(context.get(prop)))
+            .filter(prop => !["data", "beforeCreate"].includes(prop) && isFunction(context.get(prop)))
             .forEach(prop => {
                 context.set(prop, (() => {
                         const func = context.get(prop);

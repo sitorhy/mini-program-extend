@@ -13,35 +13,35 @@ export default class LifeCycleInstaller extends OptionInstaller {
         const behavior = Deconstruct({}, {
             ready: () => {
                 return function () {
-                    context.get('ready').apply(this, arguments);
+                    context.get("ready").apply(this, arguments);
                 };
             },
             lifetimes: () => {
                 return {
                     created: function () {
-                        context.get('lifetimes').created.apply(this, arguments);
+                        context.get("lifetimes").created.apply(this, arguments);
                     },
                     moved: () => {
-                        context.get('lifetimes').moved.apply(this, arguments);
+                        context.get("lifetimes").moved.apply(this, arguments);
                     },
                     attached: function () {
-                        context.get('lifetimes').attached.apply(this, arguments);
+                        context.get("lifetimes").attached.apply(this, arguments);
                     },
                     detached: function () {
-                        context.get('lifetimes').detached.apply(this, arguments);
+                        context.get("lifetimes").detached.apply(this, arguments);
                     }
                 };
             },
             pageLifetimes: () => {
                 return {
                     show: function () {
-                        context.get('pageLifetimes').show.apply(this, arguments);
+                        context.get("pageLifetimes").show.apply(this, arguments);
                     },
                     hide: function () {
-                        context.get('pageLifetimes').hide.apply(this, arguments);
+                        context.get("pageLifetimes").hide.apply(this, arguments);
                     },
                     resize: function () {
-                        context.get('pageLifetimes').resize.apply(this, arguments);
+                        context.get("pageLifetimes").resize.apply(this, arguments);
                     }
                 };
             }
@@ -57,14 +57,14 @@ export default class LifeCycleInstaller extends OptionInstaller {
             lifetimes: () => {
                 return {
                     created: function () {
-                        context.get('beforeMount').apply(this, arguments);
+                        context.get("beforeMount").apply(this, arguments);
                     },
                     attached: function () {
-                        context.get('mounted').apply(this, arguments);
+                        context.get("mounted").apply(this, arguments);
                     },
                     detached: function () {
-                        context.get('beforeDestroy').apply(this, arguments);
-                        context.get('destroyed').apply(this, arguments);
+                        context.get("beforeDestroy").apply(this, arguments);
+                        context.get("destroyed").apply(this, arguments);
                     }
                 };
             }
@@ -192,27 +192,27 @@ export default class LifeCycleInstaller extends OptionInstaller {
     installOptionsLifeCycle(extender, context, options) {
         context.set("beforeCreate", (() => {
             const {beforeCreate} = options;
-            return Invocation(context.get('beforeCreate'), null, beforeCreate);
+            return Invocation(context.get("beforeCreate"), null, beforeCreate);
         })());
 
         context.set("beforeMount", (() => {
             const {beforeMount} = options;
-            return Invocation(context.get('beforeMount'), null, beforeMount);
+            return Invocation(context.get("beforeMount"), null, beforeMount);
         })());
 
         context.set("mounted", (() => {
             const {mounted} = options;
-            return Invocation(context.get('mounted'), null, mounted);
+            return Invocation(context.get("mounted"), null, mounted);
         })());
 
         context.set("beforeDestroy", (() => {
             const {beforeDestroy} = options;
-            return Invocation(context.get('beforeDestroy'), null, beforeDestroy);
+            return Invocation(context.get("beforeDestroy"), null, beforeDestroy);
         })());
 
         context.set("destroyed", (() => {
             const {destroyed} = options;
-            return Invocation(context.get('destroyed'), null, destroyed);
+            return Invocation(context.get("destroyed"), null, destroyed);
         })());
     }
 
@@ -286,7 +286,7 @@ export default class LifeCycleInstaller extends OptionInstaller {
             error
         } = options;
 
-        context.set('lifecycle', removeEmpty({
+        context.set("lifecycle", removeEmpty({
                 onLoad,
                 onShow,
                 onReady,
@@ -310,7 +310,7 @@ export default class LifeCycleInstaller extends OptionInstaller {
         const {definitionFilter} = options;
         return Object.assign(
             {},
-            context.get('lifecycle'),
+            context.get("lifecycle"),
             removeEmpty({
                 definitionFilter
             })

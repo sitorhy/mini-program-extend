@@ -112,23 +112,10 @@ export default class MixinInstaller extends OptionInstaller {
         }).collect(Collectors.toMap());
     }
 
-    /**
-     *  mixins: [mixin1, mixin2] 优先级 extend > mixin1 > mixin2 >  options
-     * @param extender
-     * @param context
-     * @param options
-     */
     install(extender, context, options) {
-        if (options['extends']) {
-            if (!options['mixins']) {
-                options['mixins'] = [];
-            }
-            options['mixins'].push(options['extends']);
-            delete options['extends'];
-        }
+        const {mixins} = options;
 
-        const mixins = options['mixins'];
-        delete options['mixins'];
+        delete options["mixins"];
 
         if (Array.isArray(mixins)) {
             mixins.forEach(mixin => {

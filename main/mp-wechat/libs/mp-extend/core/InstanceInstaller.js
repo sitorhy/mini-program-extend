@@ -8,12 +8,12 @@ export default class InstanceInstaller extends OptionInstaller {
     lifetimes(extender, context, options) {
         return {
             created() {
-                if (!Object.hasOwnProperty.call(this, '$emit')) {
+                if (!Object.hasOwnProperty.call(this, "$emit")) {
                     const $emit = (event, myEventDetail, myEventOption) => {
                         return this.triggerEvent(event, myEventDetail, myEventOption);
                     };
 
-                    Object.defineProperty(this, '$emit', {
+                    Object.defineProperty(this, "$emit", {
                         configurable: false,
                         enumerable: false,
                         get() {
@@ -22,13 +22,13 @@ export default class InstanceInstaller extends OptionInstaller {
                     });
                 }
 
-                if (!Object.hasOwnProperty.call(this, '$set')) {
+                if (!Object.hasOwnProperty.call(this, "$set")) {
                     const $set = function (target, propertyName, value) {
                         Reflect.set(target, propertyName, value);
                         return value;
                     };
 
-                    Object.defineProperty(this, '$set', {
+                    Object.defineProperty(this, "$set", {
                         configurable: false,
                         enumerable: false,
                         get() {
@@ -37,12 +37,12 @@ export default class InstanceInstaller extends OptionInstaller {
                     });
                 }
 
-                if (!Object.hasOwnProperty.call(this, '$delete')) {
+                if (!Object.hasOwnProperty.call(this, "$delete")) {
                     const $delete = function (target, propertyName) {
                         Reflect.deleteProperty(target, propertyName);
                     };
 
-                    Object.defineProperty(this, '$delete', {
+                    Object.defineProperty(this, "$delete", {
                         configurable: false,
                         enumerable: false,
                         get() {
@@ -51,14 +51,14 @@ export default class InstanceInstaller extends OptionInstaller {
                     });
                 }
 
-                if (!Object.hasOwnProperty.call(this, '$nextTick')) {
+                if (!Object.hasOwnProperty.call(this, "$nextTick")) {
                     const $nextTick = function (callback) {
                         if (isFunction(callback)) {
                             wx.nextTick(callback);
                         }
                     };
 
-                    Object.defineProperty(this, '$nextTick', {
+                    Object.defineProperty(this, "$nextTick", {
                         configurable: false,
                         enumerable: false,
                         get() {
@@ -67,18 +67,18 @@ export default class InstanceInstaller extends OptionInstaller {
                     });
                 }
 
-                if (!Object.hasOwnProperty.call(this, '$root')) {
-                    Object.defineProperty(this, '$root', {
+                if (!Object.hasOwnProperty.call(this, "$root")) {
+                    Object.defineProperty(this, "$root", {
                         configurable: false,
                         enumerable: false,
                         get() {
-                            return getCurrentPages().find(p => p['__wxWebviewId__'] === this['__wxWebviewId__']);
+                            return getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
                         }
                     });
                 }
 
-                if (!Object.hasOwnProperty.call(this, '$options')) {
-                    Object.defineProperty(this, '$options', {
+                if (!Object.hasOwnProperty.call(this, "$options")) {
+                    Object.defineProperty(this, "$options", {
                         configurable: false,
                         enumerable: false,
                         get() {

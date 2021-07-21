@@ -1,8 +1,8 @@
-import OptionInstaller from './OptionInstaller';
+import OptionInstaller from "./OptionInstaller";
 
-import {Stream, Collectors} from '../libs/Stream';
-import {Invocation} from '../libs/Invocation';
-import {isPlainObject, isFunction, removeEmpty} from '../utils/common';
+import {Stream, Collectors} from "../libs/Stream";
+import {Invocation} from "../libs/Invocation";
+import {isPlainObject, isFunction, removeEmpty} from "../utils/common";
 
 /**
  * 转换属性定义为小程序格式
@@ -16,7 +16,7 @@ import {isPlainObject, isFunction, removeEmpty} from '../utils/common';
  */
 export default class PropertiesInstaller extends OptionInstaller {
     lifetimes(extender, context, options) {
-        const properties = context.get('properties');
+        const properties = context.get("properties");
         return {
             attached() {
                 Object.entries(properties).filter(([, config]) => {
@@ -47,7 +47,7 @@ export default class PropertiesInstaller extends OptionInstaller {
             } else if (constructor === String) {
                 return [name, {
                     type: String,
-                    value: ''
+                    value: ""
                 }];
             } else if (constructor === Boolean) {
                 return [name, {
@@ -80,17 +80,17 @@ export default class PropertiesInstaller extends OptionInstaller {
                             Array.isArray(constructor.optionalTypes) ? (constructor.optionalTypes) : []
                         ) : (Array.isArray(constructor.optionalTypes) ? [...constructor.optionalTypes] : null)
                     }),
-                    !Object.hasOwnProperty.call(constructor, 'value') ?
+                    !Object.hasOwnProperty.call(constructor, "value") ?
                         (
-                            Object.hasOwnProperty.call(constructor, 'default') ?
-                                (isFunction(constructor['default']) ? {'default': constructor['default']} : {value: constructor['default']}) : (
+                            Object.hasOwnProperty.call(constructor, "default") ?
+                                (isFunction(constructor["default"]) ? {"default": constructor["default"]} : {value: constructor["default"]}) : (
                                     [Number, String, Boolean, Array].includes(constructor.type) ? {
                                         value: constructor.type.call(undefined).valueOf()
                                     } : (
                                         Object === constructor.type ? {value: null} : null
                                     )
                                 )
-                        ) : (isFunction(constructor.value) ? {'default': constructor.value} : {value: constructor.value})
+                        ) : (isFunction(constructor.value) ? {"default": constructor.value} : {value: constructor.value})
                 );
                 if (isFunction(constructor.observer) || isFunction(constructor.validator) || constructor.required === true) {
                     Object.assign(config, {
@@ -101,14 +101,14 @@ export default class PropertiesInstaller extends OptionInstaller {
                             const validator = constructor.validator;
                             return function (newVal, oldVal) {
                                 if (required === true) {
-                                    if (newVal === null || newVal === undefined || newVal === '') {
+                                    if (newVal === null || newVal === undefined || newVal === "") {
                                         console.warn(`Missing required prop: "${prop}"`);
                                         return;
                                     }
                                 }
                                 if (isFunction(validator)) {
                                     if (!validator.call(this, newVal, oldVal)) {
-                                        console.warn(`${this.is}: custom validator failed for prop '${prop}'`);
+                                        console.warn(`${this.is}: custom validator failed for prop "${prop}"`);
                                     }
                                 }
                             };
@@ -127,6 +127,6 @@ export default class PropertiesInstaller extends OptionInstaller {
             }
         }).collect(Collectors.toMap());
 
-        context.set('properties', Object.assign({}, properties));
+        context.set("properties", Object.assign({}, properties));
     }
 }

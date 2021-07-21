@@ -1,4 +1,4 @@
-import {isFunction} from '../utils/common';
+import {isFunction} from "../utils/common";
 
 export function Blend(target, blender) {
     return function (...args) {

@@ -6,10 +6,14 @@
   "author": "sitorhy <sitorhy>",
   "license": "MIT",
   "scripts": {
-    "dev": "gulp dev"
+    "dev": "gulp dev",
+    "build": "gulp build"
   },
   "devDependencies": {
+    "@babel/core": "^7.14.8",
+    "@babel/preset-env": "^7.14.8",
     "gulp": "^4.0.2",
+    "gulp-babel": "^8.0.0",
     "gulp-uglify": "^3.0.2"
   }
 }

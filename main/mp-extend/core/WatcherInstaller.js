@@ -1,12 +1,12 @@
-import OptionInstaller from './OptionInstaller';
+import OptionInstaller from "./OptionInstaller";
 import {isFunction, isPlainObject, isPrimitive, isString} from "../utils/common";
 import {Collectors, Stream} from "../libs/Stream";
 import equal from "../libs/fast-deep-equal/index";
 import {Invocation} from "../libs/Invocation";
 import {traceObject} from "../utils/object";
 
-const StaticWatchSign = Symbol('__wxSWatch__');
-const DynamicWatchSign = Symbol('__wxDWatch__');
+const StaticWatchSign = Symbol("__wxSWatch__");
+const DynamicWatchSign = Symbol("__wxDWatch__");
 
 class CompatibleWatcher {
     _oldValue = [];
@@ -101,7 +101,7 @@ class CompatibleWatcher {
 
 /**
  * immediate - 拦截 mounted/attached 前置执行
- * deep - 加上 '.**' 后缀
+ * deep - 加上 ".**" 后缀
  *
  * 对于 properties 默认值 与 查询串值同时存在时，created执行后会被查询串的值覆盖：
  * properties = { a:{ value:114,observer:ob1 } } , observers:{ a:ob2 }，同时页面传入page?a=514
@@ -130,7 +130,7 @@ export default class WatcherInstaller extends OptionInstaller {
         if ((data === null || data === undefined || isPrimitive(data)) && path) {
             return undefined;
         }
-        const iDot = path.indexOf('.');
+        const iDot = path.indexOf(".");
         const prop = path.substring(0, iDot < 0 ? path.length : iDot);
         const right = path.substring(prop.length + 1);
         if (!right) {
@@ -155,7 +155,7 @@ export default class WatcherInstaller extends OptionInstaller {
      * g.h.i : g deep / g.h deep
      *
      * 数据是否谁触发深层比对路径
-     * @param data - { 'a.b':{ c:100 }  } path = 'a.b.c' 时 小程序不会触发 a 侦听器，但会触发 a.** 侦听器
+     * @param data - { "a.b":{ c:100 }  } path = "a.b.c" 时 小程序不会触发 a 侦听器，但会触发 a.** 侦听器
      * @param path - Vue 格式，任何 watch 配置的相关的侦听器都是为了兼容Vue格式存在
      * @param cur
      */
@@ -166,7 +166,7 @@ export default class WatcherInstaller extends OptionInstaller {
         const keys = Object.keys(data);
         let match = null;
         for (const k of keys) {
-            const full = `${cur ? cur + '.' : ''}${k}`;
+            const full = `${cur ? cur + "." : ""}${k}`;
             if (full.startsWith(path) || path.startsWith(full)) {
                 const prop = data[k];
                 if (!prop || isPrimitive(prop)) {
@@ -198,7 +198,7 @@ export default class WatcherInstaller extends OptionInstaller {
             return this.selectData(data, path);
         };
 
-        if (!Object.hasOwnProperty.call(thisArg, '$watch')) {
+        if (!Object.hasOwnProperty.call(thisArg, "$watch")) {
             const $watch = function (expOrFn, callback, options) {
                 if (isFunction(expOrFn)) {
                     const watcher = new CompatibleWatcher(
@@ -222,7 +222,7 @@ export default class WatcherInstaller extends OptionInstaller {
                     );
                     watcher.once(thisArg, [expOrFn.call(thisArg)]);
                     Reflect.get(thisArg, DynamicWatchSign).set(
-                        Symbol('expOrFn'),
+                        Symbol("expOrFn"),
                         watcher
                     );
                 } else if (isString(expOrFn)) {
@@ -244,7 +244,7 @@ export default class WatcherInstaller extends OptionInstaller {
                     );
                     watcher.once(thisArg, [selectRuntimeState(thisArg.data, expOrFn)]);
                     Reflect.get(thisArg, DynamicWatchSign).set(
-                        Symbol('expOrFn'),
+                        Symbol("expOrFn"),
                         watcher
                     );
                 } else {
@@ -252,7 +252,7 @@ export default class WatcherInstaller extends OptionInstaller {
                 }
             };
 
-            Object.defineProperty(thisArg, '$watch', {
+            Object.defineProperty(thisArg, "$watch", {
                 configurable: false,
                 enumerable: false,
                 get() {
@@ -270,8 +270,8 @@ export default class WatcherInstaller extends OptionInstaller {
      * @param defFields
      */
     staticWatchersDefinition(extender, context, options, defFields) {
-        const watch = context.get('watch');
-        const observers = context.get('observers');
+        const watch = context.get("watch");
+        const observers = context.get("observers");
 
         const createStaticWatchers = () => {
             const staticWatchers = new Map();
@@ -408,7 +408,7 @@ export default class WatcherInstaller extends OptionInstaller {
     updateDeepWatcherRef(runtimeContext, watchers, data) {
         for (const [, watcher] of watchers) {
             if (watcher.deep) {
-                if (watcher.path) { // 是否函数式侦听器，函数式侦听器由 '**' 侦听器负责
+                if (watcher.path) { // 是否函数式侦听器，函数式侦听器由 "**" 侦听器负责
                     const depth = this.matchDeepWatcherPath(data, watcher.path);
                     if (depth) {
                         const trace = traceObject(runtimeContext.data, depth, true, false);
@@ -427,9 +427,9 @@ export default class WatcherInstaller extends OptionInstaller {
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
-        const watch = context.get('watch');
-        const state = context.get('state');
-        const observers = context.get('observers');
+        const watch = context.get("watch");
+        const state = context.get("state");
+        const observers = context.get("observers");
 
         if (state && watch && (Object.keys(watch).length || Object.keys(observers).length)) {
             this.staticWatchersDefinition(extender, context, options, defFields);
@@ -518,7 +518,7 @@ export default class WatcherInstaller extends OptionInstaller {
         );
 
         Object.assign(observers, {
-            '**': Invocation(observers['**'], null, function () {
+            "**": Invocation(observers["**"], null, function () {
                 const watchers = getDynamicWatchers(this);
                 if (watchers.size) {
                     for (const [, watcher] of watchers) {
@@ -533,7 +533,7 @@ export default class WatcherInstaller extends OptionInstaller {
             })
         });
 
-        context.set('watch', watch);
-        context.set('observers', observers);
+        context.set("watch", watch);
+        context.set("observers", observers);
     }
 }
