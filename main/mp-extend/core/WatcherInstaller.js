@@ -412,7 +412,7 @@ export default class WatcherInstaller extends OptionInstaller {
                     const depth = this.matchDeepWatcherPath(data, watcher.path);
                     if (depth) {
                         const trace = traceObject(runtimeContext.data, depth, true, false);
-                        watcher.oldValue = this.selectData(trace, watcher.path);
+                        watcher.oldValue = [this.selectData(trace, watcher.path)];
                     }
                 }
             }
