@@ -114,17 +114,56 @@ console.log(this.num);
   🔴 使用扩展接口时，下面两种定义是等效的：
 
   ```javascript
-  PageEx({  properties: {    a: {      type: Number,      value: 100    },    b: {      type: Number,      default: 200    }  }})
+  PageEx({
+    properties: {
+      a: {
+        type: Number,
+        value: 100
+      },
+      b: {
+        type: Number,
+        default: 200
+      }
+    }
+  })
   ```
 
   ```javascript
-  PageEx({  props: {    a: {      type: Number,      default: 100    },    b: {      type: Number,      default: 200    }  }})
+  PageEx({
+    props: {
+      a: {
+        type: Number,
+        default: 100
+      },
+      b: {
+        type: Number,
+        default: 200
+      }
+    }
+  })
   ```
 
   🔴 默认值`default`支持`Function`类型：
 
   ```javascript
-  PageEx({  props: {    a: {      type: Number,      value: 100    },    b: {      type: Number,      default: 200    },    c: {      type: Number,      default() {        return this.a + this.b;      }    }  }});
+  PageEx({
+    props: {
+      a: {
+        type: Number,
+        value: 100
+      },
+      b: {
+        type: Number,
+        default: 200
+      },
+      c: {
+        type: Number,
+        default() {
+          return this.a + this.b;
+        }
+      }
+    }
+  });
   ```
 
   小程序的`properties`只对`Component`生效，框架对其扩展到了`PageEx`接口上。
@@ -133,7 +172,17 @@ console.log(this.num);
   🔴 示例，访问页面`pages/index/index?a=1919810`。
 
   ```javascript
-  PageEx({  props: {    a: {      type: Number,      value: 100    }  },  onLoad() {    console.log(this.a); // 1919810  }})
+  PageEx({
+    props: {
+      a: {
+        type: Number,
+        value: 100
+      }
+    },
+    onLoad() {
+      console.log(this.a); // 1919810
+    }
+  })
   ```
 
 
@@ -143,13 +192,19 @@ console.log(this.num);
   需要注意的是，当用于计算标签样式`style`时，返回值请务必转为`String`，`Vue.js`支持`Object`类型的样式转换，但小程序只认识字符串。
 
   🔴 示例：
-
   ```javascript
-  PageEx({  data: {    color: 'red'  },  computed: {    numStyle() {      return `color:${this.color}`; // String    }  }});
+  PageEx({
+    data: {
+      color: 'red'
+    },
+    computed: {
+      numStyle() {
+        return `color:${this.color}`; // String
+      }
+    }
+  });
   ```
-
   WXML：
-
   ```xml
   <view style="{{numStyle}}">{{num}}</view>
   ```
@@ -163,7 +218,19 @@ console.log(this.num);
   🔴 小程序只有`Component`接口定义了`methods`选项，现在扩展到了`PageEx`接口中，可以把方法定义在`methods`中。
 
   ```javascript
-  PageEx({  onLoad() {    this.print('onLoad');  },  mounted() {    this.print('mounted');  },  methods: {    print(lifecycle) {      console.log(lifecycle);    }  }});
+  PageEx({
+    onLoad() {
+      this.print('onLoad');
+    },
+    mounted() {
+      this.print('mounted');
+    },
+    methods: {
+      print(lifecycle) {
+        console.log(lifecycle);
+      }
+    }
+  });
   ```
 
 
@@ -181,14 +248,38 @@ console.log(this.num);
   监听基本类型可以加上`deep = true`，但会增加计算量，是无谓之举。
 
   ```javascript
-  PageEx({  data: {    arr: [{ num: 114 }],    arr2: [{ num: 1919 }]  },  watch: {    'arr.0': function (newVal, oldVal) {      console.log(`arr ${JSON.stringify(oldVal)} => ${JSON.stringify(newVal)}`);    },    'arr.0.num': function (newVal, oldVal) {      console.log(`arr[0].num ${JSON.stringify(oldVal)} => ${JSON.stringify(newVal)}`);    },    'arr2': {      handler: function (newVal, oldVal) {        console.log(`arr2 ${JSON.stringify(oldVal)} => ${JSON.stringify(newVal)}`);      },      deep: true    }  },  mounted() {    this.arr[0].num = 514;    this.arr2[0].num = 810;  }});
+  PageEx({
+    data: {
+      arr: [{ num: 114 }],
+      arr2: [{ num: 1919 }]
+    },
+    watch: {
+      'arr.0': function (newVal, oldVal) {
+        console.log(`arr ${JSON.stringify(oldVal)} => ${JSON.stringify(newVal)}`);
+      },
+      'arr.0.num': function (newVal, oldVal) {
+        console.log(`arr[0].num ${JSON.stringify(oldVal)} => ${JSON.stringify(newVal)}`);
+      },
+      'arr2': {
+        handler: function (newVal, oldVal) {
+          console.log(`arr2 ${JSON.stringify(oldVal)} => ${JSON.stringify(newVal)}`);
+        },
+        deep: true
+      }
+    },
+    mounted() {
+      this.arr[0].num = 514;
+      this.arr2[0].num = 810;
+    }
+  });
   ```
 
   输出：
 
   ```javascript
-  arr[0].num 114 => 514arr2 [{"num":1919}] => [{"num":810}]
+  arr[0].num 114 => 514
+  arr2 [{"num":1919}] => [{"num":810}]
   ```
-
+  
   
 
