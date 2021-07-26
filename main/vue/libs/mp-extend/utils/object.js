@@ -147,6 +147,16 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
                 }
             },
             deleteProperty(target, p) {
+                if (Array.isArray(target)) {
+                    const tryNum = Number.parseInt(p);
+                    if (Number.isSafeInteger(tryNum)) {
+                        Array.prototype.splice.call(target, tryNum);
+                        if (isFunction(onChanged)) {
+                            onChanged(`${path}`, target);
+                        }
+                        return true;
+                    }
+                }
                 if (Reflect.deleteProperty(target, p)) {
                     if (isFunction(onChanged)) {
                         onChanged(`${path}`, target);

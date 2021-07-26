@@ -75,7 +75,8 @@ export default {
                     h: {
                         h1: 100,
                         h2: 200
-                    }
+                    },
+                    arr2: [100, 200]
                 };
             },
             mounted() {
@@ -98,13 +99,16 @@ export default {
 
                 // 添加属性
                 this.h.h3 = 1919;
-                
+
                 console.log(this.$set(this.h, 'h4', 810));
 
                 this.$delete(this.h, 'h4');
 
                 console.log(this.$props);
                 console.log(this.$data);
+
+                this.$delete(this.arr2, '1');
+                console.log(this.arr2.length);
             }
         }
     ]

@@ -458,6 +458,7 @@ console.log(this.num);
   
   ```javascript
   this.$set(this.m, 'n', 300);
+  this.$set(this.arr, '1', 200);
   ```
   
 
@@ -467,6 +468,7 @@ console.log(this.num);
 
   ```javascript
   this.$delete(this.m, 'n');
+  this.$delete(this.arr, '1');
   ```
 
 
