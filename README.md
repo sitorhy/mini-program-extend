@@ -417,3 +417,63 @@ console.log(this.num);
 
 ### 实例方法 / 数据
 
+* **$watch**
+
+  🔴 注册一个数据侦听器，并返回一个取消侦听的函数。
+
+  ```javascript
+  PageEx({
+    data() {
+      return {
+        m: {
+          n: 1000
+        }
+      }
+    },
+    async mounted() {
+      const unwatch = this.$watch('m.n', function (val, oldVal) {
+        console.log(`${oldVal} => ${val}`);
+        if (val >= 3000) {
+          unwatch();
+        }
+      });
+      await this.change();
+      await this.change();
+      await this.change();
+    },
+    methods: {
+      async change() {
+        this.m.n += 1000;
+        return new Promise(resolve => {
+          setTimeout(resolve, 1000);
+        });
+      }
+    }
+  });
+  ```
+
+* **$set**
+
+  添加对象属性。
+  
+  ```javascript
+  this.$set(this.m, 'n', 300);
+  ```
+  
+
+* **$delete**
+
+  删除对象属性。
+
+  ```javascript
+  this.$delete(this.m, 'n');
+  ```
+
+
+
+### 实例方法 / 事件
+
+* **$emit**
+
+  
+
