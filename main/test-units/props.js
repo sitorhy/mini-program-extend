@@ -107,8 +107,11 @@ export default {
                 console.log(this.$props);
                 console.log(this.$data);
 
+                this.$set(this.arr2, '4', 666);
+                console.log(JSON.stringify(this.arr2));
                 this.$delete(this.arr2, '1');
                 console.log(this.arr2.length);
+                console.log(JSON.stringify(this.arr2));
             }
         }
     ]

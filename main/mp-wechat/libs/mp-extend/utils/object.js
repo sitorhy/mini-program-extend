@@ -132,15 +132,30 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
                 if (typeof p === "symbol") {
                     return Reflect.set(target, p, value, receiver);
                 } else {
-                    if (Number.isSafeInteger(Number.parseInt(p))) {
-                        if (isFunction(onChanged)) {
-                            onChanged(`${path}[${p}]`, value);
+                    const tryNum = Number.parseInt(p);
+                    if (Number.isSafeInteger(tryNum)) {
+                        if (Array.isArray(target)) {
+                            if (isFunction(onChanged)) {
+                                onChanged(`${path}[${p}]`, value);
+                            } else {
+                                return Reflect.set(target, p, value, receiver);
+                            }
+                        } else {
+                            if (isFunction(onChanged)) {
+                                onChanged(`${path}[${p}]`, value);
+                            } else {
+                                return Reflect.set(target, p, value, receiver);
+                            }
                         }
                     } else {
                         if (Array.isArray(target) && p === 'length') {
-                            Reflect.set(target, p, value, receiver);
+                            return Reflect.set(target, p, value, receiver);
                         } else {
-                            onChanged(`${path ? path + '.' : ''}${p}`, value);
+                            if (isFunction(onChanged)) {
+                                onChanged(`${path ? path + '.' : ''}${p}`, value);
+                            } else {
+                                return Reflect.set(target, p, value, receiver);
+                            }
                         }
                     }
                     return true;
@@ -150,7 +165,7 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
                 if (Array.isArray(target)) {
                     const tryNum = Number.parseInt(p);
                     if (Number.isSafeInteger(tryNum)) {
-                        Array.prototype.splice.call(target, tryNum);
+                        Array.prototype.splice.call(target, tryNum, 1);
                         if (isFunction(onChanged)) {
                             onChanged(`${path}`, target);
                         }
