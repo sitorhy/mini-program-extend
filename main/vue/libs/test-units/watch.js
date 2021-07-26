@@ -19,6 +19,9 @@ export default {
                             j: 200,
                             k: 300
                         }
+                    },
+                    m: {
+                        n: 1000
                     }
                 };
             },
@@ -156,6 +159,22 @@ export default {
                 this.e = {
                     f: 1919810
                 };*/
+
+                const unwatch = this.$watch('m.n', function (val, oldVal) {
+                    console.log(`$watch m.n handler = ${oldVal} => ${val}`);
+                    if (val >= 3000) {
+                        unwatch();
+                    }
+                });
+                setTimeout(() => {
+                    this.m.n = 2000;
+                    setTimeout(() => {
+                        this.m.n = 3000;
+                        setTimeout(() => {
+                            this.m.n = 4000;
+                        }, 1000);
+                    }, 1000);
+                }, 1000);
             }
         }
     ]

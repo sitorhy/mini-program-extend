@@ -221,10 +221,14 @@ export default class WatcherInstaller extends OptionInstaller {
                         }
                     );
                     watcher.once(thisArg, [expOrFn.call(thisArg)]);
+                    const sign = Symbol("expOrFn");
                     Reflect.get(thisArg, DynamicWatchSign).set(
-                        Symbol("expOrFn"),
+                        sign,
                         watcher
                     );
+                    return function () {
+                        Reflect.get(thisArg, DynamicWatchSign).delete(sign);
+                    };
                 } else if (isString(expOrFn)) {
                     const watcher = new CompatibleWatcher(
                         expOrFn,
@@ -243,10 +247,14 @@ export default class WatcherInstaller extends OptionInstaller {
                         undefined
                     );
                     watcher.once(thisArg, [selectRuntimeState(thisArg.data, expOrFn)]);
+                    const sign = Symbol("expOrFn");
                     Reflect.get(thisArg, DynamicWatchSign).set(
-                        Symbol("expOrFn"),
+                        sign,
                         watcher
                     );
+                    return function () {
+                        Reflect.get(thisArg, DynamicWatchSign).delete(sign);
+                    };
                 } else {
                     throw new Error(`"${expOrFn}" is neither a string nor a function.`);
                 }
