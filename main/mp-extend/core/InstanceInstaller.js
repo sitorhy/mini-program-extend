@@ -78,14 +78,15 @@ export default class InstanceInstaller extends OptionInstaller {
                 }
 
                 if (!Object.hasOwnProperty.call(this, "$options")) {
+                    const $options = Stream.of(Object.entries(options))
+                        .filter(([p]) => !RESERVED_OPTIONS_WORDS.has(p) && !RESERVED_LIFECYCLES_WORDS.has(p))
+                        .collect(Collectors.toMap());
                     Object.defineProperty(this, "$options", {
                         configurable: false,
                         enumerable: false,
                         get() {
                             if (options) {
-                                return Stream.of(Object.entries(options))
-                                    .filter(([p]) => !RESERVED_OPTIONS_WORDS.has(p) && !RESERVED_LIFECYCLES_WORDS.has(p))
-                                    .collect(Collectors.toMap());
+                                return $options;
                             } else {
                                 return {};
                             }

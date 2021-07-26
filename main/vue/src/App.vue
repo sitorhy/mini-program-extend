@@ -10,6 +10,8 @@
       <router-link to="/computed">Computed</router-link>
       |
       <router-link to="/watch">Watch</router-link>
+      |
+      <router-link to="/options">Options</router-link>
     </div>
     <router-view/>
   </div>

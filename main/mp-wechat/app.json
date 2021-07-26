@@ -4,7 +4,8 @@
     "pages/props/index",
     "pages/computed/index",
     "pages/watch/index",
-    "pages/mp-checked/index"
+    "pages/mp-checked/index",
+    "pages/options/index"
   ],
   "window": {
     "backgroundTextStyle": "light",

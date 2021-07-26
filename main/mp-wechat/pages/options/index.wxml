@@ -1,0 +1,6 @@
+<view>
+    <text>str={{ str }}</text>
+</view>
+<view>
+    <text>num={{ num }}</text>
+</view>

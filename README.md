@@ -73,7 +73,7 @@ console.log(this.num);
 
 ### 选项 / 数据
 
-* 🟩 **data**
+* **data**
 
   同小程序的`data`选项， 使用`Object`类型在接口回退时不会有影响。
 
@@ -107,7 +107,7 @@ console.log(this.num);
 
 
 
-+ 🟩 **props**
++ **props**
 
   同小程序`properties`选项，属性命名使用`props`或者`properties`皆可，只是遵守小程序的`properties`定义规范方便接口回退。
 
@@ -187,7 +187,7 @@ console.log(this.num);
 
 
 
-* 🟩  **computed**
+* **computed**
 
   需要注意的是，当用于计算标签样式`style`时，返回值请务必转为`String`，`Vue.js`支持`Object`类型的样式转换，但小程序只认识字符串。
 
@@ -211,7 +211,7 @@ console.log(this.num);
 
 
 
-* 🟩 **methods**
+* **methods**
 
   类型：`{ [key: string]: string | Function | Object | Array }`
 
@@ -235,43 +235,39 @@ console.log(this.num);
 
 
 
-* 🟩 **watch**
+* **watch**
 
   参考`Vue.js`的格式，注意不要和小程序`observers`混淆，字段定义仅包含点运算符和标识符，例如监听数组的第一个元素`arr[0]`，正确的格式为`"arr.0"`。
 
-  至于使用上一句话总结就是，引用类型用深度侦听，基本类型引用侦听。
+  🔴 深度监听（`deep = true`）适用于引用类型（`Object`，`Array`）。引用类型非深度监听情况下，只有引用变化才会触发回调，就是需要整个对象替换掉，而深度监听则需要进行深度比对，计算量会比较大。
 
-  🔴 深度监听器（`deep = true`）适用于引用类型（`Object`，`Array`），引用类型非深度监听情况下，只有引用变化才会触发回调，就是需要整个对象替换掉。
-
-  监听引用类型，可以无脑加上`deep = true`，缺点是会有额外计算消耗。
-
-  监听基本类型可以加上`deep = true`，但会增加计算量，是无谓之举。
+  监听引用类型，可以无脑加上`deep = true`，监听基本类型可以也加上`deep = true`，只是会增加无意义的计算量。
 
   ```javascript
-  PageEx({
-    data: {
-      arr: [{ num: 114 }],
-      arr2: [{ num: 1919 }]
-    },
-    watch: {
-      'arr.0': function (newVal, oldVal) {
-        console.log(`arr ${JSON.stringify(oldVal)} => ${JSON.stringify(newVal)}`);
+    PageEx({
+      data: {
+        arr: [{ num: 114 }],
+        arr2: [{ num: 1919 }]
       },
-      'arr.0.num': function (newVal, oldVal) {
-        console.log(`arr[0].num ${JSON.stringify(oldVal)} => ${JSON.stringify(newVal)}`);
-      },
-      'arr2': {
-        handler: function (newVal, oldVal) {
-          console.log(`arr2 ${JSON.stringify(oldVal)} => ${JSON.stringify(newVal)}`);
+      watch: {
+        'arr.0': function (newVal, oldVal) {
+          console.log(`arr ${JSON.stringify(oldVal)} => ${JSON.stringify(newVal)}`);
         },
-        deep: true
+        'arr.0.num': function (newVal, oldVal) {
+          console.log(`arr[0].num ${JSON.stringify(oldVal)} => ${JSON.stringify(newVal)}`);
+        },
+        'arr2': {
+          handler: function (newVal, oldVal) {
+            console.log(`arr2 ${JSON.stringify(oldVal)} => ${JSON.stringify(newVal)}`);
+          },
+          deep: true
+        }
+      },
+      mounted() {
+        this.arr[0].num = 514;
+        this.arr2[0].num = 810;
       }
-    },
-    mounted() {
-      this.arr[0].num = 514;
-      this.arr2[0].num = 810;
-    }
-  });
+    });
   ```
 
   输出：
@@ -280,6 +276,144 @@ console.log(this.num);
   arr[0].num 114 => 514
   arr2 [{"num":1919}] => [{"num":810}]
   ```
+
+  🔴 指定`immediate = true`，侦听器初始化时会触发一次回调，但此时组件还没有触发`mounted`生命周期回调，所以还不能修改状态。
+
+  ```javascript
+  PageEx({
+    props: {
+      num: {
+        type: Number,
+        value: 114
+      }
+    },
+    watch: {
+      num: {
+        handler: 'numHandler',
+        immediate: true
+      }
+    },
+    methods: {
+      numHandler(newVal) {
+        console.log(`num = ${JSON.stringify(newVal)}`);
+      }
+    },
+    created() {
+      console.log('created');
+    },
+    mounted() {
+      console.log('mounted');
+    },
+    onLoad() {
+      console.log('onLoad');
+    }
+  });
+  ```
+
+  输出：
+
+  ```
+  num = 114
+  created
+  mounted
+  onLoad
+  ```
+
+
+
+### 实例 property
+
+* **$data**
+
+  🔴 代理组件内部状态访问。
+
+  ```javascript
+  PageEx({
+    props: {
+      a: {
+        type: Number,
+        value: 114
+      }
+    },
+    data() {
+      return {
+        b: 514
+      };
+    },
+    mounted() {
+      console.log(this.$data);
+      this.$data.b = 1919810;
+    }
+  });
+  ```
+
+
+
+* **$props**
+
+  🔴 代理组件外部状态访问，而实际上小程序会将`properties`合并到`data`中。
+
+  ```javascript
+  PageEx({
+    props: {
+      a: {
+        type: Number,
+        value: 114
+      }
+    },
+    data() {
+      return {
+        b: 514
+      };
+    },
+    mounted() {
+      console.log(this.$props);
+      this.$props.a = 114514;
+    }
+  });
+  ```
+
+
+
+* **$options**
+
+  返回非接口内建保留字的字段。
+
+  不要定义`Function`类型字段，页面接口会将`Function`合并到`methods`中。
+
+  🔴 可以看作为静态字段，初始化时可能会有用。
+
+  ```javascript
+  function createOptions(customNum) {
+    return {
+      customOption: 'custom data',
+      customNum,
+      props: {
+        str: {
+          type: String,
+          default() {
+            return this.$options.customOption;
+          }
+        }
+      },
+      data() {
+        return {
+          num: this.$options.customNum * 2
+        };
+      }
+    };
+  }
   
-  
+  PageEx(createOptions(57257));
+  ```
+
+
+
+* **$root**
+
+  当前组件所处`Page`实例。
+
+
+
+### 实例方法 / 数据
 

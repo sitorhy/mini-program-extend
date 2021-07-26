@@ -1,8 +1,11 @@
-import OptionInstaller from './OptionInstaller';
+import OptionInstaller from "./OptionInstaller";
 
-import {Stream, Collectors} from '../libs/Stream';
-import {isFunction, removeEmpty} from '../utils/common';
+import {Stream, Collectors} from "../libs/Stream";
+import {isFunction, removeEmpty} from "../utils/common";
 import {Optional} from "../libs/Optional";
+import {Singleton} from "../libs/Singleton";
+import RESERVED_OPTIONS_WORDS from "../utils/options";
+import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
 
 /**
  * 实例化临时上下文属性和数据，转换为小程序可直接执行的形式
@@ -17,20 +20,25 @@ export default class StateInstaller extends OptionInstaller {
      * @returns {{}}
      */
     attemptToInstantiateProps(extender, context, methods, options) {
-        const properties = context.get('properties') || {};
-
+        const properties = context.get("properties") || {};
+        const $options = Stream.of(Object.entries(options))
+            .filter(([p]) => !RESERVED_OPTIONS_WORDS.has(p) && !RESERVED_LIFECYCLES_WORDS.has(p))
+            .collect(Collectors.toMap());
         const propsContext = new Proxy(
             {},
             {
                 get(target, p, receiver) {
+                    if (p === '$options') {
+                        return $options;
+                    }
                     if (Reflect.has(properties, p)) {
                         const prop = Reflect.get(properties, p);
-                        if (Reflect.has(prop, 'value')) {
+                        if (Reflect.has(prop, "value")) {
                             return prop.value;
-                        } else if (isFunction(prop['default'])) {
-                            return prop['default'].call(receiver);
+                        } else if (isFunction(prop["default"])) {
+                            return prop["default"].call(receiver);
                         } else {
-                            return prop['default'];
+                            return prop["default"];
                         }
                     }
                     return undefined;
@@ -45,12 +53,12 @@ export default class StateInstaller extends OptionInstaller {
                 observer: constructor.observer,
                 value: constructor.value
             };
-            if (Reflect.has(constructor, 'value')) {
+            if (Reflect.has(constructor, "value")) {
                 normalize.value = constructor.value;
-            } else if (isFunction(constructor['default'])) {
-                normalize.value = constructor['default'].call(propsContext);
+            } else if (isFunction(constructor["default"])) {
+                normalize.value = constructor["default"].call(propsContext);
             } else {
-                normalize.value = constructor['default'];
+                normalize.value = constructor["default"];
             }
             return [name, normalize];
         }).collect(Collectors.toMap());
@@ -67,11 +75,10 @@ export default class StateInstaller extends OptionInstaller {
      * @returns {{}}
      */
     attemptToInstantiateData(extender, properties, methods, context, options) {
-        const data = context.get('data') || {};
-        ``
+        const data = context.get("data") || {};
         const instData = {};
         if (isFunction(data)) {
-            const instanceDataContext = extender.createInitializationContextSingleton();
+            const instanceDataContext = this.createExtensionInitializationContextSingleton(extender, options);
             Object.assign(instData, data.call(
                 instanceDataContext.get(
                     null,
@@ -92,10 +99,10 @@ export default class StateInstaller extends OptionInstaller {
             throw new Error(`The data property "${property}" is already declared as a prop. Use prop default value instead.`);
         });
 
-        const beforeCreate = context.get('beforeCreate');
+        const beforeCreate = context.get("beforeCreate");
         if (isFunction(beforeCreate)) {
             beforeCreate.call(
-                extender.createInitializationContextSingleton().get(
+                this.createExtensionInitializationContextSingleton(extender, options).get(
                     options,
                     data,
                     properties,
@@ -112,9 +119,29 @@ export default class StateInstaller extends OptionInstaller {
         );
     }
 
+    createExtensionInitializationContextSingleton(extender, options) {
+        const contextSingleton = extender.createInitializationContextSingleton();
+        return new Singleton((obj, data, properties, methods) => {
+            const $options = Stream.of(Object.entries(options))
+                .filter(([p]) => !RESERVED_OPTIONS_WORDS.has(p) && !RESERVED_LIFECYCLES_WORDS.has(p))
+                .collect(Collectors.toMap());
+            return new Proxy(
+                contextSingleton.get(obj, data, properties, methods), {
+                    get(target, p, receiver) {
+                        if (p === '$options') {
+                            return $options;
+                        } else {
+                            return Reflect.get(target, p);
+                        }
+                    }
+                }
+            );
+        });
+    }
+
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
-        const state = context.get('state');
-        const properties = Stream.of(Object.entries(context.get('properties')))
+        const state = context.get("state");
+        const properties = Stream.of(Object.entries(context.get("properties")))
             .map(([name, constructor]) => {
                 return [name, Object.assign(
                     removeEmpty({
@@ -142,10 +169,10 @@ export default class StateInstaller extends OptionInstaller {
     }
 
     install(extender, context, options) {
-        const methods = context.get('methods');
+        const methods = context.get("methods");
         const properties = this.attemptToInstantiateProps(extender, context, methods, options);
         const data = this.attemptToInstantiateData(extender, properties, methods, context, options);
         const state = this.attemptToInstantiateState(extender, properties, data, methods, context, options);
-        context.set('state', state);
+        context.set("state", state);
     }
 }
