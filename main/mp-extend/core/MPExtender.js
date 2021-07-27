@@ -8,6 +8,7 @@ import ContextInstaller from "./ContextInstaller";
 import ComputedInstaller from "./ComputedInstaller";
 import MixinInstaller from "./MixinInstaller";
 import LifeCycleInstaller from "./LifeCycleInstaller";
+import EventBusInstaller from "./EventBusInstaller";
 import InstanceInstaller from "./InstanceInstaller";
 import UpdateInstaller from "./UpdateInstaller";
 
@@ -53,6 +54,7 @@ export default class MPExtender {
         this.use(new WatcherInstaller(), 40);
         this.use(new LifeCycleInstaller(), 45);
         this.use(new InstanceInstaller(), 95);
+        this.use(new EventBusInstaller(), 100);
         this.use(new ContextInstaller(), 200);
         this.use(new UpdateInstaller(), 300);
     }

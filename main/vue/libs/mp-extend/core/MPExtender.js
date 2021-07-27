@@ -1,13 +1,14 @@
-import OptionInstaller from './OptionInstaller';
-import MethodsInstaller from './MethodsInstaller';
-import PropertiesInstaller from './PropertiesInstaller';
-import DataInstaller from './DataInstaller';
-import StateInstaller from './StateInstaller';
-import WatcherInstaller from './WatcherInstaller';
-import ContextInstaller from './ContextInstaller';
+import OptionInstaller from "./OptionInstaller";
+import MethodsInstaller from "./MethodsInstaller";
+import PropertiesInstaller from "./PropertiesInstaller";
+import DataInstaller from "./DataInstaller";
+import StateInstaller from "./StateInstaller";
+import WatcherInstaller from "./WatcherInstaller";
+import ContextInstaller from "./ContextInstaller";
 import ComputedInstaller from "./ComputedInstaller";
 import MixinInstaller from "./MixinInstaller";
 import LifeCycleInstaller from "./LifeCycleInstaller";
+import EventBusInstaller from "./EventBusInstaller";
 import InstanceInstaller from "./InstanceInstaller";
 import UpdateInstaller from "./UpdateInstaller";
 
@@ -53,6 +54,7 @@ export default class MPExtender {
         this.use(new WatcherInstaller(), 40);
         this.use(new LifeCycleInstaller(), 45);
         this.use(new InstanceInstaller(), 95);
+        this.use(new EventBusInstaller(), 100);
         this.use(new ContextInstaller(), 200);
         this.use(new UpdateInstaller(), 300);
     }
@@ -84,7 +86,7 @@ export default class MPExtender {
             if (isFunction(fnSetData)) {
                 fnSetData({[path]: value});
             } else {
-                Reflect.get(runtimeContext, 'setData').call(runtimeContext, {[path]: value});
+                Reflect.get(runtimeContext, "setData").call(runtimeContext, {[path]: value});
             }
             if (setters.includes(path)) {
                 computed[path].set.call(runtimeContext, value);
@@ -103,7 +105,7 @@ export default class MPExtender {
             context,
             {
                 get(target, p, receiver) {
-                    if (p === 'data') {
+                    if (p === "data") {
                         return runtimeDataContext;
                     }
                     if (Reflect.has(target, p)) {
@@ -145,9 +147,9 @@ export default class MPExtender {
             const props = Object.keys(properties || {});
             return new Proxy(runtimeContext, {
                 get(target, p, receiver) {
-                    if (p === '$props') {
+                    if (p === "$props") {
                         const $props = {};
-                        Object.keys(Reflect.get(target, 'data')).filter(i => props.includes(i)).forEach(i => {
+                        Object.keys(Reflect.get(target, "data")).filter(i => props.includes(i)).forEach(i => {
                             Object.defineProperty($props, i, {
                                 get() {
                                     return Reflect.get(target, i);
@@ -160,9 +162,9 @@ export default class MPExtender {
                         return $props;
                     }
 
-                    if (p === '$data') {
+                    if (p === "$data") {
                         const $data = {};
-                        Object.keys(Reflect.get(target, 'data')).filter(i => !props.includes(i)).forEach(i => {
+                        Object.keys(Reflect.get(target, "data")).filter(i => !props.includes(i)).forEach(i => {
                             Object.defineProperty($data, i, {
                                 get() {
                                     return Reflect.get(target, i);
@@ -233,7 +235,7 @@ export default class MPExtender {
             {
                 get(target, p, receiver) {
                     // 小程序形式读取状态 const a = this.state.a;
-                    if (p === 'data') {
+                    if (p === "data") {
                         return compatibleDataContext;
                     }
                     // 重定向到methods
@@ -272,7 +274,7 @@ export default class MPExtender {
             const props = Object.keys(properties);
             return new Proxy(compileTimeContext, {
                 get(target, p, receiver) {
-                    if (p === '$props') {
+                    if (p === "$props") {
                         const $props = {};
                         Object.keys(properties).forEach(i => {
                             Object.defineProperty($props, i, {
@@ -286,7 +288,7 @@ export default class MPExtender {
                         });
                         return $props;
                     }
-                    if (p === '$data') {
+                    if (p === "$data") {
                         const $data = {};
                         Object.keys(Object.assign({}, (obj || {}).data, data)).filter(i => !props.includes(i)).forEach(i => {
                             Object.defineProperty($data, i, {

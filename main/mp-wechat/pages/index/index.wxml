@@ -1,13 +1,7 @@
 <!--index.wxml-->
 <view class="container">
-    <view class="userinfo">
-        <block wx:if="{{canIUseOpenData}}" calss="userinfo-opendata">
-            <view class="userinfo-avatar" bindtap="bindViewTap">
-                <open-data type="userAvatarUrl"></open-data>
-            </view>
-            <text>wechat mini program contrast environment</text>
-        </block>
-    </view>
+    <image src="logo.svg" style="width:200rpx;height:200rpx;padding:50rpx;"></image>
+    <text>微信小程序对照环境</text>
 </view>
 
 <view class="container">
