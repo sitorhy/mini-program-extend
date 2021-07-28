@@ -5,7 +5,8 @@
     "pages/computed/index",
     "pages/watch/index",
     "pages/mp-checked/index",
-    "pages/options/index"
+    "pages/options/index",
+    "pages/event/index"
   ],
   "window": {
     "backgroundTextStyle": "light",

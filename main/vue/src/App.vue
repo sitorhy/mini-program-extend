@@ -12,6 +12,8 @@
       <router-link to="/watch">Watch</router-link>
       |
       <router-link to="/options">Options</router-link>
+      |
+      <router-link to="/event">Event</router-link>
     </div>
     <router-view/>
   </div>

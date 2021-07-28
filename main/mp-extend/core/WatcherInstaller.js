@@ -5,8 +5,8 @@ import equal from "../libs/fast-deep-equal/index";
 import {Invocation} from "../libs/Invocation";
 import {traceObject} from "../utils/object";
 
-const StaticWatchSign = Symbol("__wxSWatch__");
-const DynamicWatchSign = Symbol("__wxDWatch__");
+const SWSign = Symbol("__wxSW__");
+const DWSign = Symbol("__wxDW__");
 
 class CompatibleWatcher {
     _oldValue = [];
@@ -186,11 +186,11 @@ export default class WatcherInstaller extends OptionInstaller {
     }
 
     getStaticWatcher(thisArg, path) {
-        return Reflect.get(thisArg, StaticWatchSign).get(path);
+        return Reflect.get(thisArg, SWSign).get(path);
     }
 
     getDynamicWatchers(thisArg) {
-        return Reflect.get(thisArg, DynamicWatchSign);
+        return Reflect.get(thisArg, DWSign);
     }
 
     dynamicWatchersDefinition(thisArg) {
@@ -222,12 +222,12 @@ export default class WatcherInstaller extends OptionInstaller {
                     );
                     watcher.once(thisArg, [expOrFn.call(thisArg)]);
                     const sign = Symbol("expOrFn");
-                    Reflect.get(thisArg, DynamicWatchSign).set(
+                    Reflect.get(thisArg, DWSign).set(
                         sign,
                         watcher
                     );
                     return function () {
-                        Reflect.get(thisArg, DynamicWatchSign).delete(sign);
+                        Reflect.get(thisArg, DWSign).delete(sign);
                     };
                 } else if (isString(expOrFn)) {
                     const watcher = new CompatibleWatcher(
@@ -248,12 +248,12 @@ export default class WatcherInstaller extends OptionInstaller {
                     );
                     watcher.once(thisArg, [selectRuntimeState(thisArg.data, expOrFn)]);
                     const sign = Symbol("expOrFn");
-                    Reflect.get(thisArg, DynamicWatchSign).set(
+                    Reflect.get(thisArg, DWSign).set(
                         sign,
                         watcher
                     );
                     return function () {
-                        Reflect.get(thisArg, DynamicWatchSign).delete(sign);
+                        Reflect.get(thisArg, DWSign).delete(sign);
                     };
                 } else {
                     throw new Error(`"${expOrFn}" is neither a string nor a function.`);
@@ -345,14 +345,14 @@ export default class WatcherInstaller extends OptionInstaller {
                 created() {
                     const staticWatchers = createStaticWatchers();
 
-                    Object.defineProperty(this, StaticWatchSign, {
+                    Object.defineProperty(this, SWSign, {
                         configurable: false,
                         enumerable: false,
                         value: staticWatchers,
                         writable: false
                     });
 
-                    Object.defineProperty(this, DynamicWatchSign, {
+                    Object.defineProperty(this, DWSign, {
                         configurable: false,
                         enumerable: false,
                         value: new Map(),
@@ -370,8 +370,8 @@ export default class WatcherInstaller extends OptionInstaller {
                     }
                 },
                 detached() {
-                    Reflect.deleteProperty(this, StaticWatchSign);
-                    Reflect.deleteProperty(this, DynamicWatchSign);
+                    Reflect.deleteProperty(this, SWSign);
+                    Reflect.deleteProperty(this, DWSign);
                 }
             },
             observers: Stream.of(
@@ -428,9 +428,9 @@ export default class WatcherInstaller extends OptionInstaller {
     }
 
     beforeUpdate(extender, context, options, instance, data) {
-        const staticWatchers = Reflect.get(instance, StaticWatchSign);
+        const staticWatchers = Reflect.get(instance, SWSign);
         this.updateDeepWatcherRef(instance, staticWatchers, data);
-        const dynamicWatchers = Reflect.get(instance, DynamicWatchSign);
+        const dynamicWatchers = Reflect.get(instance, DWSign);
         this.updateDeepWatcherRef(instance, dynamicWatchers, data);
     }
 

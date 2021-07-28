@@ -8,20 +8,6 @@ export default class InstanceInstaller extends OptionInstaller {
     lifetimes(extender, context, options) {
         return {
             created() {
-                if (!Object.hasOwnProperty.call(this, "$emit")) {
-                    const $emit = (event, myEventDetail, myEventOption) => {
-                        return this.triggerEvent(event, myEventDetail, myEventOption);
-                    };
-
-                    Object.defineProperty(this, "$emit", {
-                        configurable: false,
-                        enumerable: false,
-                        get() {
-                            return $emit;
-                        }
-                    });
-                }
-
                 if (!Object.hasOwnProperty.call(this, "$set")) {
                     const $set = function (target, propertyName, value) {
                         Reflect.set(target, propertyName, value);

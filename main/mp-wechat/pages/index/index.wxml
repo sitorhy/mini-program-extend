@@ -20,4 +20,7 @@
     <navigator url="/pages/options/index">
         <button type="primary">Options</button>
     </navigator>
+    <navigator url="/pages/event/index">
+        <button type="primary">Event</button>
+    </navigator>
 </view>

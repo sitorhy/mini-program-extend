@@ -6,6 +6,7 @@ import Computed from '../views/Computed.vue'
 import Watch from '../views/Watch.vue'
 import VueChecked from '../views/VueChecked.vue'
 import Options from '../views/Options.vue'
+import Event from '../views/Event.vue'
 
 Vue.use(VueRouter);
 
@@ -16,9 +17,9 @@ const routes = [
         component: Home
     },
     {
-      path: '/checked',
-      name: 'VueChecked',
-      component: VueChecked
+        path: '/checked',
+        name: 'VueChecked',
+        component: VueChecked
     },
     {
         path: '/props',
@@ -49,6 +50,11 @@ const routes = [
         path: '/options',
         name: 'Options',
         component: Options
+    },
+    {
+        path: '/event',
+        name: 'Event',
+        component: Event
     }
 ]
 

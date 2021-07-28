@@ -1,0 +1,1 @@
+<button type="primary" bind:tap="onSendEvent">内建事件</button>
