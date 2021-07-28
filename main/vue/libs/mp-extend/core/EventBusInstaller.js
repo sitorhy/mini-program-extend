@@ -18,8 +18,8 @@ export default class EventBusInstaller extends OptionInstaller {
                         });
 
                         if (!Object.hasOwnProperty.call(this, "$emit")) {
-                            const $emit = (event, data, retainOption) => {
-                                return emitter.emit(event, data, retainOption);
+                            const $emit = (event, data, options) => {
+                                return emitter.emit(event, data);
                             };
 
                             Object.defineProperty(this, "$emit", {
