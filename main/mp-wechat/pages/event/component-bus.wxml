@@ -1,0 +1,2 @@
+<slot></slot>
+<button type="primary" bind:tap="checkChildren">$children</button>

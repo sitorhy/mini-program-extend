@@ -1,0 +1,1 @@
+<button type="primary" bind:tap="checkParent">Child L2</button>

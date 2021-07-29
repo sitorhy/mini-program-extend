@@ -8,8 +8,9 @@ import ContextInstaller from "./ContextInstaller";
 import ComputedInstaller from "./ComputedInstaller";
 import MixinInstaller from "./MixinInstaller";
 import LifeCycleInstaller from "./LifeCycleInstaller";
-import EventBusInstaller from "./EventBusInstaller";
 import InstanceInstaller from "./InstanceInstaller";
+import RelationsInstaller from "./RelationsInstaller";
+import EventBusInstaller from "./EventBusInstaller";
 import UpdateInstaller from "./UpdateInstaller";
 
 import {Singleton} from "../libs/Singleton";
@@ -17,6 +18,7 @@ import {isFunction, isPlainObject} from "../utils/common";
 import {createReactiveObject} from "../utils/object";
 
 import equal from "../libs/fast-deep-equal/index";
+import {Collectors, Stream} from "../libs/Stream";
 
 class InstallersSingleton extends Singleton {
     /**
@@ -54,6 +56,7 @@ export default class MPExtender {
         this.use(new WatcherInstaller(), 40);
         this.use(new LifeCycleInstaller(), 45);
         this.use(new InstanceInstaller(), 95);
+        this.use(new RelationsInstaller(), 150);
         this.use(new EventBusInstaller(), 200);
         this.use(new ContextInstaller(), 250);
         this.use(new UpdateInstaller(), 300);
@@ -323,7 +326,12 @@ export default class MPExtender {
                     definitionFilter: (defFields, definitionFilterArr) => {
                         installers.forEach(installer => {
                             installer.definitionFilter(this, this._context, options, defFields, definitionFilterArr);
-                            defFields.behaviors = (defFields.behaviors || []).concat(installer.behaviors());
+                            const behaviors = installer.behaviors();
+                            if (Array.isArray(behaviors) && behaviors.length) {
+                                defFields.behaviors = Stream.of(
+                                    (defFields.behaviors || []).concat(behaviors)
+                                ).distinct().collect(Collectors.toList());
+                            }
                         });
                     }
                 })

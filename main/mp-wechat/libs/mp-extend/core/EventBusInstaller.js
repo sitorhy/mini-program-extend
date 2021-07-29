@@ -84,4 +84,8 @@ export default class EventBusInstaller extends OptionInstaller {
             )
         ].concat(defFields.behaviors || []);
     }
+
+    install(extender, context, options) {
+
+    }
 }

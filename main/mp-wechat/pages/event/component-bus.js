@@ -1,18 +1,14 @@
 import {ComponentEx} from "../../libs/mp-extend/extend";
 
 ComponentEx({
-    properties: {
-        index: {
-            type: Number
-        }
-    },
+    properties: {},
     data: {},
     methods: {
-        checkParent() {
-            console.log('--component--');
+        checkChildren() {
+            console.log('--component-bus--');
             console.log(this.$children);
             console.log(this.$parent);
-            console.log('--component--');
+            console.log('--component-bus--');
         }
     }
 });

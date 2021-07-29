@@ -1,1 +1,11 @@
-<component/>
+<component-bus>
+    <view wx:for="{{keys}}" wx:key="item">
+        <component wx:if="{{item % 2===0}}" index="{{item}}">
+            <component2/>
+        </component>
+    </view>
+    <view wx:for="{{keys}}" wx:key="item">
+        <component wx:if="{{item % 2!==0}}" index="{{item}}"/>
+    </view>
+    <button bind:tap="random" type="primary">重排</button>
+</component-bus>

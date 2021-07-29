@@ -1,1 +1,2 @@
-<button type="primary" bind:tap="onSendEvent">内建事件</button>
+<slot></slot>
+<button type="primary" bind:tap="checkParent">Child {{index}}</button>
