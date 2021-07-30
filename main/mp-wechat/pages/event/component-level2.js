@@ -1,14 +1,15 @@
 import {ComponentEx} from "../../libs/mp-extend/extend";
+import {printChildren, printLevel} from "./behaviors";
 
 ComponentEx({
     properties: {},
     data: {},
     methods: {
-        checkParent() {
-            console.log('--component 2--');
-            console.log(this.$children);
-            console.log(this.$parent);
-            console.log('--component 2--');
+        checkLevel() {
+            printLevel(this);
+        },
+        checkChildren() {
+            printChildren(this);
         }
     }
 });

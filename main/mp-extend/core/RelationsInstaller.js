@@ -4,49 +4,95 @@ import {uuid} from "../utils/common";
 const PARENT_TAG_OBFS = `parent-${uuid()}`;
 const CHILD_TAG_OBFS = `child-${uuid()}`;
 
-const ParentBehavior = Behavior({});
-const ChildBehavior = Behavior({});
+function injectParentInstance(target, parent) {
+    Object.defineProperty(target, '$parent', {
+        configurable: true,
+        enumerable: false,
+        get() {
+            return parent;
+        }
+    });
+}
+
+function deleteParentProperty(target) {
+    Reflect.deleteProperty(target, '$parent');
+}
+
+function appendChildInstance(target, child) {
+    if (!Reflect.has(target, '$children')) {
+        Object.defineProperty(target, '$children', {
+            configurable: false,
+            enumerable: false,
+            value: []
+        });
+    }
+    if (!target.$children.some(i => i === child)) {
+        target.$children.push(child);
+    }
+}
+
+function removeChildInstance(target, child) {
+    if (Reflect.has(target, '$children')) {
+        const index = target.$children.findIndex(i => i === child);
+        if (index >= 0) {
+            target.$children.splice(index, 1);
+        }
+    }
+}
+
+/**
+ * 资源释放，实现任意一个即可
+ * 页面必定最后进行释放
+ * **/
+const ParentBehavior = Behavior({
+    created() {
+        console.log(this.is)
+        if (this !== this.$root) {
+            injectParentInstance(this, this.$root);
+            console.log(this.$parent)
+        }
+    }
+});
+const ChildBehavior = Behavior({
+    detached() {
+        if (this.$parent) {
+            removeChildInstance(this.$parent, this);
+        }
+        deleteParentProperty(this);
+    }
+});
+
+/**
+ * 触发顺序
+ * ↑ CHILD
+ * ↓ PARENT
+ *
+ * A
+ * ① ↑ ↓ ②
+ *     B
+ *    ③  ↑ ↓ ④
+ *         C
+ */
 const LinkBehavior = Behavior({
     relations: {
         [PARENT_TAG_OBFS]: {
             type: 'parent',
             target: ParentBehavior,
             linked(target) {
-                Object.defineProperty(this, '$parent', {
-                    configurable: false,
-                    enumerable: false,
-                    value: target
-                });
-                if(!target.$parent){
-                    console.log(target.is)
-                }
+                injectParentInstance(this, target);
             },
             unlinked() {
-                Reflect.deleteProperty(this, '$parent');
+                deleteParentProperty(this);
             }
         },
         [CHILD_TAG_OBFS]: {
             type: 'child',
             target: ChildBehavior,
             linked(target) {
-                if (!Reflect.has(this, '$children')) {
-                    Object.defineProperty(this, '$children', {
-                        configurable: false,
-                        enumerable: false,
-                        value: []
-                    });
-                }
-                if (!this.$children.some(i => i === target)) {
-                    this.$children.push(target);
-                }
+                appendChildInstance(this, target);
             },
             unlinked(target) {
-                if (Reflect.has(this, '$children')) {
-                    const index = this.$children.findIndex(i => i === target);
-                    if (index >= 0) {
-                        this.$children.splice(index, 1);
-                    }
-                }
+                removeChildInstance(this, target);
             }
         }
     }
