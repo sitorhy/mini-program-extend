@@ -7,5 +7,9 @@ export function printLevel(thisArg) {
 }
 
 export function printChildren(thisArg) {
-    console.log(thisArg.$children);
+    if (thisArg.$children instanceof Set) {
+        console.log([...thisArg.$children]);
+        return;
+    }
+    console.log(thisArg.$children ? thisArg.$children.map(i => i.is) : []);
 }
