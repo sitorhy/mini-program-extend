@@ -9,17 +9,20 @@ export default class EventBusInstaller extends OptionInstaller {
             Behavior(
                 {
                     created() {
-                        const emitter = new EventEmitter();
-
                         Object.defineProperty(this, EVTSign, {
                             configurable: false,
                             enumerable: false,
-                            value: emitter
+                            value: new EventEmitter()
                         });
 
                         if (!Object.hasOwnProperty.call(this, "$emit")) {
                             const $emit = (event, data, options) => {
-                                return emitter.emit(event, data);
+                                let p = this.$parent;
+                                while (p) {
+                                    const emitter = Reflect.get(p, EVTSign);
+                                    emitter.emit(event, data);
+                                    p = p.$parent;
+                                }
                             };
 
                             Object.defineProperty(this, "$emit", {
@@ -33,9 +36,10 @@ export default class EventBusInstaller extends OptionInstaller {
 
                         if (!Object.hasOwnProperty.call(this, "$on")) {
                             const $on = (event, callback) => {
-                                return emitter.on(event, callback);
+                                const emitter = Reflect.get(this, EVTSign);
+                                emitter.on(event, callback);
                             };
-
+                            
                             Object.defineProperty(this, "$on", {
                                 configurable: false,
                                 enumerable: false,
@@ -47,7 +51,7 @@ export default class EventBusInstaller extends OptionInstaller {
 
                         if (!Object.hasOwnProperty.call(this, "$off")) {
                             const $off = (event, callback) => {
-                                return emitter.off(event, callback);
+
                             };
 
                             Object.defineProperty(this, "$off", {
@@ -61,7 +65,7 @@ export default class EventBusInstaller extends OptionInstaller {
 
                         if (!Object.hasOwnProperty.call(this, "$once")) {
                             const $once = (event, callback) => {
-                                return emitter.once(event, callback);
+
                             };
 
                             Object.defineProperty(this, "$once", {

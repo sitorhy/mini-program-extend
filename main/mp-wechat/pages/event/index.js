@@ -5,6 +5,11 @@ PageEx({
     data: {
         keys: [1, 2, 3, 4]
     },
+    mounted() {
+        this.$on('parent', (msg) => {
+            console.log(msg);
+        });
+    },
     methods: {
         checkLevel() {
             printLevel(this);

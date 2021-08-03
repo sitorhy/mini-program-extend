@@ -6,6 +6,7 @@ ComponentEx({
     data: {},
     methods: {
         checkLevel() {
+            this.$emit('parent', '来自Level2组件');
             printLevel(this);
         },
         checkChildren() {

@@ -46,10 +46,8 @@ function removeChildInstance(target, child) {
  * **/
 const ParentBehavior = Behavior({
     created() {
-        console.log(this.is)
         if (this !== this.$root) {
             injectParentInstance(this, this.$root);
-            console.log(this.$parent)
         }
     }
 });

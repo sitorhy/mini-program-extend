@@ -33,14 +33,9 @@ function appendChildInstance(target, child) {
 
 function removeChildInstance(target, child) {
     if (Reflect.has(target, '$children')) {
-        const $children = target.$children;
-        if (Array.isArray($children)) {
-            const index = $children.findIndex(i => i === child);
-            if (index >= 0) {
-                target.$children.splice(index, 1);
-            }
-        } else {
-            $children.delete(child);
+        const index = target.$children.findIndex(i => i === child);
+        if (index >= 0) {
+            target.$children.splice(index, 1);
         }
     }
 }
@@ -50,21 +45,13 @@ function removeChildInstance(target, child) {
  * 页面必定最后进行释放
  * **/
 const ParentBehavior = Behavior({
-    attached() {
-        const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
-        if (this !== root) {
-            injectParentInstance(this, root);
+    created() {
+        if (this !== this.$root) {
+            injectParentInstance(this, this.$root);
         }
     }
 });
-
 const ChildBehavior = Behavior({
-    attached() {
-        const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
-        if (this !== root) {
-            appendChildInstance(root, this);
-        }
-    },
     detached() {
         if (this.$parent) {
             removeChildInstance(this.$parent, this);
@@ -91,8 +78,6 @@ const LinkBehavior = Behavior({
             target: ParentBehavior,
             linked(target) {
                 injectParentInstance(this, target);
-                const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
-                removeChildInstance(root, this);
             },
             unlinked() {
                 deleteParentProperty(this);
@@ -103,10 +88,6 @@ const LinkBehavior = Behavior({
             target: ChildBehavior,
             linked(target) {
                 appendChildInstance(this, target);
-                const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
-                if (this.$parent !== root) {
-                    removeChildInstance(root, this);
-                }
             },
             unlinked(target) {
                 removeChildInstance(this, target);
@@ -116,8 +97,8 @@ const LinkBehavior = Behavior({
 });
 
 export default class RelationsInstaller extends OptionInstaller {
-    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
-        defFields.behaviors = [ParentBehavior, ChildBehavior, LinkBehavior].concat(defFields.behaviors || []);
+    behaviors() {
+        return [ParentBehavior, ChildBehavior, LinkBehavior];
     }
 
     install(extender, context, options) {
