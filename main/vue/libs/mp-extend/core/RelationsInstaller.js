@@ -112,8 +112,10 @@ const LinkBehavior = Behavior({
 });
 
 export default class RelationsInstaller extends OptionInstaller {
-    behaviors() {
-        return [ParentBehavior, ChildBehavior, LinkBehavior];
+    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
+        defFields.behaviors = [
+            ParentBehavior, ChildBehavior, LinkBehavior
+        ].concat(defFields.behaviors || []);
     }
 
     install(extender, context, options) {
