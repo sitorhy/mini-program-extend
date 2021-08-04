@@ -472,9 +472,83 @@ console.log(this.num);
 
 
 
-### 实例方法 / 事件
+### 实例方法 / 总线
+
+> 事件总线是框架自带通讯机制，与小程序的事件机制无直接关系。
 
 * **$emit**
 
-  触发一个事件。
+  🔴 以自身为起点，祖先组件为终点的方向（冒泡顺序）触发一个总线事件，冒泡事件可被拦截。
   
+  ```javascript
+  this.$emit('event', `来自${this.is}组件`);
+  ```
+  
+  
+  
+* **$on**
+
+  🔴 注册一个事件监听器。
+
+  ```javascript
+  this.$on('event', (e) => {
+  	console.log(e.data);
+  });
+  ```
+
+  🔴 拦截其他事件处理器。
+
+  ```javascript
+  this.$on('event', (e) => {
+  	e.handled = true;
+  });
+  ```
+
+  
+
+* **$off**
+
+  🔴 注销事件监听器。
+
+  ```javascript
+  this.$off('event', callback);
+  ```
+
+   * 如果没有提供参数，则移除所有的事件监听器；
+   * 如果只提供了事件，则移除该事件所有的监听器；
+   * 如果同时提供了事件与回调，则只移除这个回调的监听器。
+
+  
+
+* **$once**
+
+  🔴 注册一个事件监听器，触发一次后自动注销。
+
+  ```javascript
+  this.$once('event', (e) => {
+  	console.log(e.data);
+  });
+  ```
+
+  
+
+* **$dispatch**
+
+  🔴 以祖先组件为起点，自身为终点的方向（捕获顺序）触发一个总线事件，捕获事件可被拦截。
+
+  ```javascript
+  this.$dispatch('event', `来自${this.is}组件`);
+  ```
+
+  
+
+* **$broadcast**
+
+  🔴 向自身有直接或间接关联的组件发送事件，通常情况下接收目标为页面内除自身外所有组件，另外广播事件不可被拦截。
+
+  ```javascript
+  this.$broadcast('broadcast', `来自${this.is}组件`);
+  ```
+
+  
+

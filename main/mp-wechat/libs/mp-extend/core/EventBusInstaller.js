@@ -11,6 +11,12 @@ class EventArgs {
             value: originalSource
         });
 
+        Object.defineProperty(this, '_source', {
+            enumerable: false,
+            configurable: false,
+            value: null
+        });
+
         Object.defineProperty(this, '_event', {
             enumerable: false,
             configurable: false,
@@ -22,7 +28,32 @@ class EventArgs {
             configurable: false,
             value: data
         });
+    }
 
+    get originalSource() {
+        return this._originalSource;
+    }
+
+    get event() {
+        return this._event;
+    }
+
+    get data() {
+        return this._data;
+    }
+
+    get source() {
+        return this._source;
+    }
+
+    set source(value) {
+        this._source = value;
+    }
+}
+
+class RoutedEventArgs extends EventArgs {
+    constructor(originalSource, event, data) {
+        super(originalSource, event, data);
         Object.defineProperty(this, '_handled', {
             enumerable: false,
             configurable: true,
@@ -36,18 +67,6 @@ class EventArgs {
 
     set handled(value) {
         this._handled = value;
-    }
-
-    get originalSource() {
-        return this._originalSource;
-    }
-
-    get event() {
-        return this._event;
-    }
-
-    get data() {
-        return this._data;
     }
 }
 
@@ -65,7 +84,7 @@ export default class EventBusInstaller extends OptionInstaller {
 
                         if (!Object.hasOwnProperty.call(this, "$emit")) {
                             const $emit = (event, data) => {
-                                const e = new EventArgs(this, event, data);
+                                const e = new RoutedEventArgs(this, event, data);
                                 let p = this.$parent;
                                 while (p) {
                                     const emitter = Reflect.get(p, EVTSign);
@@ -136,7 +155,7 @@ export default class EventBusInstaller extends OptionInstaller {
                         if (!Object.hasOwnProperty.call(this, "$dispatch")) {
                             const $dispatch = (event, data) => {
                                 const targets = [];
-                                const e = new EventArgs(this, event, data);
+                                const e = new RoutedEventArgs(this, event, data);
                                 let p = this;
                                 while (p) {
                                     targets.push(p);
@@ -162,14 +181,29 @@ export default class EventBusInstaller extends OptionInstaller {
                         }
 
                         if (!Object.hasOwnProperty.call(this, "$broadcast")) {
-                            function collect() {
-
-                            }
-
                             const $broadcast = (event, data) => {
                                 const e = new EventArgs(this, event, data);
-                                const targets = [];
 
+                                let s = this;
+                                while (s.$parent) {
+                                    s = s.$parent;
+                                }
+
+                                const q = [s];
+                                const targets = [];
+                                while (q.length) {
+                                    const c = q.pop();
+                                    if (c !== this) {
+                                        targets.push(c);
+                                    }
+                                    if (Array.isArray(c['$children']) && c['$children'].length) {
+                                        Array.prototype.push.apply(q, c['$children']);
+                                    }
+                                }
+                                targets.forEach(i => {
+                                    const emitter = Reflect.get(i, EVTSign);
+                                    emitter.emit(e.event, e);
+                                });
                             };
 
                             Object.defineProperty(this, "$broadcast", {

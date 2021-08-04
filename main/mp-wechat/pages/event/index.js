@@ -12,6 +12,10 @@ PageEx({
         this.$once('parent', (msg) => {
             console.log(msg);
         });
+        this.$on('top', (e) => {
+            console.log(e);
+            console.log(`接收广播 ${this.is}`)
+        });
     },
     methods: {
         checkLevel() {
