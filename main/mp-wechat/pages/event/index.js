@@ -9,6 +9,9 @@ PageEx({
         this.$on('parent', (msg) => {
             console.log(msg);
         });
+        this.$once('parent', (msg) => {
+            console.log(msg);
+        });
     },
     methods: {
         checkLevel() {
