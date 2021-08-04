@@ -45,18 +45,31 @@ function removeChildInstance(target, child) {
  * 页面必定最后进行释放
  * **/
 const ParentBehavior = Behavior({
-    created() {
-        if (this !== this.$root) {
-            injectParentInstance(this, this.$root);
+    attached() {
+        const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
+        if (this !== root) {
+            injectParentInstance(this, root);
+        }
+    },
+    detached() {
+        const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
+        if (this !== root) {
+            deleteParentProperty(root, this);
         }
     }
 });
 const ChildBehavior = Behavior({
-    detached() {
-        if (this.$parent) {
-            removeChildInstance(this.$parent, this);
+    attached() {
+        const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
+        if (this !== root) {
+            appendChildInstance(root, this);
         }
-        deleteParentProperty(this);
+    },
+    detached() {
+        const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
+        if (this !== root) {
+            removeChildInstance(root, this);
+        }
     }
 });
 
@@ -88,6 +101,8 @@ const LinkBehavior = Behavior({
             target: ChildBehavior,
             linked(target) {
                 appendChildInstance(this, target);
+                const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
+                removeChildInstance(root, target);
             },
             unlinked(target) {
                 removeChildInstance(this, target);
