@@ -12,7 +12,7 @@
 
 ### 引入
 
-> import { PageEx, ComponentEx } from "mini-program-extend/wechat/extend";
+> import { PageEx, ComponentEx } from "mini-program-extend/extend";
 
 * 页面扩展接口，替换 `Page`
 
@@ -558,7 +558,7 @@ console.log(this.num);
 
 * **$broadcast**
 
-  🔴 向自身有直接或间接关联的组件发送事件，通常情况下接收目标为页面内除自身外所有组件，另外广播事件不可被拦截。
+  🔴 向自身有直接或间接关联的组件发送事件，通常情况下接收目标为页面内除自身外所有组件，广播事件不可被拦截。
 
   ```javascript
   this.$broadcast('broadcast', `来自${this.is}组件`);

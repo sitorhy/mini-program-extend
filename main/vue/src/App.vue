@@ -13,7 +13,7 @@
       |
       <router-link to="/options">Options</router-link>
       |
-      <router-link to="/event">Event</router-link>
+      <router-link to="/provide">Provide</router-link>
     </div>
     <router-view/>
   </div>

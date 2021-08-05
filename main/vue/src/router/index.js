@@ -5,8 +5,8 @@ import Props from '../views/Props.vue'
 import Computed from '../views/Computed.vue'
 import Watch from '../views/Watch.vue'
 import VueChecked from '../views/VueChecked.vue'
+import Provide from '../views/Provide.vue'
 import Options from '../views/Options.vue'
-import Event from '../views/Event.vue'
 
 Vue.use(VueRouter);
 
@@ -52,9 +52,9 @@ const routes = [
         component: Options
     },
     {
-        path: '/event',
-        name: 'Event',
-        component: Event
+        path: '/provide',
+        name: 'Provide',
+        component: Provide
     }
 ]
 

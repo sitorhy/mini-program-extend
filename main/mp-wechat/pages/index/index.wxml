@@ -23,4 +23,7 @@
     <navigator url="/pages/event/index">
         <button type="primary">Event</button>
     </navigator>
+    <navigator url="/pages/provide/index">
+        <button type="primary">Provide</button>
+    </navigator>
 </view>

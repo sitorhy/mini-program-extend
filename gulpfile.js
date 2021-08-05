@@ -90,16 +90,16 @@ gulp.task("build", async () => {
             comments: false
         }))
         .pipe(uglify())
-        .pipe(gulp.dest("dist/miniprogram_dist/wechat"));
+        .pipe(gulp.dest("dist/miniprogram_dist"));
 
     gulp.src("LICENSE")
         .pipe(gulp.dest("dist"));
 
     gulp.src("main/mp-extend/**/LICENSE")
-        .pipe(gulp.dest("dist/miniprogram_dist/wechat"));
+        .pipe(gulp.dest("dist/miniprogram_dist"));
 
     gulp.src("main/mp-extend/**/*.d.ts")
-        .pipe(gulp.dest("dist/miniprogram_dist/wechat"));
+        .pipe(gulp.dest("dist/miniprogram_dist"));
 
     fs.writeFileSync("dist/package.json", JSON.stringify({
         name,
