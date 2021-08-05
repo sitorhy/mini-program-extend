@@ -83,4 +83,12 @@ export default class OptionInstaller extends BehaviorInstaller {
     destroyed() {
 
     }
+
+    provide() {
+        return null;
+    }
+
+    inject() {
+        return null;
+    }
 }
