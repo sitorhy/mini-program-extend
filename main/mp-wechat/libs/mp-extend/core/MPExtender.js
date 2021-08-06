@@ -15,7 +15,7 @@ import EventBusInstaller from "./EventBusInstaller";
 import UpdateInstaller from "./UpdateInstaller";
 
 import {Singleton} from "../libs/Singleton";
-import {isFunction, isPlainObject} from "../utils/common";
+import {isFunction, isNullOrEmpty, isPlainObject} from "../utils/common";
 import {createReactiveObject} from "../utils/object";
 
 import equal from "../libs/fast-deep-equal/index";
@@ -89,9 +89,9 @@ export default class MPExtender {
 
         const runtimeDataContext = createReactiveObject(context.data, context.data, function (path, value) {
             if (isFunction(fnSetData)) {
-                fnSetData({[path]: value});
+                fnSetData(!isNullOrEmpty(path) ? {[path]: value} : value);
             } else {
-                Reflect.get(runtimeContext, "setData").call(runtimeContext, {[path]: value});
+                Reflect.get(runtimeContext, "setData").call(runtimeContext, !isNullOrEmpty(path) ? {[path]: value} : value);
             }
             if (setters.includes(path)) {
                 computed[path].set.call(runtimeContext, value);

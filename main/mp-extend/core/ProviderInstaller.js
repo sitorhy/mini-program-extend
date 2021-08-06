@@ -6,11 +6,10 @@ const ANCESTOR_TAG_OBFS = `ancestor-${uuid()}`;
 const DESCENDANT_TAG_OBFS = `descendant-${uuid()}`;
 
 const ProvideSign = Symbol('__wxProvide__');
+const InjectSign = Symbol('__wxInject__');
 
 const ProvideBehavior = Behavior({});
-
 const InjectBehavior = Behavior({});
-
 const LinkBehavior = Behavior({
     relations: {
         [ANCESTOR_TAG_OBFS]: {
@@ -19,20 +18,33 @@ const LinkBehavior = Behavior({
             linked(target) {
                 const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
                 const provider = Reflect.get(target, ProvideSign);
-                console.log(`${this.is} ancestor`)
+                const inject = Reflect.get(this, InjectSign);
+                const mergeProvider = Object.assign(
+                    {},
+                    Reflect.get(root, ProvideSign),
+                    Reflect.get(this, ProvideSign),
+                    provider
+                );
                 Reflect.defineProperty(
                     this,
                     ProvideSign,
-                    Object.assign(
-                        {},
-                        Reflect.get(root, ProvideSign),
-                        Reflect.get(this, ProvideSign),
-                        provider
-                    )
+                    mergeProvider
                 );
+                if (inject) {
+                    const injection = {};
+                    Object.entries(inject).forEach(([k, v]) => {
+                        Object.assign(injection, {
+                            [k]: Reflect.get(mergeProvider, v.from) || (isFunction(v.default) ? v.default() : v.default)
+                        });
+                    });
+                    if (Object.keys(injection).length) {
+                        this.setData(injection);
+                    }
+                }
             },
             unlinked() {
                 Reflect.deleteProperty(this, ProvideSign);
+                Reflect.deleteProperty(this, InjectSign);
             }
         },
         [DESCENDANT_TAG_OBFS]: {
@@ -43,8 +55,9 @@ const LinkBehavior = Behavior({
 });
 
 /**
- * provide 初始化 优先于 data/props
- * provide 不能访问 data/props，并且数据为非响应式
+ * provide / inject
+ * 由于无法在编译时获取层级关系 无法完全实现
+ * 仅用于跨层传值 合并到 data 中
  */
 export default class ProviderInstaller extends OptionInstaller {
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
@@ -52,6 +65,7 @@ export default class ProviderInstaller extends OptionInstaller {
             Behavior({
                 attached() {
                     const provide = context.get('provide');
+                    const inject = context.get('inject');
                     if (isFunction(provide)) {
                         const provider = provide.call(
                             extender.createRuntimeContextSingleton().get(
@@ -67,17 +81,18 @@ export default class ProviderInstaller extends OptionInstaller {
                             value: provider
                         });
                     }
+                    if (inject) {
+                        Object.defineProperty(this, InjectSign, {
+                            enumerable: false,
+                            configurable: true,
+                            value: inject
+                        });
+                    }
                 }
             }),
             ProvideBehavior,
             InjectBehavior,
-            LinkBehavior,
-            Behavior({
-                attached() {
-                    console.log(`${this.is} 111`)
-                    console.log(context.get('inject'))
-                }
-            })
+            LinkBehavior
         ]);
     }
 
@@ -142,7 +157,9 @@ export default class ProviderInstaller extends OptionInstaller {
                     }
                 }
             });
-            context.set('inject', inject);
+            if (Object.keys(inject).length) {
+                context.set('inject', inject);
+            }
         } catch (e) {
             throw e;
         }
