@@ -19,6 +19,7 @@ const LinkBehavior = Behavior({
             linked(target) {
                 const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
                 const provider = Reflect.get(target, ProvideSign);
+                console.log(`${this.is} ancestor`)
                 Reflect.defineProperty(
                     this,
                     ProvideSign,
@@ -70,7 +71,13 @@ export default class ProviderInstaller extends OptionInstaller {
             }),
             ProvideBehavior,
             InjectBehavior,
-            LinkBehavior
+            LinkBehavior,
+            Behavior({
+                attached() {
+                    console.log(`${this.is} 111`)
+                    console.log(context.get('inject'))
+                }
+            })
         ]);
     }
 
