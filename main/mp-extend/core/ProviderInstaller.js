@@ -34,7 +34,7 @@ const LinkBehavior = Behavior({
                     const injection = {};
                     Object.entries(inject).forEach(([k, v]) => {
                         Object.assign(injection, {
-                            [k]: Reflect.get(mergeProvider, v.from) || (isFunction(v.default) ? v.default() : v.default)
+                            [k]: Reflect.get(mergeProvider, v.from) || (isFunction(v.default) ? v.default.call(this) : v.default)
                         });
                     });
                     if (Object.keys(injection).length) {
