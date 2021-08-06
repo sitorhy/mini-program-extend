@@ -17,6 +17,7 @@ export default {
         }
     },
     provide() {
+        console.log('provide init');
         return {
             num: this.num,
             num2: this.num2,

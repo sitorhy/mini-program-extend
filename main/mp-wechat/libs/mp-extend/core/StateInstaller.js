@@ -35,10 +35,10 @@ export default class StateInstaller extends OptionInstaller {
                         const prop = Reflect.get(properties, p);
                         if (Reflect.has(prop, "value")) {
                             return prop.value;
-                        } else if (isFunction(prop["default"])) {
-                            return prop["default"].call(receiver);
+                        } else if (isFunction(prop.default)) {
+                            return prop.default.call(receiver);
                         } else {
-                            return prop["default"];
+                            return prop.default;
                         }
                     }
                     return undefined;
@@ -55,10 +55,10 @@ export default class StateInstaller extends OptionInstaller {
             };
             if (Reflect.has(constructor, "value")) {
                 normalize.value = constructor.value;
-            } else if (isFunction(constructor["default"])) {
-                normalize.value = constructor["default"].call(propsContext);
+            } else if (isFunction(constructor.default)) {
+                normalize.value = constructor.default.call(propsContext);
             } else {
-                normalize.value = constructor["default"];
+                normalize.value = constructor.default;
             }
             return [name, normalize];
         }).collect(Collectors.toMap());

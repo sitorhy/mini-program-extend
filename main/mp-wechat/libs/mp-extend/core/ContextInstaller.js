@@ -102,7 +102,7 @@ export default class ContextInstaller extends OptionInstaller {
         }
 
         [...context.keys()]
-            .filter(prop => !["data", "beforeCreate"].includes(prop) && isFunction(context.get(prop)))
+            .filter(prop => !["data", "beforeCreate", "provide"].includes(prop) && isFunction(context.get(prop)))
             .forEach(prop => {
                 context.set(prop, (() => {
                         const func = context.get(prop);

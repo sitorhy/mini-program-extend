@@ -1,12 +1,51 @@
 import OptionInstaller from "./OptionInstaller";
-import {isFunction, isPlainObject, isString, isSymbol} from "../utils/common";
+import {isFunction, isPlainObject, isString, isSymbol, uuid} from "../utils/common";
 import {Blend} from "../libs/Blend";
+
+const ANCESTOR_TAG_OBFS = `ancestor-${uuid()}`;
+const DESCENDANT_TAG_OBFS = `descendant-${uuid()}`;
+
+const ProvideSign = Symbol('__wxProvide__');
+
+const ProvideBehavior = Behavior({});
+
+const InjectBehavior = Behavior({});
+
+const LinkBehavior = Behavior({
+    relations: {
+        [ANCESTOR_TAG_OBFS]: {
+            type: 'ancestor',
+            target: ProvideBehavior,
+            linked(target) {
+                const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
+                const provider = Reflect.get(target, ProvideSign);
+                Reflect.defineProperty(
+                    this,
+                    ProvideSign,
+                    Object.assign(
+                        {},
+                        Reflect.get(root, ProvideSign),
+                        Reflect.get(this, ProvideSign),
+                        provider
+                    )
+                );
+            },
+            unlinked() {
+                Reflect.deleteProperty(this, ProvideSign);
+            }
+        },
+        [DESCENDANT_TAG_OBFS]: {
+            type: 'descendant',
+            target: InjectBehavior
+        }
+    }
+});
 
 /**
  * provide 初始化 优先于 data/props
  * provide 不能访问 data/props，并且数据为非响应式
  */
-export default class ProvideInstaller extends OptionInstaller {
+export default class ProviderInstaller extends OptionInstaller {
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
         defFields.behaviors = (defFields.behaviors || []).concat([
             Behavior({
@@ -21,10 +60,17 @@ export default class ProvideInstaller extends OptionInstaller {
                                 this.setData.bind(this)
                             )
                         );
-                        
+                        Object.defineProperty(this, ProvideSign, {
+                            enumerable: false,
+                            configurable: true,
+                            value: provider
+                        });
                     }
                 }
-            })
+            }),
+            ProvideBehavior,
+            InjectBehavior,
+            LinkBehavior
         ]);
     }
 

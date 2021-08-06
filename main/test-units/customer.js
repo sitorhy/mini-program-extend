@@ -8,10 +8,17 @@ export default {
         },
         num3: {
             default() {
-                console.log(this.num4);
+                console.log('inject init');
                 return this.num4 || 1919810;
             }
         },
+        // Injection "num5" not found
+        /*
+        num5: {
+            from: 'num5'
+        },*/
+
+
         timestamp: {
             from: 'timestamp'
         },
@@ -22,11 +29,12 @@ export default {
     data() {
         console.log('data init');
         return {
-            num4: 114514
+            num4: 810
         };
     },
     methods: {
         update() {
+            this.timestamp = Date.now();
             this.updateTime();
         }
     }

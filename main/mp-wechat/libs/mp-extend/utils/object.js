@@ -1,4 +1,4 @@
-import {isFunction, isPrimitive} from "./common";
+import {isFunction, isPrimitive, isSymbol} from "./common";
 
 /**
  * 解析路径根对象名称
@@ -97,7 +97,7 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
         {
             get(target, p, receiver) {
                 const value = Reflect.get(target, p, receiver);
-                if (isPrimitive(value) || !value || (typeof p === "symbol")) {
+                if (isPrimitive(value) || !value || isSymbol(p)) {
                     // 不可枚举的值，直接返回
                     return value;
                 } else if (isFunction(value)) {
@@ -129,7 +129,7 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
                 }
             },
             set(target, p, value, receiver) {
-                if (typeof p === "symbol") {
+                if (isSymbol(p)) {
                     return Reflect.set(target, p, value, receiver);
                 } else {
                     const tryNum = Number.parseInt(p);

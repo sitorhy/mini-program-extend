@@ -45,6 +45,9 @@ function removeChildInstance(target, child) {
  * 页面必定最后进行释放
  * **/
 const ParentBehavior = Behavior({
+    created() {
+        console.log(`${this.is} created.`);
+    },
     attached() {
         const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
         if (this !== root) {
@@ -60,6 +63,7 @@ const ParentBehavior = Behavior({
 });
 const ChildBehavior = Behavior({
     attached() {
+        console.log(`${this.is} attached.`);
         const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
         if (this !== root) {
             appendChildInstance(root, this);
@@ -100,6 +104,7 @@ const LinkBehavior = Behavior({
             type: 'child',
             target: ChildBehavior,
             linked(target) {
+                console.log(`${this.is} child linked.`);
                 appendChildInstance(this, target);
                 const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
                 removeChildInstance(root, target);

@@ -3,6 +3,7 @@ import MethodsInstaller from "./MethodsInstaller";
 import PropertiesInstaller from "./PropertiesInstaller";
 import DataInstaller from "./DataInstaller";
 import StateInstaller from "./StateInstaller";
+import ProviderInstaller from "./ProviderInstaller";
 import WatcherInstaller from "./WatcherInstaller";
 import ContextInstaller from "./ContextInstaller";
 import ComputedInstaller from "./ComputedInstaller";
@@ -47,12 +48,13 @@ export default class MPExtender {
     _context = new Map();
 
     constructor() {
-        this.use(new MixinInstaller(), 10);
-        this.use(new MethodsInstaller(), 15);
-        this.use(new PropertiesInstaller(), 20);
-        this.use(new DataInstaller(), 25);
-        this.use(new StateInstaller(), 30);
-        this.use(new ComputedInstaller(), 35);
+        this.use(new MixinInstaller(), 5);
+        this.use(new MethodsInstaller(), 10);
+        this.use(new PropertiesInstaller(), 15);
+        this.use(new DataInstaller(), 20);
+        this.use(new StateInstaller(), 25);
+        this.use(new ComputedInstaller(), 30);
+        this.use(new ProviderInstaller(), 35);
         this.use(new WatcherInstaller(), 40);
         this.use(new LifeCycleInstaller(), 45);
         this.use(new InstanceInstaller(), 95);

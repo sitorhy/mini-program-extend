@@ -5,8 +5,8 @@ import equal from "../libs/fast-deep-equal/index";
 import {Invocation} from "../libs/Invocation";
 import {traceObject} from "../utils/object";
 
-const SWSign = Symbol("__wxSW__");
-const DWSign = Symbol("__wxDW__");
+const SWATSign = Symbol("__wxSWAT__");
+const DWATSign = Symbol("__wxDWAT__");
 
 class CompatibleWatcher {
     _oldValue = [];
@@ -186,11 +186,11 @@ export default class WatcherInstaller extends OptionInstaller {
     }
 
     getStaticWatcher(thisArg, path) {
-        return Reflect.get(thisArg, SWSign).get(path);
+        return Reflect.get(thisArg, SWATSign).get(path);
     }
 
     getDynamicWatchers(thisArg) {
-        return Reflect.get(thisArg, DWSign);
+        return Reflect.get(thisArg, DWATSign);
     }
 
     dynamicWatchersDefinition(thisArg) {
@@ -222,12 +222,12 @@ export default class WatcherInstaller extends OptionInstaller {
                     );
                     watcher.once(thisArg, [expOrFn.call(thisArg)]);
                     const sign = Symbol("expOrFn");
-                    Reflect.get(thisArg, DWSign).set(
+                    Reflect.get(thisArg, DWATSign).set(
                         sign,
                         watcher
                     );
                     return function () {
-                        Reflect.get(thisArg, DWSign).delete(sign);
+                        Reflect.get(thisArg, DWATSign).delete(sign);
                     };
                 } else if (isString(expOrFn)) {
                     const watcher = new CompatibleWatcher(
@@ -248,12 +248,12 @@ export default class WatcherInstaller extends OptionInstaller {
                     );
                     watcher.once(thisArg, [selectRuntimeState(thisArg.data, expOrFn)]);
                     const sign = Symbol("expOrFn");
-                    Reflect.get(thisArg, DWSign).set(
+                    Reflect.get(thisArg, DWATSign).set(
                         sign,
                         watcher
                     );
                     return function () {
-                        Reflect.get(thisArg, DWSign).delete(sign);
+                        Reflect.get(thisArg, DWATSign).delete(sign);
                     };
                 } else {
                     throw new Error(`"${expOrFn}" is neither a string nor a function.`);
@@ -345,14 +345,14 @@ export default class WatcherInstaller extends OptionInstaller {
                 created() {
                     const staticWatchers = createStaticWatchers();
 
-                    Object.defineProperty(this, SWSign, {
+                    Object.defineProperty(this, SWATSign, {
                         configurable: false,
                         enumerable: false,
                         value: staticWatchers,
                         writable: false
                     });
 
-                    Object.defineProperty(this, DWSign, {
+                    Object.defineProperty(this, DWATSign, {
                         configurable: false,
                         enumerable: false,
                         value: new Map(),
@@ -370,8 +370,8 @@ export default class WatcherInstaller extends OptionInstaller {
                     }
                 },
                 detached() {
-                    Reflect.deleteProperty(this, SWSign);
-                    Reflect.deleteProperty(this, DWSign);
+                    Reflect.deleteProperty(this, SWATSign);
+                    Reflect.deleteProperty(this, DWATSign);
                 }
             },
             observers: Stream.of(
@@ -428,9 +428,9 @@ export default class WatcherInstaller extends OptionInstaller {
     }
 
     beforeUpdate(extender, context, options, instance, data) {
-        const staticWatchers = Reflect.get(instance, SWSign);
+        const staticWatchers = Reflect.get(instance, SWATSign);
         this.updateDeepWatcherRef(instance, staticWatchers, data);
-        const dynamicWatchers = Reflect.get(instance, DWSign);
+        const dynamicWatchers = Reflect.get(instance, DWATSign);
         this.updateDeepWatcherRef(instance, dynamicWatchers, data);
     }
 
