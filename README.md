@@ -1,4 +1,4 @@
-# Mini Program Extend
+# @mini-program-extend/wechat
 
 小程序扩展框架。
 

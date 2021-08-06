@@ -111,3 +111,43 @@ gulp.task("build", async () => {
         flag: "w"
     });
 });
+
+gulp.task("build-debug", async () => {
+    if (!fs.existsSync("debug")) {
+        fs.mkdirSync("debug");
+    }
+    const info = JSON.parse(fs.readFileSync("package.json"));
+    const {
+        name,
+        version,
+        repository,
+        author,
+        license
+    } = info;
+
+    gulp.src("main/mp-extend/**/*.js")
+        .pipe(babel({
+            presets: ["@babel/env"],
+            comments: false
+        }))
+        .pipe(gulp.dest("debug/miniprogram_dist"));
+
+    gulp.src("LICENSE")
+        .pipe(gulp.dest("debug"));
+
+    gulp.src("main/mp-extend/**/LICENSE")
+        .pipe(gulp.dest("debug/miniprogram_dist"));
+
+    gulp.src("main/mp-extend/**/*.d.ts")
+        .pipe(gulp.dest("debug/miniprogram_dist"));
+
+    fs.writeFileSync("debug/package.json", JSON.stringify({
+        name,
+        version,
+        repository,
+        author,
+        license
+    }, null, 2), {
+        flag: "w"
+    });
+});

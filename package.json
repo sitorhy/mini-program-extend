@@ -1,13 +1,14 @@
 {
-  "name": "mini-program-extend",
+  "name": "@mini-program-extend/wechat",
   "version": "1.0.0",
   "main": "index.js",
-  "repository": "git@github.com:sitorhy/mini-program-extend.git",
+  "repository": "git@github.com:sitorhy/mini-program-extend-wechat.git",
   "author": "sitorhy <sitorhy>",
   "license": "MIT",
   "scripts": {
     "dev": "gulp dev",
-    "build": "gulp build"
+    "build": "gulp build",
+    "build-debug": "gulp build-debug"
   },
   "devDependencies": {
     "@babel/core": "^7.14.8",
