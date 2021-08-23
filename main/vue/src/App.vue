@@ -14,6 +14,8 @@
       <router-link to="/options">Options</router-link>
       |
       <router-link to="/provide">Provide</router-link>
+      |
+      <router-link to="/snake">综合测试 - 贪吃蛇</router-link>
     </div>
     <router-view/>
   </div>

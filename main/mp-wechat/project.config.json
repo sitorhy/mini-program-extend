@@ -29,7 +29,7 @@
     "minifyWXSS": true
   },
   "compileType": "miniprogram",
-  "libVersion": "2.16.0",
+  "libVersion": "2.19.2",
   "appid": "wxec1611614b41c1b0",
   "projectname": "wechat-contrast-env",
   "debugOptions": {

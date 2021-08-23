@@ -34,7 +34,7 @@ class InstallersSingleton extends Singleton {
         });
     }
 
-    prepare(installer, priority = 50) {
+    prepare(installer, priority = 100) {
         if (installer instanceof OptionInstaller) {
             if (!this._installers.has(installer)) {
                 this._installers.set(installer, priority);

@@ -7,6 +7,7 @@ import Watch from '../views/Watch.vue'
 import VueChecked from '../views/VueChecked.vue'
 import Provide from '../views/Provide.vue'
 import Options from '../views/Options.vue'
+import Snake from '../views/Snake.vue';
 
 Vue.use(VueRouter);
 
@@ -55,6 +56,11 @@ const routes = [
         path: '/provide',
         name: 'Provide',
         component: Provide
+    },
+    {
+        path: '/snake',
+        name: 'Snake',
+        component: Snake
     }
 ]
 

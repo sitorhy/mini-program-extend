@@ -26,4 +26,7 @@
     <navigator url="/pages/provide/index">
         <button type="primary">Provide</button>
     </navigator>
+    <navigator url="/pages/snake/index">
+        <button type="primary">综合测试-贪吃蛇</button>
+    </navigator>
 </view>
