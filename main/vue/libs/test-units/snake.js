@@ -122,7 +122,7 @@ export default {
             const context = this.getContext();
             context.save();
 
-            const timer = setInterval(() => {
+            this.timer = setInterval(() => {
                 this.clean(context);
 
                 this.beginPaint(context);
@@ -132,13 +132,13 @@ export default {
 
                 if (this.checkHitWall()) {
                     this.end('撞墙');
-                    clearInterval(timer);
+                    clearInterval(this.timer);
                     return;
                 }
 
                 if (this.checkEatSelf()) {
                     this.end('打结');
-                    clearInterval(timer);
+                    clearInterval(this.timer);
                     return;
                 }
 
@@ -151,7 +151,7 @@ export default {
                         this.food = this.nextFood(this.body);
                     } catch (e) {
                         this.end(e.message);
-                        clearInterval(timer);
+                        clearInterval(this.timer);
                     }
                 }
             }, this.speed);
@@ -206,6 +206,7 @@ export default {
                 this.body[i][0] = this.body[i - 1][0];
                 this.body[i][1] = this.body[i - 1][1];
             }
+
             let nextX = (this.body[0][0] + deltaX);
             let nextY = (this.body[0][1] + deltaY);
             if (allowReset) {
@@ -392,6 +393,15 @@ export default {
             if (this.validateDirection(1, 0)) {
                 this.direction = [1, 0];
             }
+        },
+
+        stop() {
+            clearInterval(this.timer);
+            this.timer = null;
         }
+    },
+    destroyed() {
+        this.stop();
+        this.__canvasContext = null;
     }
 };

@@ -7,3 +7,11 @@
     align-items: center;
     border: solid 1px lightgray;
 }
+
+.btn:hover {
+    background-color: #b2cefd;
+}
+
+.btn:active {
+    background-color: #33fffc;
+}

@@ -34,7 +34,7 @@ class InstallersSingleton extends Singleton {
         });
     }
 
-    prepare(installer, priority = 50) {
+    prepare(installer, priority = 100) {
         if (installer instanceof OptionInstaller) {
             if (!this._installers.has(installer)) {
                 this._installers.set(installer, priority);
@@ -88,6 +88,8 @@ export default class MPExtender {
         let runtimeContext;
 
         const runtimeDataContext = createReactiveObject(context.data, context.data, function (path, value) {
+        //    console.log(path)
+        //    console.log(value)
             if (isFunction(fnSetData)) {
                 fnSetData(!isNullOrEmpty(path) ? {[path]: value} : value);
             } else {

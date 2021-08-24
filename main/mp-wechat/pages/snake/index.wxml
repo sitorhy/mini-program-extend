@@ -1,5 +1,6 @@
 <view>
     <view>
+        <button type="primary" bind:tap="stop">中断</button>
         <button type="primary" bind:tap="replay">再搞一次</button>
         <view style="display:flex;justify-content:center;">
             <canvas type="2d" id="canvas" width="{{width}}px" height="{{height}}px" style="{{backgroundStyle}}"/>

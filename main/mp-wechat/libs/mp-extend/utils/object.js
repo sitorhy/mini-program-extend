@@ -129,6 +129,7 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
                 }
             },
             set(target, p, value, receiver) {
+
                 if (isSymbol(p)) {
                     return Reflect.set(target, p, value, receiver);
                 } else {
@@ -136,7 +137,12 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
                     if (Number.isSafeInteger(tryNum)) {
                         if (Array.isArray(target)) {
                             if (isFunction(onChanged)) {
-                                onChanged(`${path}[${p}]`, value);
+                                const success = Reflect.set(target, p, value, receiver);
+                                if (success) {
+                                    const field = selectPathRoot(path);
+                                    onChanged(field, Reflect.get(root, field));
+                                }
+                                return success;
                             } else {
                                 return Reflect.set(target, p, value, receiver);
                             }
