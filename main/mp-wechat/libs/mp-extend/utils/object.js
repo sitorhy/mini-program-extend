@@ -129,7 +129,6 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
                 }
             },
             set(target, p, value, receiver) {
-
                 if (isSymbol(p)) {
                     return Reflect.set(target, p, value, receiver);
                 } else {

@@ -1,4 +1,9 @@
 /**
+ * 贪吃蛇测试DEMO
+ * 小程序setData会反复进行序列号反序列化，数据量上去后悔变卡
+ */
+
+/**
  * min <= x < max
  * @param min
  * @param max
@@ -64,7 +69,7 @@ export default {
     computed: {
         backgroundStyle() {
             const {width, height, backgroundColor} = this;
-            return `width:${width}px;height:${height}px;background-color: ${backgroundColor};`
+            return `width:${width}px; height:${height}px; background-color:${backgroundColor};`
         }
     },
     mounted() {
@@ -94,7 +99,9 @@ export default {
                             const dpr = wx.getSystemInfoSync().pixelRatio;
                             canvas.width = res[0].width * dpr;
                             canvas.height = res[0].height * dpr;
-                            ctx.scale(dpr, dpr)
+                            ctx.scale(dpr, dpr);
+
+                            this.__canvas = canvas;
 
                             resolve(ctx);
                         }
@@ -122,23 +129,19 @@ export default {
             const context = this.getContext();
             context.save();
 
-            this.timer = setInterval(() => {
+            const handler = () => {
                 this.clean(context);
-
                 this.beginPaint(context);
                 this.drawBackground(context);
                 this.drawFood(context);
                 this.nextBody(this.direction[0], this.direction[1], false);
-
                 if (this.checkHitWall()) {
                     this.end('撞墙');
-                    clearInterval(this.timer);
                     return;
                 }
 
                 if (this.checkEatSelf()) {
                     this.end('打结');
-                    clearInterval(this.timer);
                     return;
                 }
 
@@ -151,10 +154,36 @@ export default {
                         this.food = this.nextFood(this.body);
                     } catch (e) {
                         this.end(e.message);
-                        clearInterval(this.timer);
                     }
                 }
-            }, this.speed);
+            };
+
+            const reqAF = window && window.requestAnimationFrame || this.__canvas.requestAnimationFrame;
+            const requestAnimationFrame = (callback) => {
+                this.reqFlag = reqAF(callback);
+            };
+
+            let last;
+            const step = (timestamp) => {
+                if (!this.playing || !this.getContext()) {
+                    return;
+                }
+                if (last === undefined) {
+                    last = timestamp;
+                    requestAnimationFrame(step);
+                    return;
+                }
+                const elapsed = timestamp - last;
+
+                if (elapsed > this.speed) { // 在两秒后停止动画
+                    handler();
+                    last = timestamp;
+                }
+
+                requestAnimationFrame(step);
+            };
+
+            requestAnimationFrame(step);
         },
 
         end(text) {
@@ -202,13 +231,15 @@ export default {
             const cx = parseInt(width / size);
             const cy = parseInt(height / size);
 
+            const nextBody = [];
+
             for (let i = this.body.length - 1; i > 0; --i) {
-                this.body[i][0] = this.body[i - 1][0];
-                this.body[i][1] = this.body[i - 1][1];
+                nextBody.unshift([this.body[i - 1][0], this.body[i - 1][1]]);
             }
 
             let nextX = (this.body[0][0] + deltaX);
             let nextY = (this.body[0][1] + deltaY);
+
             if (allowReset) {
                 if (nextY < 0) {
                     nextY = cy - 1;
@@ -223,8 +254,10 @@ export default {
                     nextX = 0;
                 }
             }
-            this.body[0][0] = nextX;
-            this.body[0][1] = nextY;
+
+            nextBody.unshift([nextX, nextY]);
+
+            this.body = nextBody;
         },
 
         nextFood(body) {
@@ -396,12 +429,14 @@ export default {
         },
 
         stop() {
-            clearInterval(this.timer);
-            this.timer = null;
+            (
+                window && window.cancelAnimationFrame || this.__canvas.cancelAnimationFrame
+            )(this.reqFlag);
         }
     },
     destroyed() {
         this.stop();
         this.__canvasContext = null;
+        this.__canvas = null;
     }
 };
