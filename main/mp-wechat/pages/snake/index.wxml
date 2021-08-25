@@ -2,8 +2,6 @@
     <view>
         <button type="primary" bind:tap="stop">中断</button>
         <button type="primary" bind:tap="replay">再搞一次</button>
-        <view>{{mp_draw_time}}</view>
-        <view>{{mp_canvas_id}}</view>
         <view style="position:relative;display:flex;justify-content:center;width:{{width}}px;height:{{height}}px;margin:auto;">
             <canvas wx:if="{{mp_canvas_id===1 || mp_canvas_id===2}}" type="2d" id="canvas" width="{{width}}px"
                     height="{{height}}px" style="{{backgroundStyle}};position:absolute;top:0;left:0;z-index:5;"/>
