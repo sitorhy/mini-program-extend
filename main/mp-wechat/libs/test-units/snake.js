@@ -1,6 +1,9 @@
 /**
  * 贪吃蛇测试DEMO
- * 小程序setData会反复进行序列号反序列化，数据量上去后会变卡
+ *
+ * 注：
+ * 小程序BUG（性能极差）：小程序的Canvas会越用越卡，不断触发重绘（60次左右）会引发严重卡顿
+ *
  */
 
 /**
@@ -63,7 +66,10 @@ export default {
             body,
             food,
             direction: [0, -1],
-            playing: true
+            playing: true,
+
+            mp_canvas_rebuild: true,
+            mp_draw_time: 0 // 强制小程序重建 Canvas 防止卡顿
         };
     },
     computed: {
@@ -73,8 +79,9 @@ export default {
         }
     },
     mounted() {
-        this.storeContext().then(context => {
+        this.storeContext().then(({context, canvas}) => {
             this.__canvasContext = context;
+            this.__canvas = canvas;
             this.start();
         });
     },
@@ -84,7 +91,10 @@ export default {
                 if (typeof getApp === "undefined") {
                     const context = document.getElementById('canvas').getContext('2d');
                     context.translate(0.5, 0.5);
-                    resolve(context);
+                    resolve({
+                        context,
+                        canvas: null
+                    });
                 } else {
                     wx.createSelectorQuery()
                         .in(this)
@@ -101,9 +111,10 @@ export default {
                             canvas.height = res[0].height * dpr;
                             ctx.scale(dpr, dpr);
 
-                            this.__canvas = canvas;
-
-                            resolve(ctx);
+                            resolve({
+                                context: ctx,
+                                canvas
+                            });
                         }
                     );
                 }
@@ -126,10 +137,10 @@ export default {
         },
 
         start() {
-            const context = this.getContext();
-            context.save();
+            const handler = (finish) => {
+                const context = this.getContext();
+                context.save();
 
-            const handler = () => {
                 this.clean(context);
                 this.beginPaint(context);
                 this.drawBackground(context);
@@ -156,6 +167,10 @@ export default {
                         this.end(e.message);
                     }
                 }
+
+                if (typeof finish === "function") {
+                    finish();
+                }
             };
 
             const reqAF = window && window.requestAnimationFrame || this.__canvas.requestAnimationFrame;
@@ -176,11 +191,37 @@ export default {
                 const elapsed = timestamp - last;
 
                 if (elapsed > this.speed) { // 在两秒后停止动画
-                    handler();
                     last = timestamp;
+                    handler(() => {
+                        if (typeof getApp === "undefined") {
+                            requestAnimationFrame(step);
+                        } else {
+                            if (this.mp_draw_time + 1 >= 60) {
+                                this.mp_draw_time = 0;
+                                this.mp_canvas_rebuild = false;
+                                this.playing = false;
+                                last = undefined;
+                                this.$nextTick(() => {
+                                    this.mp_canvas_rebuild = true;
+                                    this.storeContext().then(({context, canvas}) => {
+                                        this.__canvasContext = context;
+                                        this.__canvas = canvas;
+                                        this.handler();
+                                        setTimeout(() => {
+                                            this.playing = true;
+                                            requestAnimationFrame(step);
+                                        }, 3000);
+                                    });
+                                });
+                            } else {
+                                this.mp_draw_time++;
+                                requestAnimationFrame(step);
+                            }
+                        }
+                    });
+                } else {
+                    requestAnimationFrame(step);
                 }
-
-                requestAnimationFrame(step);
             };
 
             requestAnimationFrame(step);
@@ -215,6 +256,7 @@ export default {
                 const food = this.nextFood(body);
                 this.body = body;
                 this.food = food;
+                this.direction = [0, -1];
 
                 this.playing = true;
                 this.start();
@@ -234,6 +276,7 @@ export default {
             const nextBody = [];
 
             for (let i = this.body.length - 1; i > 0; --i) {
+                // 相当于 this.body[i][j]=this.body[i-1][j]; 小程序会多次触发setData
                 nextBody.unshift([this.body[i - 1][0], this.body[i - 1][1]]);
             }
 

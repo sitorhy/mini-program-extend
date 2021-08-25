@@ -3,7 +3,7 @@
     <button @click="stop">中断</button>
     <button @click="replay">再搞一次</button>
     <div>
-      <canvas id="canvas" :width="`${width}px`" :height="`${height}px`" :style="backgroundStyle"/>
+      <canvas id="canvas" :width="`${width+1}px`" :height="`${height+1}px`" :style="backgroundStyle"/>
     </div>
     <div>
       <div style="display: flex;justify-content: center;">
