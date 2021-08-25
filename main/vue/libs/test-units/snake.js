@@ -68,7 +68,7 @@ export default {
             direction: [0, -1],
             playing: true,
 
-            mp_canvas_rebuild: true,
+            mp_canvas_id: 1,
             mp_draw_time: 0 // 强制小程序重建 Canvas 防止卡顿
         };
     },
@@ -79,9 +79,9 @@ export default {
         }
     },
     mounted() {
-        this.storeContext().then(({context, canvas}) => {
-            this.__canvasContext = context;
-            this.__canvas = canvas;
+        this.storeContext().then(({contexts, canvases}) => {
+            this.__contexts = contexts;
+            this.__canvases = canvases;
             this.start();
         });
     },
@@ -92,59 +92,71 @@ export default {
                     const context = document.getElementById('canvas').getContext('2d');
                     context.translate(0.5, 0.5);
                     resolve({
-                        context,
-                        canvas: null
+                        contexts: [context],
+                        canvases: []
                     });
                 } else {
-                    wx.createSelectorQuery()
-                        .in(this)
-                        .select('#canvas')
-                        .fields({
-                            node: true,
-                            size: true
-                        }).exec(res => {
-                            const canvas = res[0].node
-                            const ctx = canvas.getContext('2d');
+                    const canvases = [];
+                    const contexts = [];
 
-                            const dpr = wx.getSystemInfoSync().pixelRatio;
-                            canvas.width = res[0].width * dpr;
-                            canvas.height = res[0].height * dpr;
-                            ctx.scale(dpr, dpr);
+                    Promise.all(['#canvas', '#canvas2'].map(id => {
+                        return new Promise(resolve1 => {
+                            wx.createSelectorQuery()
+                                .in(this)
+                                .select(id)
+                                .fields({
+                                    node: true,
+                                    size: true
+                                }).exec(res => {
+                                    if (res[0]) {
+                                        const canvas = res[0].node;
+                                        const ctx = canvas.getContext('2d');
+                                        const dpr = wx.getSystemInfoSync().pixelRatio;
 
-                            resolve({
-                                context: ctx,
-                                canvas
-                            });
-                        }
-                    );
+                                        canvas.width = res[0].width * dpr;
+                                        canvas.height = res[0].height * dpr;
+                                        ctx.scale(dpr, dpr);
+
+                                        canvases.push(canvas);
+                                        contexts.push(ctx);
+                                    }
+                                    resolve1();
+                                }
+                            );
+                        });
+                    })).then(() => {
+                        resolve({
+                            contexts,
+                            canvases
+                        });
+                    });
                 }
             });
         },
 
         /**
-         * @returns {CanvasRenderingContext2D}
+         * @returns {[CanvasRenderingContext2D]}
          */
-        getContext() {
-            return this.__canvasContext;
+        getContexts() {
+            return this.__contexts;
         },
 
-        beginPaint(context) {
-            context.save();
+        beginPaint(contexts) {
+            contexts.forEach(c => c.save());
         },
 
-        endPaint(context) {
-            context.restore();
+        endPaint(contexts) {
+            contexts.forEach(c => c.restore());
         },
 
         start() {
             const handler = (finish) => {
-                const context = this.getContext();
-                context.save();
+                const contexts = this.getContexts();
 
-                this.clean(context);
-                this.beginPaint(context);
-                this.drawBackground(context);
-                this.drawFood(context);
+                this.clean(contexts);
+                this.beginPaint(contexts);
+                this.drawBackground(contexts);
+                this.drawFood(contexts);
                 this.nextBody(this.direction[0], this.direction[1], false);
                 if (this.checkHitWall()) {
                     this.end('撞墙');
@@ -156,8 +168,8 @@ export default {
                     return;
                 }
 
-                this.drawBody(context);
-                this.endPaint(context);
+                this.drawBody(contexts);
+                this.endPaint(contexts);
 
                 if (this.checkEating()) {
                     this.body.unshift([...this.food]);
@@ -173,14 +185,15 @@ export default {
                 }
             };
 
-            const reqAF = window && window.requestAnimationFrame || this.__canvas.requestAnimationFrame;
-            const requestAnimationFrame = (callback) => {
-                this.reqFlag = reqAF(callback);
-            };
-
             let last;
             const step = (timestamp) => {
-                if (!this.playing || !this.getContext()) {
+                const reqAF = window && window.requestAnimationFrame || this.__canvases[0].requestAnimationFrame;
+
+                const requestAnimationFrame = (callback) => {
+                    this.reqFlag = reqAF(callback);
+                };
+
+                if (!this.playing || !this.getContexts()) {
                     return;
                 }
                 if (last === undefined) {
@@ -196,25 +209,26 @@ export default {
                         if (typeof getApp === "undefined") {
                             requestAnimationFrame(step);
                         } else {
-                            if (this.mp_draw_time + 1 >= 60) {
-                                this.mp_draw_time = 0;
-                                this.mp_canvas_rebuild = false;
-                                this.playing = false;
-                                last = undefined;
-                                this.$nextTick(() => {
-                                    this.mp_canvas_rebuild = true;
-                                    this.storeContext().then(({context, canvas}) => {
-                                        this.__canvasContext = context;
-                                        this.__canvas = canvas;
-                                        setTimeout(() => {
-                                            this.playing = true;
-                                            requestAnimationFrame(step);
-                                        }, 2000);
+                            switch (this.mp_draw_time) {
+                                case 40:
+                                case 50:
+                                case 60:
+                                    this.mp_canvas_id = Math.max(1, (this.mp_canvas_id + 1) % 4);
+                                    if (this.mp_draw_time === 60) {
+                                        this.mp_draw_time = 0;
+                                    } else {
+                                        this.mp_draw_time++;
+                                    }
+                                    this.storeContext().then(({contexts, canvases}) => {
+                                        this.__contexts = contexts;
+                                        this.__canvases = canvases;
+                                        requestAnimationFrame(step);
                                     });
-                                });
-                            } else {
-                                this.mp_draw_time++;
-                                requestAnimationFrame(step);
+                                    break;
+                                default: {
+                                    this.mp_draw_time++;
+                                    requestAnimationFrame(step);
+                                }
                             }
                         }
                     });
@@ -223,23 +237,27 @@ export default {
                 }
             };
 
-            requestAnimationFrame(step);
+            (window && window.requestAnimationFrame || this.__canvases[0].requestAnimationFrame)(step);
         },
 
         end(text) {
             const {width, height} = this;
             const fontSize = 48;
-            const context = this.getContext();
-            this.clean(context);
-            context.save();
+            const contexts = this.getContexts();
 
-            context.font = `${fontSize}px serif`;
-            context.textAlign = 'center';
-            context.fillText(text, width / 2, height / 2);
+            this.clean(contexts);
 
-            context.restore();
+            contexts.forEach(context => {
+                context.save();
 
-            this.playing = false;
+                context.font = `${fontSize}px serif`;
+                context.textAlign = 'center';
+                context.fillText(text, width / 2, height / 2);
+
+                context.restore();
+
+                this.playing = false;
+            });
         },
 
         replay() {
@@ -369,70 +387,78 @@ export default {
 
 
         /**
-         * @param {CanvasRenderingContext2D} context
+         * @param {[CanvasRenderingContext2D]} contexts
          */
-        clean(context) {
-            const {width, height} = this;
-            context.clearRect(0, 0, width, height);
+        clean(contexts) {
+            contexts.forEach(context => {
+                const {width, height} = this;
+                context.clearRect(0, 0, width, height);
+            });
         },
 
         /**
-         * @param {CanvasRenderingContext2D} context
+         * @param {[CanvasRenderingContext2D]} contexts
          */
-        drawBody(context) {
-            context.save();
-            const {size, bodyPadding} = this;
+        drawBody(contexts) {
+            contexts.forEach(context => {
+                context.save();
+                const {size, bodyPadding} = this;
 
-            this.body.forEach(([x, y]) => {
+                this.body.forEach(([x, y]) => {
+                    context.fillRect(
+                        x * size + bodyPadding,
+                        y * size + bodyPadding,
+                        size - bodyPadding * 2,
+                        size - bodyPadding * 2
+                    );
+                });
+                context.restore();
+            });
+        },
+
+        /**
+         * @param {[CanvasRenderingContext2D]} contexts
+         */
+        drawFood(contexts) {
+            contexts.forEach(context => {
+                context.save();
+                const {size, bodyPadding} = this;
+                context.fillStyle = '#FF0000';
                 context.fillRect(
-                    x * size + bodyPadding,
-                    y * size + bodyPadding,
+                    this.food[0] * size + bodyPadding,
+                    this.food[1] * size + bodyPadding,
                     size - bodyPadding * 2,
                     size - bodyPadding * 2
                 );
+                context.restore();
             });
-            context.restore();
         },
 
         /**
-         * @param {CanvasRenderingContext2D} context
+         * @param {[CanvasRenderingContext2D]} contexts
          */
-        drawFood(context) {
-            context.save();
-            const {size, bodyPadding} = this;
-            context.fillStyle = '#FF0000';
-            context.fillRect(
-                this.food[0] * size + bodyPadding,
-                this.food[1] * size + bodyPadding,
-                size - bodyPadding * 2,
-                size - bodyPadding * 2
-            );
-            context.restore();
-        },
+        drawBackground(contexts) {
+            contexts.forEach(context => {
+                context.save();
+                const {width, height, size} = this;
+                const cx = parseInt(width / size);
+                const cy = parseInt(height / size);
 
-        /**
-         * @param {CanvasRenderingContext2D} context
-         */
-        drawBackground(context) {
-            context.save();
-            const {width, height, size} = this;
-            const cx = parseInt(width / size);
-            const cy = parseInt(height / size);
-
-            context.strokeStyle = this.color;
-            context.lineWidth = 1;
-            for (let i = 1; i < cx; ++i) {
-                context.moveTo(i * size, 0);
-                context.lineTo(i * size, height);
-                context.stroke();
-            }
-            for (let i = 1; i < cy; ++i) {
-                context.moveTo(0, i * size);
-                context.lineTo(width, i * size);
-                context.stroke();
-            }
-            context.strokeRect(0, 0, width, height);
-            context.restore();
+                context.strokeStyle = this.color;
+                context.lineWidth = 1;
+                for (let i = 1; i < cx; ++i) {
+                    context.moveTo(i * size, 0);
+                    context.lineTo(i * size, height);
+                    context.stroke();
+                }
+                for (let i = 1; i < cy; ++i) {
+                    context.moveTo(0, i * size);
+                    context.lineTo(width, i * size);
+                    context.stroke();
+                }
+                context.strokeRect(0, 0, width, height);
+                context.restore();
+            });
         },
 
         /**
@@ -472,13 +498,13 @@ export default {
 
         stop() {
             (
-                window && window.cancelAnimationFrame || this.__canvas.cancelAnimationFrame
+                window && window.cancelAnimationFrame || this.__canvases[0].cancelAnimationFrame
             )(this.reqFlag);
         }
     },
     destroyed() {
         this.stop();
-        this.__canvasContext = null;
-        this.__canvas = null;
+        this.__contexts = null;
+        this.__canvases = null;
     }
 };
