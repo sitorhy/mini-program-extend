@@ -88,8 +88,6 @@ export default class MPExtender {
         let runtimeContext;
 
         const runtimeDataContext = createReactiveObject(context.data, context.data, function (path, value) {
-        //    console.log(path)
-        //    console.log(value)
             if (isFunction(fnSetData)) {
                 fnSetData(!isNullOrEmpty(path) ? {[path]: value} : value);
             } else {
