@@ -206,7 +206,6 @@ export default {
                                     this.storeContext().then(({context, canvas}) => {
                                         this.__canvasContext = context;
                                         this.__canvas = canvas;
-                                        this.handler();
                                         setTimeout(() => {
                                             this.playing = true;
                                             requestAnimationFrame(step);
