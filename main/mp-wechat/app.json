@@ -8,7 +8,8 @@
     "pages/options/index",
     "pages/event/index",
     "pages/provide/index",
-    "pages/snake/index"
+    "pages/snake/index",
+    "pages/mixins/index"
   ],
   "window": {
     "backgroundTextStyle": "light",
