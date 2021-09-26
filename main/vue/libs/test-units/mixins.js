@@ -1,4 +1,4 @@
-export default {
+export const mixins_01 = {
     properties: {
         str1: {
             type: String,
@@ -16,8 +16,21 @@ export default {
         }
     },
     data() {
-        return {
+        return {};
+    },
+    mounted() {
+        console.log("mounted triggered.");
+    }
+}
 
-        };
+export const mixins_02 = {
+    mounted() {
+        console.log(this.is);
+    }
+}
+
+export const mixins_03 = {
+    mounted() {
+        console.log(this.is);
     }
 }
