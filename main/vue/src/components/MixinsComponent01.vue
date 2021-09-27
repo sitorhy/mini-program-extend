@@ -3,16 +3,9 @@
 </template>
 
 <script>
-import {mixins_01, mixins_02, mixins_03} from "../../libs/test-units/mixins";
+import {mixins} from "../../libs/test-units/mixins";
 
-export default {
-  name: "MixinsComponent01",
-  mixins: [
-    mixins_01,
-    mixins_02,
-    mixins_03
-  ]
-}
+export default mixins;
 </script>
 
 <style scoped>

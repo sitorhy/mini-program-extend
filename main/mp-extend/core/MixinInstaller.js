@@ -115,6 +115,8 @@ export default class MixinInstaller extends OptionInstaller {
     install(extender, context, options) {
         const {mixins} = options;
 
+        const mergeOptions = new Map();
+
         delete options["mixins"];
 
         if (Array.isArray(mixins)) {

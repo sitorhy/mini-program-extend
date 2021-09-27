@@ -3,9 +3,10 @@
 </template>
 
 <script>
-export default {
-  name: "MixinsComponent02"
-}
+import {mixins} from "../../libs/test-units/mixins";
+
+export default mixins;
+
 </script>
 
 <style scoped>

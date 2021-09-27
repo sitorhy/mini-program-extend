@@ -316,9 +316,11 @@ export default class MPExtender {
         });
     }
 
-    extends(options) {
+    extends(configuration) {
+        let options = configuration;
         const installers = this.installers;
         installers.forEach(installer => {
+            options = installer.configuration(this, this._context, options);
             installer.install(this, this._context, options);
         });
 

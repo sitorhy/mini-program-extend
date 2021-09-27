@@ -1,3 +1,7 @@
 {
-  "usingComponents": {}
+  "usingComponents": {
+    "mixins-component-01": "mixins-component-01",
+    "mixins-component-02": "mixins-component-02",
+    "mixins-component-03": "mixins-component-03"
+  }
 }

@@ -1,4 +1,6 @@
-export default class BehaviorInstaller {
+import FrameworkInstaller from "./FrameworkInstaller";
+
+export default class BehaviorInstaller extends FrameworkInstaller {
     /**
      * 自定义组件扩展
      *

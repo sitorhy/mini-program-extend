@@ -39,6 +39,7 @@ declare namespace extend {
     type PropOption = VuePropOption<PropType> | WXMAPropOption<PropType>;
 
     interface Options {
+        mixins?: Options[],
         properties?: { [key: string]: PropOption };
         behaviors?: string[];
         data?: (() => object) | object;

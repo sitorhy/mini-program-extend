@@ -1,2 +1,9 @@
-<!--pages/extends/index.wxml-->
-<text>pages/extends/index.wxml</text>
+<view>
+    <mixins-component-01/>
+</view>
+<view>
+    <mixins-component-02/>
+</view>
+<view>
+    <mixins-component-03/>
+</view>
