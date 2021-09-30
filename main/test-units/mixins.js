@@ -16,7 +16,9 @@ export const mixins_01 = {
         }
     },
     data() {
-        return {};
+        return {
+            a: 100
+        };
     },
     mounted() {
         console.log("01 mounted triggered.");
@@ -38,6 +40,11 @@ export const mixins_02 = {
             }
         }
     },
+    data() {
+        return {
+            a: 200
+        };
+    },
     mounted() {
         console.log("02 mounted triggered.");
     },
@@ -52,6 +59,11 @@ export const mixins_03 = {
     mounted() {
         console.log("03 mounted triggered.");
     },
+    data() {
+        return {
+            b: 300
+        };
+    },
     methods: {
         method_03() {
             this.method_01();
@@ -63,5 +75,9 @@ export const mixins = {
     mixins: [mixins_01, mixins_02, mixins_03],
     created() {
         this.method_03();
+    },
+    mounted() {
+        console.log(this.$data);
+        console.log(this.$props);
     }
 };

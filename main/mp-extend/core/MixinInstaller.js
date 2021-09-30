@@ -10,7 +10,7 @@ import {isFunction, removeEmpty} from "../utils/common";
  * 混合策略
  * 默认行为：
  * methods : 覆盖
- * data: 覆盖
+ * data: 合并
  * props: 覆盖
  * computed: 覆盖
  * watch: 复合
