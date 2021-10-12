@@ -27,7 +27,6 @@ export default {
         }
     },
     data() {
-        console.log('data init');
         return {
             num4: 810
         };
