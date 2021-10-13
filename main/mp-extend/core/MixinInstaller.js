@@ -17,16 +17,23 @@ import {isFunction, removeEmpty} from "../utils/common";
  * 生命周期: 复合
  */
 export default class MixinInstaller extends OptionInstaller {
-    mixConfiguration(config, mixins) {
+    overrideMethods(output, config, mixin) {
+        
+    }
 
+    reduceConfiguration(config, mixin) {
+        let mergeMixin = mixin;
+        if (Array.isArray(mixin.mixins)) {
+            mixin.mixins.forEach(m => {
+                mergeMixin = this.reduceConfiguration(mixin, m);
+            });
+        }
+        const mergeConfig = {};
+        this.overrideMethods(mergeConfig, config, mergeMixin);
+        return mergeConfig;
     }
 
     configuration(extender, context, options) {
-        const config = options;
-        const {mixins} = options;
-        if (Array.isArray(mixins)) {
-            
-        }
-        return config;
+        return this.reduceConfiguration({}, options);
     }
 }

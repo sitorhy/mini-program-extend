@@ -48,11 +48,15 @@ export const mixins_02 = {
     mounted() {
         console.log("02 mounted triggered.");
     },
-    methods: {
-        method_01() {
-            console.log(this.createdTime);
+    mixins: [
+        {
+            methods: {
+                method_01() {
+                    console.log(this.createdTime);
+                }
+            }
         }
-    }
+    ]
 }
 
 export const mixins_03 = {
