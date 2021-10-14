@@ -81,7 +81,7 @@ export const mixins = {
         this.method_03();
     },
     mounted() {
-        console.log(this.$data);
-        console.log(this.$props);
+        console.log(JSON.stringify(this.$data));
+        console.log(JSON.stringify(this.$props));
     }
 };
