@@ -15,6 +15,11 @@ export const mixins_01 = {
             }
         }
     },
+    watch: {
+        a(newVal, oldVal) {
+            console.log(`a1 ${oldVal} => ${newVal}`);
+        }
+    },
     data() {
         return {
             a: 100
@@ -38,6 +43,10 @@ export const mixins_02 = {
                 const time = new Date();
                 return `${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`;
             }
+        },
+        str1: {
+            type: String,
+            default: 'test'
         }
     },
     data() {
@@ -50,6 +59,11 @@ export const mixins_02 = {
     },
     mixins: [
         {
+            watch: {
+                a(newVal, oldVal) {
+                    console.log(`a2 ${oldVal} => ${newVal}`);
+                }
+            },
             methods: {
                 method_01() {
                     console.log(this.createdTime);
@@ -80,8 +94,15 @@ export const mixins = {
     created() {
         this.method_03();
     },
+    watch: {
+        a(newVal, oldVal) {
+            console.log(`a3 ${oldVal} => ${newVal}`);
+        }
+    },
     mounted() {
-        console.log(JSON.stringify(this.$data));
-        console.log(JSON.stringify(this.$props));
+        console.log((this.$data));
+        console.log((this.$props));
+
+        this.a = 999;
     }
 };
