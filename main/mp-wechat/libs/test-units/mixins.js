@@ -15,6 +15,11 @@ export const mixins_01 = {
             }
         }
     },
+    computed: {
+        doubleStr2() {
+            return this.str2 * 2;
+        }
+    },
     watch: {
         a(newVal, oldVal) {
             console.log(`a1 ${oldVal} => ${newVal}`);
@@ -99,10 +104,17 @@ export const mixins = {
             console.log(`a3 ${oldVal} => ${newVal}`);
         }
     },
+    computed: {
+        doubleStr2() {
+            return 1919810;
+        }
+    },
     mounted() {
         console.log((this.$data));
         console.log((this.$props));
 
         this.a = 999;
+
+        console.log(this.doubleStr2);
     }
 };

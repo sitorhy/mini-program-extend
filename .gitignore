@@ -179,3 +179,4 @@ $RECYCLE.BIN/
 /yarn.lock
 /pages/test
 /main/vue/yarn.lock
+/package-lock.json
