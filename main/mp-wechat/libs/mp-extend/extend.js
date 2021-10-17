@@ -15,7 +15,9 @@ export function PageEx(options) {
             extender.use(new Installer(), priority);
         }
     }
-    Page(extender.extends(options));
+    const config = extender.extends(options);
+    Page(config);
+    return config;
 }
 
 export function ComponentEx(options) {
@@ -25,5 +27,7 @@ export function ComponentEx(options) {
             extender.use(new Installer(), priority);
         }
     }
-    Component(extender.extends(options));
+    const config = extender.extends(options);
+    Component(config);
+    return config;
 }

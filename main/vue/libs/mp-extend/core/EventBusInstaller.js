@@ -3,27 +3,33 @@ import EventEmitter from "./EventEmitter";
 
 const EVTSign = Symbol("__wxEVT__");
 
+const OriginalSourceSign = Symbol("_originalSource");
+const SourceSign = Symbol("_source");
+const EventSign = Symbol("_event");
+const DataSign = Symbol("_data");
+const HandledSign = Symbol("_handled");
+
 class EventArgs {
     constructor(originalSource, event, data) {
-        Object.defineProperty(this, '_originalSource', {
+        Object.defineProperty(this, OriginalSourceSign, {
             enumerable: false,
             configurable: false,
             value: originalSource
         });
 
-        Object.defineProperty(this, '_source', {
+        Object.defineProperty(this, SourceSign, {
             enumerable: false,
             configurable: false,
             value: null
         });
 
-        Object.defineProperty(this, '_event', {
+        Object.defineProperty(this, EventSign, {
             enumerable: false,
             configurable: false,
             value: event
         });
 
-        Object.defineProperty(this, '_data', {
+        Object.defineProperty(this, DataSign, {
             enumerable: false,
             configurable: false,
             value: data
@@ -31,30 +37,30 @@ class EventArgs {
     }
 
     get originalSource() {
-        return this._originalSource;
+        return Reflect.get(this, OriginalSourceSign);
     }
 
     get event() {
-        return this._event;
+        return Reflect.get(this, EventSign);
     }
 
     get data() {
-        return this._data;
+        return Reflect.get(this, DataSign);
     }
 
     get source() {
-        return this._source;
+        return Reflect.get(this, SourceSign);
     }
 
     set source(value) {
-        this._source = value;
+        Reflect.set(this, SourceSign, value);
     }
 }
 
 class RoutedEventArgs extends EventArgs {
     constructor(originalSource, event, data) {
         super(originalSource, event, data);
-        Object.defineProperty(this, '_handled', {
+        Object.defineProperty(this, HandledSign, {
             enumerable: false,
             configurable: true,
             value: false
@@ -62,11 +68,11 @@ class RoutedEventArgs extends EventArgs {
     }
 
     get handled() {
-        return this._handled;
+        return Reflect.get(this, HandledSign);
     }
 
     set handled(value) {
-        this._handled = value;
+        Reflect.set(this, HandledSign, value);
     }
 }
 

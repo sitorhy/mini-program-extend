@@ -3,7 +3,7 @@ import {Blend} from "../libs/Blend";
 import {Collectors, Stream} from "../libs/Stream";
 import {Invocation} from "../libs/Invocation";
 import {Optional} from "../libs/Optional";
-import {isFunction, removeEmpty} from "../utils/common";
+import {isFunction} from "../utils/common";
 import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
 import RESERVED_OPTIONS_WORDS from "../utils/options";
 
@@ -131,17 +131,6 @@ export default class MixinInstaller extends OptionInstaller {
         const pageStaticData = Stream.of(Object.entries(options)).filter(([name, data]) => {
             return !isFunction(data) && !RESERVED_OPTIONS_WORDS.has(name) && !RESERVED_LIFECYCLES_WORDS.has(name);
         }).collect(Collectors.toMap());
-        const {
-            externalClasses,
-            options: mpOptions,
-            relations,
-            behaviors
-        } = options;
-        return Object.assign({}, pageStaticData, removeEmpty({
-            externalClasses,
-            options: mpOptions,
-            relations,
-            behaviors
-        }));
+        return Object.assign({}, pageStaticData);
     }
 }

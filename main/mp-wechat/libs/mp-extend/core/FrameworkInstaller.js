@@ -16,7 +16,6 @@ export default class FrameworkInstaller {
      * @param {MPExtender} extender
      * @param {Map<any,any>} context
      * @param {{[key:string]:any}} options
-     * @returns {{[key:string]:any}}
      */
     install(extender, context, options) {
         return options;
