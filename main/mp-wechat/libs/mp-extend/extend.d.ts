@@ -79,6 +79,6 @@ declare namespace extend {
     }
 }
 
-export declare function PageEx<T extends extend.PageExOptions & object>(options: T): { [key: string]: any };
+export declare function PageEx<T extends extend.PageExOptions & object>(options: T): void;
 
-export declare function ComponentEx<T extends extend.ComponentExOptions & object>(options: T): { [key: string]: any };
+export declare function ComponentEx<T extends extend.ComponentExOptions & object>(options: T): void;
