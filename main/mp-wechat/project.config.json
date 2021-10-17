@@ -30,6 +30,7 @@
     "disableUseStrict": false,
     "minifyWXML": true
   },
+  "checkSiteMap": false,
   "compileType": "miniprogram",
   "libVersion": "2.19.2",
   "appid": "wxec1611614b41c1b0",

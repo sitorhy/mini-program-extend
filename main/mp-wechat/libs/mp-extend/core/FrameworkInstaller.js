@@ -3,8 +3,8 @@ export default class FrameworkInstaller {
      * 拦截，构建配置
      * @param extender
      * @param context
-     * @param options
-     * @returns {*}
+     * @param {{[key:string]:any}} options
+     * @returns {{[key:string]:any}}
      */
     configuration(extender, context, options) {
         return options;
@@ -15,7 +15,7 @@ export default class FrameworkInstaller {
      *
      * @param {MPExtender} extender
      * @param {Map<any,any>} context
-     * @param {Map<string,any>} options
+     * @param {{[key:string]:any}} options
      */
     install(extender, context, options) {
         return options;
@@ -25,7 +25,7 @@ export default class FrameworkInstaller {
      * 返回值将直接注入最终配置
      * @param {MPExtender} extender
      * @param {Map<any,any>} context
-     * @param {Map<string,any>} options
+     * @param {{[key:string]:any}} options
      * @returns {{}}
      */
     build(extender, context, options) {
