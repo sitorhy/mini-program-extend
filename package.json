@@ -2,7 +2,7 @@
   "name": "wechat-mini-program-extend",
   "version": "1.0.0",
   "main": "index.js",
-  "repository": "git@github.com:sitorhy/mini-program-extend-wechat.git",
+  "repository": "git@github.com:sitorhy/wechat-mini-program-extend.git",
   "author": "sitorhy <sitorhy>",
   "license": "MIT",
   "keywords": [
