@@ -105,6 +105,9 @@ gulp.task("build", async () => {
     gulp.src("LICENSE")
         .pipe(gulp.dest("dist"));
 
+    gulp.src("README.md")
+        .pipe(gulp.dest("dist"));
+
     gulp.src("main/mp-extend/**/LICENSE")
         .pipe(gulp.dest(`dist/${miniprogram}`));
 
@@ -145,6 +148,9 @@ gulp.task("build-debug", async () => {
         .pipe(gulp.dest(`dist/${miniprogram}`));
 
     gulp.src("LICENSE")
+        .pipe(gulp.dest("dist"));
+
+    gulp.src("README.md")
         .pipe(gulp.dest("dist"));
 
     gulp.src("main/mp-extend/**/LICENSE")
