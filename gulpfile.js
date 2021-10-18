@@ -41,9 +41,18 @@ gulp.task("deploy", async () => {
     gulp.src(LIB_HOME + "/**/*.js", {
         base: LIB_HOME
     }).pipe(gulp.dest(`main/mp-wechat/libs/mp-extend/`));
+
     gulp.src(TEST_UNITS_HOME + "/**/*.js", {
         base: TEST_UNITS_HOME
     }).pipe(gulp.dest(`main/mp-wechat/libs/test-units/`));
+
+    gulp.src(LIB_HOME + "/**/*.js", {
+        base: LIB_HOME
+    }).pipe(gulp.dest(`main/vue/libs/mp-extend/`));
+
+    gulp.src(TEST_UNITS_HOME + "/**/*.js", {
+        base: TEST_UNITS_HOME
+    }).pipe(gulp.dest(`main/vue/libs/test-units/`));
 });
 
 gulp.task("dev", gulp.series(["deploy"], async () => {
@@ -72,6 +81,7 @@ gulp.task("dev", gulp.series(["deploy"], async () => {
 }));
 
 gulp.task("build", async () => {
+    const miniprogram = "dist";
     if (!fs.existsSync("dist")) {
         fs.mkdirSync("dist");
     }
@@ -90,31 +100,33 @@ gulp.task("build", async () => {
             comments: false
         }))
         .pipe(uglify())
-        .pipe(gulp.dest("dist/miniprogram_dist"));
+        .pipe(gulp.dest(`dist/${miniprogram}`));
 
     gulp.src("LICENSE")
         .pipe(gulp.dest("dist"));
 
     gulp.src("main/mp-extend/**/LICENSE")
-        .pipe(gulp.dest("dist/miniprogram_dist"));
+        .pipe(gulp.dest(`dist/${miniprogram}`));
 
     gulp.src("main/mp-extend/**/*.d.ts")
-        .pipe(gulp.dest("dist/miniprogram_dist"));
+        .pipe(gulp.dest(`dist/${miniprogram}`));
 
     fs.writeFileSync("dist/package.json", JSON.stringify({
         name,
         version,
         repository,
         author,
-        license
+        license,
+        miniprogram
     }, null, 2), {
         flag: "w"
     });
 });
 
 gulp.task("build-debug", async () => {
-    if (!fs.existsSync("debug")) {
-        fs.mkdirSync("debug");
+    const miniprogram = "dist";
+    if (!fs.existsSync("dist")) {
+        fs.mkdirSync("dist");
     }
     const info = JSON.parse(fs.readFileSync("package.json"));
     const {
@@ -130,24 +142,28 @@ gulp.task("build-debug", async () => {
             presets: ["@babel/env"],
             comments: false
         }))
-        .pipe(gulp.dest("debug/miniprogram_dist"));
+        .pipe(gulp.dest(`dist/${miniprogram}`));
 
     gulp.src("LICENSE")
-        .pipe(gulp.dest("debug"));
+        .pipe(gulp.dest("dist"));
 
     gulp.src("main/mp-extend/**/LICENSE")
-        .pipe(gulp.dest("debug/miniprogram_dist"));
+        .pipe(gulp.dest(`dist/${miniprogram}`));
 
     gulp.src("main/mp-extend/**/*.d.ts")
-        .pipe(gulp.dest("debug/miniprogram_dist"));
+        .pipe(gulp.dest(`dist/${miniprogram}`));
 
-    fs.writeFileSync("debug/package.json", JSON.stringify({
+    fs.writeFileSync("dist/package.json", JSON.stringify({
         name,
         version,
         repository,
         author,
-        license
+        license,
+        miniprogram
     }, null, 2), {
         flag: "w"
     });
+
+    fs.renameSync(`dist/${miniprogram}/extend.d.ts`, `dist/${miniprogram}/index.d.ts`);
+    fs.renameSync(`dist/${miniprogram}/extend.js`, `dist/${miniprogram}/index.js`);
 });

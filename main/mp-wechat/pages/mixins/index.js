@@ -1,4 +1,4 @@
-import {PageEx} from "../../libs/mp-extend/extend";
+import {PageEx} from "../../libs/mp-extend/index";
 
 // pages/extends/index.js
 PageEx({

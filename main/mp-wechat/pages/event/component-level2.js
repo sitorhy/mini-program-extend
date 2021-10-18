@@ -1,4 +1,4 @@
-import {ComponentEx} from "../../libs/mp-extend/extend";
+import {ComponentEx} from "../../libs/mp-extend/index";
 import {printChildren, printLevel} from "./behaviors";
 
 ComponentEx({

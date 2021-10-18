@@ -1,4 +1,4 @@
-import {PageEx} from "../../libs/mp-extend/extend";
+import {PageEx} from "../../libs/mp-extend/index";
 
 PageEx({
     // Page properties 扩展特性，非原生，传值给组件

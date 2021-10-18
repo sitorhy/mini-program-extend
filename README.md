@@ -15,6 +15,10 @@
 ### 引入
 
 > import { PageEx, ComponentEx } from "@mini-program-extend/wechat";
+> 
+> 或者
+> 
+> import { PageEx, ComponentEx } from "@mini-program-extend/wechat/index";
 
 * 页面扩展接口，替换 `Page`
 
