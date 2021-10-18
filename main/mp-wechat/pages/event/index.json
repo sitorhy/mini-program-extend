@@ -1,0 +1,7 @@
+{
+  "usingComponents": {
+    "component-bus": "./component-bus",
+    "component": "./component",
+    "component2": "./component-level2"
+  }
+}

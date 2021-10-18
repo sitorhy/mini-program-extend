@@ -1,0 +1,8 @@
+{
+  "usingComponents": {
+    "custom-component": "./custom-component"
+  },
+  "enablePullDownRefresh": true,
+  "backgroundColor": "#dfdfdf",
+  "onReachBottomDistance": 50
+}
