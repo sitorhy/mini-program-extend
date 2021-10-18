@@ -91,7 +91,8 @@ gulp.task("build", async () => {
         version,
         repository,
         author,
-        license
+        license,
+        keywords
     } = info;
 
     gulp.src("main/mp-extend/**/*.js")
@@ -120,7 +121,8 @@ gulp.task("build", async () => {
         repository,
         author,
         license,
-        miniprogram
+        miniprogram,
+        keywords
     }, null, 2), {
         flag: "w"
     });
@@ -137,7 +139,8 @@ gulp.task("build-debug", async () => {
         version,
         repository,
         author,
-        license
+        license,
+        keywords
     } = info;
 
     gulp.src("main/mp-extend/**/*.js")
@@ -165,7 +168,8 @@ gulp.task("build-debug", async () => {
         repository,
         author,
         license,
-        miniprogram
+        miniprogram,
+        keywords
     }, null, 2), {
         flag: "w"
     });

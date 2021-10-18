@@ -1,10 +1,16 @@
 {
-  "name": "@mini-program-extend/wechat",
+  "name": "wechat-mini-program-extend",
   "version": "1.0.0",
   "main": "index.js",
   "repository": "git@github.com:sitorhy/mini-program-extend-wechat.git",
   "author": "sitorhy <sitorhy>",
   "license": "MIT",
+  "keywords": [
+    "miniprogram",
+    "mini-program",
+    "wechat",
+    "wxma"
+  ],
   "scripts": {
     "dev": "gulp dev",
     "build": "gulp build",

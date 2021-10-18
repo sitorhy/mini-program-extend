@@ -1,4 +1,4 @@
-# @mini-program-extend/wechat
+# wechat-mini-program-extend
 
 小程序扩展框架，依赖开发者工具的 npm 构建。具体详情可查阅[官方 npm 文档](https://developers.weixin.qq.com/miniprogram/dev/devtools/npm.html)。
 
@@ -10,15 +10,15 @@
 
 ### 安装
 
-> npm install @mini-program-extend/wechat
+> npm install wechat-mini-program-extend
 
 ### 引入
 
-> import { PageEx, ComponentEx } from "@mini-program-extend/wechat";
+> import { PageEx, ComponentEx } from "wechat-mini-program-extend";
 > 
 > 或者
 > 
-> import { PageEx, ComponentEx } from "@mini-program-extend/wechat/index";
+> import { PageEx, ComponentEx } from "wechat-mini-program-extend/index";
 
 * 页面扩展接口，替换 `Page`
 
