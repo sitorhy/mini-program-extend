@@ -1,6 +1,6 @@
 {
   "name": "wechat-mini-program-extend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.js",
   "repository": "git@github.com:sitorhy/wechat-mini-program-extend.git",
   "author": "sitorhy <sitorhy>",
