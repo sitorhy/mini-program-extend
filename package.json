@@ -9,7 +9,9 @@
     "miniprogram",
     "mini-program",
     "wechat",
-    "wxma"
+    "wxma",
+	"wechat-mini-program-extend",
+	"miniprogram-extend"
   ],
   "scripts": {
     "dev": "gulp dev",
