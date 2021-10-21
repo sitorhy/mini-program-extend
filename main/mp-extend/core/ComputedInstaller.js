@@ -76,11 +76,16 @@ export default class ComputedInstaller extends OptionInstaller {
         const computed = context.get("computed");
         const methods = context.get("methods");
         const state = Object.assign({}, context.get("state")); // 复制结果集，避免修改原值
-
         const computedContext = new Proxy(
-            {},
+            {
+                data: state
+            },
             {
                 get(target, p, receiver) {
+                    // 兼容小程序格式
+                    if (p === 'data') {
+                        return Reflect.get(target, p);
+                    }
                     if (Reflect.has(state, p)) {
                         return Reflect.get(state, p);
                     }
