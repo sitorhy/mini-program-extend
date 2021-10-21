@@ -115,9 +115,6 @@ gulp.task("build", async () => {
     gulp.src("main/mp-extend/**/*.d.ts")
         .pipe(gulp.dest(`dist/${miniprogram}`));
 
-    gulp.src("main/mp-extend/index.js")
-        .pipe(gulp.dest(`dist`));
-
     gulp.src("main/mp-extend/index.d.ts")
         .pipe(gulp.dest(`dist`));
 
@@ -167,9 +164,6 @@ gulp.task("build-debug", async () => {
 
     gulp.src("main/mp-extend/**/*.d.ts")
         .pipe(gulp.dest(`dist/${miniprogram}`));
-
-    gulp.src("main/mp-extend/index.js")
-        .pipe(gulp.dest(`dist`));
 
     gulp.src("main/mp-extend/index.d.ts")
         .pipe(gulp.dest(`dist`));
