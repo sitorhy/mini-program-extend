@@ -1,4 +1,5 @@
 <view>
+    <doubleBase base="{{57257}}"/>
     <view><text>aPlus=</text><text>{{ aPlus }}</text></view>
     <view><text>a=</text><text>{{ a }}</text></view>
     <view><text>aDouble=</text><text>{{ aDouble }}</text></view>

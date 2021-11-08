@@ -41,7 +41,17 @@ const routes = [
     {
         path: '/computed',
         name: 'Computed',
-        component: Computed
+        component: Vue.extend({
+            components: {
+                Computed
+            },
+            data() {
+                return {
+                    base: 57257
+                }
+            },
+            template: "<Computed :base='base'/>"
+        })
     },
     {
         path: '/watch',

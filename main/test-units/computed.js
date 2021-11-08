@@ -1,6 +1,18 @@
 export default {
     mixins: [
         {
+            props: {
+                base: {
+                    type: Number,
+                    default: 0
+                }
+            },
+            properties: {
+                base: {
+                    type: Number,
+                    value: 0
+                }
+            },
             data: function () {
                 return {
                     a: 1,
@@ -8,6 +20,9 @@ export default {
                 };
             },
             computed: {
+                doubleBase: function () {
+                    return this.base * 2;
+                },
                 // 仅读取
                 aDouble: function () {
                     return this.a * 2

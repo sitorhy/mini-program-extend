@@ -95,11 +95,11 @@ export default class ComputedInstaller extends OptionInstaller {
                             return expr.call(receiver);
                         } else if (isPlainObject(expr) && isFunction(expr.get)) {
                             return (expr.get).call(receiver);
-                        } else if (Reflect.has(methods, p)) {
-                            const method = Reflect.get(methods, p);
-                            if (isFunction(method)) {
-                                return method.bind(receiver);
-                            }
+                        }
+                    } else if (Reflect.has(methods, p)) {
+                        const method = Reflect.get(methods, p);
+                        if (isFunction(method)) {
+                            return method.bind(receiver);
                         }
                     }
                     return undefined;
@@ -201,6 +201,19 @@ export default class ComputedInstaller extends OptionInstaller {
                 Reflect.deleteProperty(thisArg, CMPCSetterSign);
             };
 
+            // 主动触发一次 setData，初始化计算属性，防止组件没有任何赋值操作
+            const checkCalculated = (extender, context, options, instance) => {
+                const calculated = {};
+                this.beforeUpdate(extender, context, options, instance, calculated);
+                const currentCalculated = Stream.of(Object.keys(calculated)).map(i => {
+                    return [i, Reflect.get(instance, 'data')[i]];
+                }).collect(Collectors.toMap());
+                if (!equal(calculated, currentCalculated)) {
+                    const originalSetData = instance.setData;
+                    originalSetData.call(instance, calculated);
+                }
+            };
+
             defFields.behaviors = [
                 Behavior({
                     data: calculated,
@@ -218,6 +231,9 @@ export default class ComputedInstaller extends OptionInstaller {
                                 value: createCMPC(this),
                                 writable: false
                             });
+                        },
+                        attached() {
+                            checkCalculated(extender, context, options, this);
                         }
                     }
                 })
