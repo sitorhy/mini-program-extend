@@ -95,11 +95,11 @@ export default class ComputedInstaller extends OptionInstaller {
                             return expr.call(receiver);
                         } else if (isPlainObject(expr) && isFunction(expr.get)) {
                             return (expr.get).call(receiver);
-                        } else if (Reflect.has(methods, p)) {
-                            const method = Reflect.get(methods, p);
-                            if (isFunction(method)) {
-                                return method.bind(receiver);
-                            }
+                        }
+                    } else if (Reflect.has(methods, p)) {
+                        const method = Reflect.get(methods, p);
+                        if (isFunction(method)) {
+                            return method.bind(receiver);
                         }
                     }
                     return undefined;
