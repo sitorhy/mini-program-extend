@@ -41,6 +41,7 @@ declare namespace extend {
     interface Options {
         mixins?: Options[],
         properties?: { [key: string]: PropOption };
+        props?: { [key: string]: PropOption };
         behaviors?: string[];
         data?: (() => object) | object;
         methods?: { [key: string]: (...args: any[]) => any };
