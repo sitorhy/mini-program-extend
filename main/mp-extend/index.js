@@ -1,4 +1,5 @@
-import MPExtender from "./core/MPExtender";
+import _MPExtender from "./core/MPExtender";
+import _OptionInstaller from "./core/OptionInstaller";
 
 export const Extension = {
     _installerClasses: new Map(),
@@ -9,7 +10,7 @@ export const Extension = {
 };
 
 export function PageEx(options) {
-    const extender = new MPExtender();
+    const extender = new _MPExtender();
     if (Extension._installerClasses.size) {
         for (const [Installer, priority] of Extension._installerClasses) {
             extender.use(new Installer(), priority);
@@ -19,7 +20,7 @@ export function PageEx(options) {
 }
 
 export function ComponentEx(options) {
-    const extender = new MPExtender();
+    const extender = new _MPExtender();
     if (Extension._installerClasses.size) {
         for (const [Installer, priority] of Extension._installerClasses) {
             extender.use(new Installer(), priority);
@@ -27,3 +28,7 @@ export function ComponentEx(options) {
     }
     Component(extender.extends(options));
 }
+
+export const MPExtender = _MPExtender;
+
+export const OptionInstaller = _OptionInstaller;

@@ -115,55 +115,11 @@ gulp.task("build", async () => {
     gulp.src("main/mp-extend/**/*.d.ts")
         .pipe(gulp.dest(`dist/${miniprogram}`));
 
-    gulp.src("main/mp-extend/index.d.ts")
+    gulp.src("main/mp-extend/**/tsconfig.json")
+        .pipe(gulp.dest(`dist/${miniprogram}`));
+
+    gulp.src("main/mp-extend/**/tsconfig.json")
         .pipe(gulp.dest(`dist`));
-
-    fs.writeFileSync("dist/package.json", JSON.stringify({
-        name,
-        version,
-        repository,
-        author,
-        license,
-        miniprogram,
-        keywords
-    }, null, 2), {
-        flag: "w"
-    });
-});
-
-gulp.task("build-debug", async () => {
-    const miniprogram = "dist";
-    if (!fs.existsSync("dist")) {
-        fs.mkdirSync("dist");
-    }
-    const info = JSON.parse(fs.readFileSync("package.json"));
-    const {
-        name,
-        version,
-        repository,
-        author,
-        license,
-        keywords
-    } = info;
-
-    gulp.src("main/mp-extend/**/*.js")
-        .pipe(babel({
-            presets: ["@babel/env"],
-            comments: false
-        }))
-        .pipe(gulp.dest(`dist/${miniprogram}`));
-
-    gulp.src("LICENSE")
-        .pipe(gulp.dest("dist"));
-
-    gulp.src("README.md")
-        .pipe(gulp.dest("dist"));
-
-    gulp.src("main/mp-extend/**/LICENSE")
-        .pipe(gulp.dest(`dist/${miniprogram}`));
-
-    gulp.src("main/mp-extend/**/*.d.ts")
-        .pipe(gulp.dest(`dist/${miniprogram}`));
 
     gulp.src("main/mp-extend/index.d.ts")
         .pipe(gulp.dest(`dist`));
@@ -179,7 +135,4 @@ gulp.task("build-debug", async () => {
     }, null, 2), {
         flag: "w"
     });
-
-    fs.renameSync(`dist/${miniprogram}/extend.d.ts`, `dist/${miniprogram}/index.d.ts`);
-    fs.renameSync(`dist/${miniprogram}/extend.js`, `dist/${miniprogram}/index.js`);
 });
