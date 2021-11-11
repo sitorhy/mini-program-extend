@@ -88,13 +88,13 @@ declare namespace extend {
         definitionFilter?: (defFields: object, definitionFilterArr?: object[]) => void;
     }
 
-    interface MPExtender {
+    class MPExtender {
         use<T extends OptionInstaller>(installer: T): void;
 
         extends(options: object): object;
     }
 
-    interface FrameworkInstaller {
+    class FrameworkInstaller {
         configuration(extender: MPExtender, context: Map<any, any>, options: object): object;
 
         install(extender: MPExtender, context: Map<any, any>, options: object): object;
@@ -102,7 +102,7 @@ declare namespace extend {
         build(extender: MPExtender, context: Map<any, any>, options: object): object;
     }
 
-    interface BehaviorInstaller extends FrameworkInstaller {
+    class BehaviorInstaller extends FrameworkInstaller {
         definitionFilter(extender: MPExtender, context: Map<any, any>, options: object, defFields: object, definitionFilterArr: ((defFields: object, definitionFilterArr?: object[]) => void)[]);
 
         behaviors(): string[];
@@ -130,7 +130,7 @@ declare namespace extend {
         relations(): ComponentRelation;
     }
 
-    interface OptionInstaller extends BehaviorInstaller {
+    class OptionInstaller extends BehaviorInstaller {
         computed(): object;
 
         watch(): object;
@@ -165,8 +165,8 @@ export const Extension: {
     use: <T extends extend.OptionInstaller>(installer: T) => void;
 };
 
-export declare interface MPExtender extends extend.MPExtender {
+export class MPExtender extends extend.MPExtender {
 }
 
-export declare interface OptionInstaller extends extend.OptionInstaller {
+export class OptionInstaller extends extend.OptionInstaller {
 }
