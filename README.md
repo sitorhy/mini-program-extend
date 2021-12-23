@@ -424,14 +424,25 @@ console.log(this.num);
 * **$parent**
 
   指向父组件或页面。
-
+  小程序relations执行在attached/mounted回调之后，Component需要在ready生命周期中进行首次访问。
+  
   <br>
 
 * **$children**
 
   与当前实例有直接关系的子组件，`$children`不保证任何方式顺序的排列。
+  Component在ready生命周期中进行首次访问，Page在onLoad中访问。
 
-<br>
+  <br>
+
+### 选项 / 组合
+
+* **parent**
+
+  显式指定组件路径，可提前在mounted生命周期中访问$parent，该值为外层级中最接近且匹配成功的对象。
+  如果目标组件路径在发布后会改变，可在编译期访问全局对象`__modules__`进行匹配确认。
+
+  <br>
 
 ### 实例方法 / 数据
 
