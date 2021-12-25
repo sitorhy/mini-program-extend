@@ -4,10 +4,10 @@ export default class FrameworkInstaller {
      * @param extender
      * @param context
      * @param {{[key:string]:any}} options
-     * @returns {{[key:string]:any}}
+     * @returns {{[key:string]:any}|null}
      */
     configuration(extender, context, options) {
-        return options;
+        return null;
     }
 
     /**

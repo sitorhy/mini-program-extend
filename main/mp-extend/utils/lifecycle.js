@@ -20,6 +20,7 @@ const RESERVED_LIFECYCLES_WORDS = new Set(
         "onResize",
         "definitionFilter",
         "attached",
+		"ready",
         "moved",
         "detached",
         "beforeCreate",

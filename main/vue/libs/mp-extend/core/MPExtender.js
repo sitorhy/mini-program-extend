@@ -319,9 +319,15 @@ export default class MPExtender {
     extends(configuration) {
         let options = configuration;
         const installers = this.installers;
+        const reduceOptions = {};
         installers.forEach(installer => {
-            options = installer.configuration(this, this._context, options);
-            installer.install(this, this._context, options);
+            const o = installer.configuration(this, this._context, options);
+            if (o) {
+                Object.assign(reduceOptions, o);
+            }
+        });
+        installers.forEach(installer => {
+            installer.install(this, this._context, reduceOptions);
         });
 
         const config = {

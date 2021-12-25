@@ -3,6 +3,7 @@ import {uuid} from "../utils/common";
 
 const PARENT_TAG_OBFS = `parent-${uuid()}`;
 const CHILD_TAG_OBFS = `child-${uuid()}`;
+const MATCH_PARENTS = new Map();
 
 function injectParentInstance(target, parent) {
     Object.defineProperty(target, '$parent', {
@@ -42,13 +43,17 @@ function removeChildInstance(target, child) {
 
 /**
  * 资源释放，实现任意一个即可
- * 页面必定最后进行释放
+ * Page必定最后进行释放
  * **/
 const ParentBehavior = Behavior({
     attached() {
+        console.log(`attached ParentBehavior ${this.is}`);
         const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
+        // 默认绑定到Page
         if (this !== root) {
-            injectParentInstance(this, root);
+            if (!this.$parent) {
+                injectParentInstance(this, root);
+            }
         }
     },
     detached() {
@@ -60,6 +65,7 @@ const ParentBehavior = Behavior({
 });
 const ChildBehavior = Behavior({
     attached() {
+        console.log(`attached ChildBehavior ${this.is}`);
         const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
         if (this !== root) {
             appendChildInstance(root, this);
@@ -90,6 +96,12 @@ const LinkBehavior = Behavior({
             type: 'parent',
             target: ParentBehavior,
             linked(target) {
+                console.log(`parent linked => ${this.is}`);
+                if (target.is === this.$parent.is) {
+                    console.log(target)
+                    console.log(this.$parent)
+                    console.log('666')
+                }
                 injectParentInstance(this, target);
             },
             unlinked() {
@@ -116,6 +128,58 @@ export default class RelationsInstaller extends OptionInstaller {
         defFields.behaviors = [
             ParentBehavior, ChildBehavior, LinkBehavior
         ].concat(defFields.behaviors || []);
+    }
+
+    configuration(extender, context, options) {
+        const {parent = null} = options;
+        if (parent) {
+            if (!MATCH_PARENTS.has(parent)) {
+                MATCH_PARENTS.set(parent, []);
+            }
+            if (parent.startsWith("/")) {
+                context.set('parent', parent.slice(1));
+            } else {
+                context.set('parent', parent);
+            }
+        }
+        return null;
+    }
+
+    lifetimes(extender, context, options) {
+        const parent = context.get('parent');
+        return {
+            created() {
+                if (MATCH_PARENTS.size > 0) {
+                    const components = MATCH_PARENTS.get(this.is);
+                    if (Array.isArray(components)) {
+                        components.push(this);
+                    }
+                    if (parent) {
+                        if (MATCH_PARENTS.has(parent)) {
+                            const parents = MATCH_PARENTS.get(parent);
+                            if (Array.isArray(parents) && parents.length > 0) {
+                                const near = parents[parents.length - 1];
+                                injectParentInstance(this, near);
+                            }
+                        }
+                    }
+                }
+            },
+            attached() {
+                if (MATCH_PARENTS.size > 0) {
+                    const components = MATCH_PARENTS.get(this.is);
+                    if (Array.isArray(components)) {
+                        const index = components.indexOf(this);
+                        if (index >= 0) {
+                            components.splice(index, 1);
+                        }
+                        if (components.length <= 0) {
+                            MATCH_PARENTS.delete(this.is);
+                        }
+                    }
+                }
+            }
+        };
     }
 
     install(extender, context, options) {
