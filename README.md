@@ -439,9 +439,22 @@ console.log(this.num);
 
 * **parent**
 
-  强制指定父组件路径，可提前在mounted生命周期中访问$parent，匹配最接近的对象，查询失败则执行默认行为。
+  强制指定父组件路径，可提前在`mounted`生命周期中访问`$parent`，匹配最接近的对象，查询失败则执行默认行为。
   如果目标组件路径在发布后会改变，可在编译期访问全局对象`__modules__`进行匹配确认。
-
+  
+  ```javascript
+  const paths = Object.keys(__modules__);
+  const reg = new RegExp("components/parent/index");
+  const parent = paths.find(p => reg.test(p)).replace('.js', '');
+	
+	ComponentEx({
+		parent,
+		mounted() {
+			console.log(`(${this.is}) mounted => ${this.$parent.is}`);
+		}
+	});
+	```
+	
   <br>
 
 ### 实例方法 / 数据
