@@ -446,15 +446,15 @@ console.log(this.num);
   const paths = Object.keys(__modules__);
   const reg = new RegExp("components/parent/index");
   const parent = paths.find(p => reg.test(p)).replace('.js', '');
-	
-	ComponentEx({
-		parent,
-		mounted() {
-			console.log(`(${this.is}) mounted => ${this.$parent.is}`);
-		}
+  
+  ComponentEx({
+  	parent,
+  	mounted() {
+  		console.log(`(${this.is}) mounted => ${this.$parent.is}`);
+      }
 	});
 	```
-	
+  
   <br>
 
 ### 实例方法 / 数据
