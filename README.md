@@ -431,7 +431,7 @@ console.log(this.num);
 * **$children**
 
   与当前实例有直接关系的子组件，`$children`不保证任何方式顺序的排列。
-  `在`ready/onReady/onLoad`中获取。
+  在`ready/onReady/onLoad`中获取。
 
   <br>
 
