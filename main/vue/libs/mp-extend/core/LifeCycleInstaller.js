@@ -300,7 +300,14 @@ export default class LifeCycleInstaller extends OptionInstaller {
                 onTabItemTap,
                 onPageScroll,
                 onResize,
-                ready,
+                ready: function () {
+                    if (isFunction(ready)) {
+                        ready.apply(this, arguments);
+                    }
+                    if (isFunction(onReady)) {
+                        onReady.apply(this, arguments);
+                    }
+                },
                 error
             })
         );

@@ -424,14 +424,14 @@ console.log(this.num);
 * **$parent**
 
   指向父组件或页面。
-  小程序relations执行在attached/mounted回调之后，Component需要在ready生命周期中进行首次访问。
+  小程序`relations`执行在`attached/mounted`回调之后，需要在`ready/onReady`生命周期中进行首次访问。
   
   <br>
 
 * **$children**
 
   与当前实例有直接关系的子组件，`$children`不保证任何方式顺序的排列。
-  Component在ready生命周期中进行首次访问，Page在onLoad中访问。
+  `在`ready/onReady/onLoad`中获取。
 
   <br>
 
