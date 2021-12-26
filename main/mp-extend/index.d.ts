@@ -1,4 +1,15 @@
 declare namespace extend {
+    class EventArgs {
+        originalSource: object;
+        event: string;
+        data: any;
+        source: any;
+    }
+
+    class RoutedEventArgs extends EventArgs {
+        handled: boolean;
+    }
+
     type PropType = string | number | boolean | object;
 
     type VuePropOption<T> = {
@@ -154,6 +165,18 @@ declare namespace extend {
         provide(): object;
 
         inject(): object;
+
+        $emit: (event: string, data: any) => void;
+
+        $dispatch: (event: string, data: any) => void;
+
+        $broadcast: (event: string, data: any) => void;
+
+        $once: (event: string, listener: (event: string, data: EventArgs) => void) => void;
+
+        $on: (event: string, listener: (event: string, data: EventArgs) => void) => void;
+
+        $off: (event?: string, listener?: (event: string, data: EventArgs) => void) => void;
     }
 }
 
