@@ -27,14 +27,16 @@ function appendChildInstance(target, child) {
             value: []
         });
     }
-    if (!target.$children.some(i => i === child)) {
+    const id = Reflect.get(child, '__wxExparserNodeId__');
+    if (!target.$children.some(i => Reflect.get(i, '__wxExparserNodeId__') === id)) {
         target.$children.push(child);
     }
 }
 
 function removeChildInstance(target, child) {
     if (Reflect.has(target, '$children')) {
-        const index = target.$children.findIndex(i => i === child);
+        const id = Reflect.get(child, '__wxExparserNodeId__');
+        const index = target.$children.findIndex(i => Reflect.get(i, '__wxExparserNodeId__') === id);
         if (index >= 0) {
             target.$children.splice(index, 1);
         }
@@ -47,33 +49,31 @@ function removeChildInstance(target, child) {
  * **/
 const ParentBehavior = Behavior({
     attached() {
-        console.log(`attached ParentBehavior ${this.is}`);
-        const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
+        const root = getCurrentPages().find(p => Reflect.get(p, '__wxWebviewId__') === Reflect.get(this, '__wxWebviewId__'));
         // 默认绑定到Page
-        if (this !== root) {
+        if (Reflect.get(this, '__wxExparserNodeId__') !== Reflect.get(root, '__wxExparserNodeId__')) {
             if (!this.$parent) {
                 injectParentInstance(this, root);
             }
         }
     },
     detached() {
-        const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
-        if (this !== root) {
+        const root = getCurrentPages().find(p => Reflect.get(p, '__wxWebviewId__') === Reflect.get(this, '__wxWebviewId__'));
+        if (Reflect.get(this, '__wxExparserNodeId__') !== Reflect.get(root, '__wxExparserNodeId__')) {
             deleteParentProperty(root, this);
         }
     }
 });
 const ChildBehavior = Behavior({
     attached() {
-        console.log(`attached ChildBehavior ${this.is}`);
-        const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
-        if (this !== root) {
+        const root = getCurrentPages().find(p => Reflect.get(p, '__wxWebviewId__') === Reflect.get(this, '__wxWebviewId__'));
+        if (Reflect.get(this, '__wxExparserNodeId__') !== Reflect.get(root, '__wxExparserNodeId__')) {
             appendChildInstance(root, this);
         }
     },
     detached() {
-        const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
-        if (this !== root) {
+        const root = getCurrentPages().find(p => Reflect.get(p, '__wxWebviewId__') === Reflect.get(this, '__wxWebviewId__'));
+        if (Reflect.get(this, '__wxExparserNodeId__') !== Reflect.get(root, '__wxExparserNodeId__')) {
             removeChildInstance(root, this);
         }
     }
@@ -96,15 +96,15 @@ const LinkBehavior = Behavior({
             type: 'parent',
             target: ParentBehavior,
             linked(target) {
-                console.log(`parent linked => ${this.is}`);
-                if (target.is === this.$parent.is) {
-                    console.log(target)
-                    console.log(this.$parent)
-                    console.log('666')
+                const root = getCurrentPages().find(p => Reflect.get(p, '__wxWebviewId__') === Reflect.get(this, '__wxWebviewId__'));
+                if (!this.$parent || Reflect.get(this.$parent, '__wxExparserNodeId__') === Reflect.get(root, '__wxExparserNodeId__')) {
+                    injectParentInstance(this, target);
                 }
-                injectParentInstance(this, target);
             },
             unlinked() {
+                if (this.$parent) {
+                    removeChildInstance(this.$parent, this);
+                }
                 deleteParentProperty(this);
             }
         },
@@ -112,11 +112,17 @@ const LinkBehavior = Behavior({
             type: 'child',
             target: ChildBehavior,
             linked(target) {
-                appendChildInstance(this, target);
-                const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
+                const root = getCurrentPages().find(p => Reflect.get(p, '__wxWebviewId__') === Reflect.get(this, '__wxWebviewId__'));
+                if (!target.$parent || Reflect.get(target.$parent, '__wxExparserNodeId__') === Reflect.get(root, '__wxExparserNodeId__')) {
+                    appendChildInstance(this, target);
+                }
+                // 从根节点排除掉
                 removeChildInstance(root, target);
             },
             unlinked(target) {
+                if (target.$parent) {
+                    removeChildInstance(target.$parent, target);
+                }
                 removeChildInstance(this, target);
             }
         }
@@ -160,6 +166,7 @@ export default class RelationsInstaller extends OptionInstaller {
                             if (Array.isArray(parents) && parents.length > 0) {
                                 const near = parents[parents.length - 1];
                                 injectParentInstance(this, near);
+                                appendChildInstance(near, this);
                             }
                         }
                     }
