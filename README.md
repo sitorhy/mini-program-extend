@@ -448,11 +448,11 @@ console.log(this.num);
   const parent = paths.find(p => reg.test(p)).replace('.js', '');
   
   ComponentEx({
-  	parent,
-  	mounted() {
-  		console.log(`(${this.is}) mounted => ${this.$parent.is}`);
+      parent,
+      mounted() {
+          console.log(`(${this.is}) mounted => ${this.$parent.is}`);
       }
-	});
+  });
 	```
   
   <br>
