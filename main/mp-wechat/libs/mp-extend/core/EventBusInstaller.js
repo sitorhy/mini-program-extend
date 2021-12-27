@@ -51,7 +51,7 @@ class EventArgs {
     get source() {
         return Reflect.get(this, SourceSign);
     }
-
+    
     set source(value) {
         Reflect.set(this, SourceSign, value);
     }
@@ -170,9 +170,11 @@ export default class EventBusInstaller extends OptionInstaller {
                                 targets.reverse();
                                 for (const i of targets) {
                                     const emitter = Reflect.get(i, EVTSign);
-                                    emitter.emit(e.event, e);
-                                    if (e.handled === true) {
-                                        break;
+                                    if (emitter) {
+                                        emitter.emit(e.event, e);
+                                        if (e.handled === true) {
+                                            break;
+                                        }
                                     }
                                 }
                             };
