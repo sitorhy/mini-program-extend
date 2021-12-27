@@ -75,6 +75,23 @@ console.log(this.num);
 
 <br>
 
+### 小程序生命周期
+
+```
+Component.attached = ComponentEx.mounted 
+                   > Component.relations 
+                   > Page.onLoad 
+                   > Component.pageLifetimes.show = ComponentEx.onShow 
+                   > Page.onShow 
+                   > Component.ready = ComponentEx.onReady
+                   > Page.onReady
+```
+后台渲染可能不会触发`Page.onReady`。
+
+同级`Component`深度优先触发。
+A(parent) ← B(child)
+A.attached > b.attached > relations(A,B)
+
 ## API
 
 ### 选项 / 数据
@@ -278,7 +295,7 @@ console.log(this.num);
 
   输出：
 
-  ```javascript
+  ```
   arr[0].num 114 => 514
   arr2 [{"num":1919}] => [{"num":810}]
   ```
@@ -424,14 +441,15 @@ console.log(this.num);
 * **$parent**
 
   指向父组件或页面。
-  小程序`relations`执行在`attached/mounted`回调之后，需要在`ready/onReady`生命周期中进行首次访问。
-  
+  小程序`relations`执行在`attached/mounted`回调之后，需要在`Component.ready/ComponentEx.onReady`生命周期中进行首次访问。
+  注意小程序的特性，如果关闭掉开发工具的模拟器，Page.onReady不会触发，但Page.onShow会触发，再次打开模拟器，Page.onReady触发。
+
   <br>
 
 * **$children**
 
   与当前实例有直接关系的子组件，`$children`不保证任何方式顺序的排列。
-  在`ready/onReady/onLoad`中获取。
+  在`Component.ready/Component.onReady/Page.onLoad`中获取。
 
   <br>
 
