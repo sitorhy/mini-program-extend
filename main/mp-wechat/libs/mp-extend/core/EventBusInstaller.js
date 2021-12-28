@@ -51,7 +51,7 @@ class EventArgs {
     get source() {
         return Reflect.get(this, SourceSign);
     }
-    
+
     set source(value) {
         Reflect.set(this, SourceSign, value);
     }

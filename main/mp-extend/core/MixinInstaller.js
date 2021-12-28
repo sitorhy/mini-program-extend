@@ -127,6 +127,12 @@ export default class MixinInstaller extends OptionInstaller {
         return this.reduceConfiguration(options);
     }
 
+    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
+        if (defFields.behaviors) {
+            defFields.behaviors = (defFields.behaviors || []).concat(options.behaviors || []);
+        }
+    }
+
     build(extender, context, options) {
         const pageStaticData = Stream.of(Object.entries(options)).filter(([name, data]) => {
             return !isFunction(data) && !RESERVED_OPTIONS_WORDS.has(name) && !RESERVED_LIFECYCLES_WORDS.has(name);
@@ -134,14 +140,12 @@ export default class MixinInstaller extends OptionInstaller {
         const {
             externalClasses,
             options: mpOptions,
-            relations,
-            behaviors
+            relations
         } = options;
         return Object.assign({}, pageStaticData, removeEmpty({
             externalClasses,
             options: mpOptions,
-            relations,
-            behaviors
+            relations
         }));
     }
 }

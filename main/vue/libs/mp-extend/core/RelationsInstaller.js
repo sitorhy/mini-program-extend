@@ -1,8 +1,8 @@
 import OptionInstaller from "./OptionInstaller";
 import {uuid} from "../utils/common";
 
-const PARENT_TAG_OBFS = `parent-${uuid()}`;
-const CHILD_TAG_OBFS = `child-${uuid()}`;
+const PARENT_TAG_OBS = `parent-${uuid()}`;
+const CHILD_TAG_OBS = `child-${uuid()}`;
 const MATCH_PARENTS = new Map();
 
 function injectParentInstance(target, parent) {
@@ -89,13 +89,15 @@ const ChildBehavior = Behavior({
  *     B
  *    ③  ↑ ↓ ④
  *         C
+ * linkChanged - 列表节点增删时触发
  */
 const LinkBehavior = Behavior({
     relations: {
-        [PARENT_TAG_OBFS]: {
+        [PARENT_TAG_OBS]: {
             type: 'parent',
             target: ParentBehavior,
             linked(target) {
+                console.log('P ' + this.is);
                 const root = getCurrentPages().find(p => Reflect.get(p, '__wxWebviewId__') === Reflect.get(this, '__wxWebviewId__'));
                 if (!this.$parent || Reflect.get(this.$parent, '__wxExparserNodeId__') === Reflect.get(root, '__wxExparserNodeId__')) {
                     injectParentInstance(this, target);
@@ -108,10 +110,11 @@ const LinkBehavior = Behavior({
                 deleteParentProperty(this);
             }
         },
-        [CHILD_TAG_OBFS]: {
+        [CHILD_TAG_OBS]: {
             type: 'child',
             target: ChildBehavior,
             linked(target) {
+                console.log('C ' + this.is);
                 const root = getCurrentPages().find(p => Reflect.get(p, '__wxWebviewId__') === Reflect.get(this, '__wxWebviewId__'));
                 if (!target.$parent || Reflect.get(target.$parent, '__wxExparserNodeId__') === Reflect.get(root, '__wxExparserNodeId__')) {
                     appendChildInstance(this, target);
