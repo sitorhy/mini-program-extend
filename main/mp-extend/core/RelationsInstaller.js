@@ -110,6 +110,7 @@ export default class RelationsInstaller extends OptionInstaller {
                     if (!this.$parent || Reflect.get(this.$parent, '__wxExparserNodeId__') === Reflect.get(root, '__wxExparserNodeId__')) {
                         injectParentInstance(this, target);
                     }
+
                     const relations = Reflect.get(this, RelationSign);
                     if (relations && Array.isArray(relations['parent'])) {
                         relations['parent'].forEach(([key, relation]) => {
@@ -124,6 +125,7 @@ export default class RelationsInstaller extends OptionInstaller {
                         removeChildInstance(this.$parent, this);
                     }
                     deleteParentProperty(this);
+
                     const relations = Reflect.get(this, RelationSign);
                     if (relations && Array.isArray(relations['parent'])) {
                         relations['parent'].forEach(([key, relation]) => {
@@ -193,11 +195,13 @@ export default class RelationsInstaller extends OptionInstaller {
         return {
             created() {
                 if (options.relations) {
-                    Reflect.set(this, RelationSign, Stream.of(Object.entries(options.relations)).collect(
-                        Collectors.groupingBy(([, relation]) => {
-                            return relation.type;
-                        })
-                    ));
+                    const relationsGroup = Stream.of(Object.entries(options.relations)).filter(([, relation]) => relation.type === 'parent' || relation.type === 'child')
+                        .collect(
+                            Collectors.groupingBy(([, relation]) => {
+                                return relation.type;
+                            })
+                        );
+                    Reflect.set(this, RelationSign, relationsGroup);
                 }
 
                 if (MATCH_PARENTS.size > 0) {
@@ -235,7 +239,23 @@ export default class RelationsInstaller extends OptionInstaller {
     }
 
     install(extender, context, options) {
-        context.set("relations", this.relations());
+        if (options.relations) {
+            const relationsGroup = Stream.of(Object.entries(options.relations)).filter(([, relation]) => relation.type === 'ancestor' || relation.type === 'descendant')
+                .collect(
+                    Collectors.groupingBy(([, relation]) => {
+                        return relation.type;
+                    })
+                );
+            const ancestor = relationsGroup.ancestor;
+            const descendant = relationsGroup.descendant;
+            context.set("relations", Object.assign(
+                this.relations(),
+                ancestor ? Stream.of(ancestor).collect(Collectors.toMap()) : null,
+                descendant ? Stream.of(descendant).collect(Collectors.toMap()) : null,
+            ));
+        } else {
+            context.set("relations", this.relations());
+        }
     }
 
     build(extender, context, options) {
