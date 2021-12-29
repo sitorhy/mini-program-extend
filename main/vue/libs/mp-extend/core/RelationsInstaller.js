@@ -1,9 +1,11 @@
 import OptionInstaller from "./OptionInstaller";
-import {uuid} from "../utils/common";
+import {isFunction, uuid} from "../utils/common";
+import {Collectors, Stream} from "../libs/Stream";
 
 const PARENT_TAG_OBS = `parent-${uuid()}`;
 const CHILD_TAG_OBS = `child-${uuid()}`;
 const MATCH_PARENTS = new Map();
+const RelationSign = Symbol('__wxREL__');
 
 function injectParentInstance(target, parent) {
     Object.defineProperty(target, '$parent', {
@@ -79,64 +81,96 @@ const ChildBehavior = Behavior({
     }
 });
 
-/**
- * 触发顺序
- * ↑ CHILD
- * ↓ PARENT
- *
- * A
- * ① ↑ ↓ ②
- *     B
- *    ③  ↑ ↓ ④
- *         C
- * linkChanged - 列表节点增删时触发
- */
-const LinkBehavior = Behavior({
-    relations: {
-        [PARENT_TAG_OBS]: {
-            type: 'parent',
-            target: ParentBehavior,
-            linked(target) {
-                console.log('P ' + this.is);
-                const root = getCurrentPages().find(p => Reflect.get(p, '__wxWebviewId__') === Reflect.get(this, '__wxWebviewId__'));
-                if (!this.$parent || Reflect.get(this.$parent, '__wxExparserNodeId__') === Reflect.get(root, '__wxExparserNodeId__')) {
-                    injectParentInstance(this, target);
-                }
-            },
-            unlinked() {
-                if (this.$parent) {
-                    removeChildInstance(this.$parent, this);
-                }
-                deleteParentProperty(this);
-            }
-        },
-        [CHILD_TAG_OBS]: {
-            type: 'child',
-            target: ChildBehavior,
-            linked(target) {
-                console.log('C ' + this.is);
-                const root = getCurrentPages().find(p => Reflect.get(p, '__wxWebviewId__') === Reflect.get(this, '__wxWebviewId__'));
-                if (!target.$parent || Reflect.get(target.$parent, '__wxExparserNodeId__') === Reflect.get(root, '__wxExparserNodeId__')) {
-                    appendChildInstance(this, target);
-                }
-                // 从根节点排除掉
-                removeChildInstance(root, target);
-            },
-            unlinked(target) {
-                if (target.$parent) {
-                    removeChildInstance(target.$parent, target);
-                }
-                removeChildInstance(this, target);
-            }
-        }
-    }
-});
-
 export default class RelationsInstaller extends OptionInstaller {
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
         defFields.behaviors = [
-            ParentBehavior, ChildBehavior, LinkBehavior
+            ParentBehavior, ChildBehavior
         ].concat(defFields.behaviors || []);
+    }
+
+    /**
+     * 触发顺序
+     * ↑ CHILD
+     * ↓ PARENT
+     *
+     * A
+     * ① ↑ ↓ ②
+     *     B
+     *    ③  ↑ ↓ ④
+     *         C
+     * linkChanged - 列表节点增删时触发
+     */
+    relations() {
+        return {
+            [PARENT_TAG_OBS]: {
+                type: 'parent',
+                target: ParentBehavior,
+                linked(target) {
+                    const root = getCurrentPages().find(p => Reflect.get(p, '__wxWebviewId__') === Reflect.get(this, '__wxWebviewId__'));
+                    if (!this.$parent || Reflect.get(this.$parent, '__wxExparserNodeId__') === Reflect.get(root, '__wxExparserNodeId__')) {
+                        injectParentInstance(this, target);
+                    }
+                    const relations = Reflect.get(this, RelationSign);
+                    if (relations && Array.isArray(relations['parent'])) {
+                        relations['parent'].forEach(([key, relation]) => {
+                            if (isFunction(relation.linked)) {
+                                relation.linked.call(this, target, key);
+                            }
+                        });
+                    }
+                },
+                unlinked() {
+                    if (this.$parent) {
+                        removeChildInstance(this.$parent, this);
+                    }
+                    deleteParentProperty(this);
+                    const relations = Reflect.get(this, RelationSign);
+                    if (relations && Array.isArray(relations['parent'])) {
+                        relations['parent'].forEach(([key, relation]) => {
+                            if (isFunction(relation.unlinked)) {
+                                relation.unlinked.call(this, key);
+                            }
+                        });
+                    }
+                }
+            },
+            [CHILD_TAG_OBS]: {
+                type: 'child',
+                target: ChildBehavior,
+                linked(target) {
+                    const root = getCurrentPages().find(p => Reflect.get(p, '__wxWebviewId__') === Reflect.get(this, '__wxWebviewId__'));
+                    if (!target.$parent || Reflect.get(target.$parent, '__wxExparserNodeId__') === Reflect.get(root, '__wxExparserNodeId__')) {
+                        appendChildInstance(this, target);
+                    }
+                    // 从根节点排除掉
+                    removeChildInstance(root, target);
+
+                    const relations = Reflect.get(this, RelationSign);
+                    if (relations && Array.isArray(relations['child'])) {
+                        relations['child'].forEach(([key, relation]) => {
+                            if (isFunction(relation.linked)) {
+                                relation.linked.call(this, target, key);
+                            }
+                        });
+                    }
+                },
+                unlinked(target) {
+                    if (target.$parent) {
+                        removeChildInstance(target.$parent, target);
+                    }
+                    removeChildInstance(this, target);
+
+                    const relations = Reflect.get(this, RelationSign);
+                    if (relations && Array.isArray(relations['child'])) {
+                        relations['child'].forEach(([key, relation]) => {
+                            if (isFunction(relation.unlinked)) {
+                                relation.unlinked.call(this, target, key);
+                            }
+                        });
+                    }
+                }
+            }
+        };
     }
 
     configuration(extender, context, options) {
@@ -158,6 +192,12 @@ export default class RelationsInstaller extends OptionInstaller {
         const parent = context.get('parent');
         return {
             created() {
+                Reflect.set(this, RelationSign, Stream.of(Object.entries(options.relations)).collect(
+                    Collectors.groupingBy(([, relation]) => {
+                        return relation.type;
+                    })
+                ));
+
                 if (MATCH_PARENTS.size > 0) {
                     const components = MATCH_PARENTS.get(this.is);
                     if (Array.isArray(components)) {
@@ -193,15 +233,7 @@ export default class RelationsInstaller extends OptionInstaller {
     }
 
     install(extender, context, options) {
-        const {relations = null} = options;
-        context.set("relations", Object.assign.apply(
-            undefined,
-            [
-                {},
-                ...extender.installers.map(i => i.relations()),
-                relations
-            ]
-        ));
+        context.set("relations", this.relations());
     }
 
     build(extender, context, options) {
