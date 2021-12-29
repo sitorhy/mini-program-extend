@@ -192,11 +192,13 @@ export default class RelationsInstaller extends OptionInstaller {
         const parent = context.get('parent');
         return {
             created() {
-                Reflect.set(this, RelationSign, Stream.of(Object.entries(options.relations)).collect(
-                    Collectors.groupingBy(([, relation]) => {
-                        return relation.type;
-                    })
-                ));
+                if (options.relations) {
+                    Reflect.set(this, RelationSign, Stream.of(Object.entries(options.relations)).collect(
+                        Collectors.groupingBy(([, relation]) => {
+                            return relation.type;
+                        })
+                    ));
+                }
 
                 if (MATCH_PARENTS.size > 0) {
                     const components = MATCH_PARENTS.get(this.is);
