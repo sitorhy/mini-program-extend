@@ -54,13 +54,15 @@ export default class LifeCycleInstaller extends OptionInstaller {
 
     compatibleLifeCycleDefinition(extender, context, options, defFields) {
         const behavior = Deconstruct({}, {
+            ready: () => {
+                return function () {
+                    context.get("mounted").apply(this, arguments);
+                };
+            },
             lifetimes: () => {
                 return {
-                    created: function () {
-                        context.get("beforeMount").apply(this, arguments);
-                    },
                     attached: function () {
-                        context.get("mounted").apply(this, arguments);
+                        context.get("beforeMount").apply(this, arguments);
                     },
                     detached: function () {
                         context.get("beforeDestroy").apply(this, arguments);

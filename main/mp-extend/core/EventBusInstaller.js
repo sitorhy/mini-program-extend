@@ -204,8 +204,8 @@ export default class EventBusInstaller extends OptionInstaller {
                                     if (c !== this) {
                                         targets.push(c);
                                     }
-                                    if (Array.isArray(c['$children']) && c['$children'].length) {
-                                        Array.prototype.push.apply(q, c['$children']);
+                                    if (Array.isArray(c["$children"]) && c["$children"].length) {
+                                        Array.prototype.push.apply(q, c["$children"]);
                                     }
                                 }
                                 targets.forEach(i => {

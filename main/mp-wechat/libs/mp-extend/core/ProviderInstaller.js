@@ -5,15 +5,15 @@ import {Blend} from "../libs/Blend";
 const ANCESTOR_TAG_OBFS = `ancestor-${uuid()}`;
 const DESCENDANT_TAG_OBFS = `descendant-${uuid()}`;
 
-const ProvideSign = Symbol('__wxProvide__');
-const InjectSign = Symbol('__wxInject__');
+const ProvideSign = Symbol("__wxProvide__");
+const InjectSign = Symbol("__wxInject__");
 
 const ProvideBehavior = Behavior({});
 const InjectBehavior = Behavior({});
 const LinkBehavior = Behavior({
     relations: {
         [ANCESTOR_TAG_OBFS]: {
-            type: 'ancestor',
+            type: "ancestor",
             target: ProvideBehavior,
             linked(target) {
                 const root = getCurrentPages().find(p => p["__wxWebviewId__"] === this["__wxWebviewId__"]);
@@ -48,7 +48,7 @@ const LinkBehavior = Behavior({
             }
         },
         [DESCENDANT_TAG_OBFS]: {
-            type: 'descendant',
+            type: "descendant",
             target: InjectBehavior
         }
     }
@@ -64,8 +64,8 @@ export default class ProviderInstaller extends OptionInstaller {
         defFields.behaviors = (defFields.behaviors || []).concat([
             Behavior({
                 attached() {
-                    const provide = context.get('provide');
-                    const inject = context.get('inject');
+                    const provide = context.get("provide");
+                    const inject = context.get("inject");
                     if (isFunction(provide)) {
                         const provider = provide.call(
                             extender.createRuntimeContextSingleton().get(
@@ -115,7 +115,7 @@ export default class ProviderInstaller extends OptionInstaller {
                 }, {});
             }
             if (fnProvides.length || Object.keys(staticProvide).length) {
-                context.set('provide', Blend(staticProvide, generator));
+                context.set("provide", Blend(staticProvide, generator));
             }
         } catch (e) {
             throw e;
@@ -158,7 +158,7 @@ export default class ProviderInstaller extends OptionInstaller {
                 }
             });
             if (Object.keys(inject).length) {
-                context.set('inject', inject);
+                context.set("inject", inject);
             }
         } catch (e) {
             throw e;

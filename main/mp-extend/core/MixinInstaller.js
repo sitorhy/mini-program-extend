@@ -88,14 +88,14 @@ export default class MixinInstaller extends OptionInstaller {
                 mixins: [v].concat(mixins || [])
             }, o));
         }
-        Object.assign(config, this.concatOptions(['behaviors', 'externalClasses'], this.collectOptions(['behaviors', 'externalClasses'], options)));
-        Object.assign(config, this.overrideOptions(['methods', 'properties', 'props', 'relations', 'options', 'inject'], this.collectOptions(['methods', 'properties', 'props', 'relations', 'options', 'inject'], options)));
-        Object.assign(config, this.overrideMembers(['computed', 'observers'], this.collectOptions(['computed', 'observers'], options)));
-        Object.assign(config, this.combineOptions(['data', 'provide'], this.collectOptions(['data', 'provide'], options)));
-        Object.assign(config, this.seriesMembers(['lifetimes', 'pageLifetimes'], this.collectOptions(['lifetimes', 'pageLifetimes'], options)));
-        Object.assign(config, this.seriesOptions(['definitionFilter'], this.collectOptions(['definitionFilter'], options)));
+        Object.assign(config, this.concatOptions(["behaviors", "externalClasses"], this.collectOptions(["behaviors", "externalClasses"], options)));
+        Object.assign(config, this.overrideOptions(["methods", "properties", "props", "relations", "options", "inject"], this.collectOptions(["methods", "properties", "props", "relations", "options", "inject"], options)));
+        Object.assign(config, this.overrideMembers(["computed", "observers"], this.collectOptions(["computed", "observers"], options)));
+        Object.assign(config, this.combineOptions(["data", "provide"], this.collectOptions(["data", "provide"], options)));
+        Object.assign(config, this.seriesMembers(["lifetimes", "pageLifetimes"], this.collectOptions(["lifetimes", "pageLifetimes"], options)));
+        Object.assign(config, this.seriesOptions(["definitionFilter"], this.collectOptions(["definitionFilter"], options)));
         Object.assign(config, this.seriesOptions(RESERVED_LIFECYCLES_WORDS, this.collectOptions(RESERVED_LIFECYCLES_WORDS, options)));
-        Optional.of(this.collectOptions(['watch'], options).get('watch')).ifPresent((watchers) => {
+        Optional.of(this.collectOptions(["watch"], options).get("watch")).ifPresent((watchers) => {
             const keys = Stream.of(Stream.of(watchers).map(i => Object.keys(i)).flat()).distinct().collect(Collectors.toList());
             Object.assign(config, {
                 watch: Stream.of(keys).map(k => {
@@ -106,7 +106,7 @@ export default class MixinInstaller extends OptionInstaller {
         });
         const {methods, staticData} = Stream.of(
             Object.entries(options)
-        ).filter(i => !RESERVED_LIFECYCLES_WORDS.has(i[0]) && !RESERVED_OPTIONS_WORDS.has(i[0])).collect(Collectors.groupingBy(i => isFunction(i[1]) ? 'methods' : 'staticData'));
+        ).filter(i => !RESERVED_LIFECYCLES_WORDS.has(i[0]) && !RESERVED_OPTIONS_WORDS.has(i[0])).collect(Collectors.groupingBy(i => isFunction(i[1]) ? "methods" : "staticData"));
         if (Array.isArray(methods)) {
             const pageMethods = Stream.of(methods).collect(Collectors.toMap());
             Optional.of(config.methods).ifPresentOrElse((methods) => {
