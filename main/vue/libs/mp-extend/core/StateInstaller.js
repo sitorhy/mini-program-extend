@@ -28,7 +28,7 @@ export default class StateInstaller extends OptionInstaller {
             {},
             {
                 get(target, p, receiver) {
-                    if (p === '$options') {
+                    if (p === "$options") {
                         return $options;
                     }
                     if (Reflect.has(properties, p)) {
@@ -128,7 +128,7 @@ export default class StateInstaller extends OptionInstaller {
             return new Proxy(
                 contextSingleton.get(obj, data, properties, methods), {
                     get(target, p, receiver) {
-                        if (p === '$options') {
+                        if (p === "$options") {
                             return $options;
                         } else {
                             return Reflect.get(target, p);

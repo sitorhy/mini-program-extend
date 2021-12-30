@@ -83,7 +83,7 @@ export default class ComputedInstaller extends OptionInstaller {
             {
                 get(target, p, receiver) {
                     // 兼容小程序格式
-                    if (p === 'data') {
+                    if (p === "data") {
                         return Reflect.get(target, p);
                     }
                     if (Reflect.has(state, p)) {
@@ -206,7 +206,7 @@ export default class ComputedInstaller extends OptionInstaller {
                 const calculated = {};
                 this.beforeUpdate(extender, context, options, instance, calculated);
                 const currentCalculated = Stream.of(Object.keys(calculated)).map(i => {
-                    return [i, Reflect.get(instance, 'data')[i]];
+                    return [i, Reflect.get(instance, "data")[i]];
                 }).collect(Collectors.toMap());
                 if (!equal(calculated, currentCalculated)) {
                     const originalSetData = instance.setData;

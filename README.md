@@ -78,19 +78,22 @@ console.log(this.num);
 ### 小程序生命周期
 
 ```
-Component.attached = ComponentEx.mounted 
-                   > Component.relations 
-                   > Page.onLoad 
-                   > Component.pageLifetimes.show = ComponentEx.onShow 
-                   > Page.onShow 
-                   > Component.ready = ComponentEx.onReady
-                   > Page.onReady
+Page.created > Component.created
+             > Page.attached = Page.beforeMount
+             > Component.attached = Component.beforeMount
+             > Component.relations
+             > Page.onLoad
+             > Page.onShow
+             > Component.onShow
+             > Component.mounted = Component.ready
+             > Page.mounted
+             > Page.onReady
 ```
-后台渲染可能不会触发`Page.onReady`。
-
-同级`Component`深度优先触发。
-A(parent) ← B(child)
-A.attached > b.attached > relations(A,B)
++ 同级`Component`深度优先触发。 <br>
+A(parent) ← B(child) <br>
+A.attached > b.attached > relations.child(A,B) > relations.parent(A,B) <br>
++ onShow onHide / pageLifetimes.show pageLifetimes.hide 互斥，不要同时配置。
++ 如果关闭掉开发工具的模拟器，`Page.onReady`不会触发，但`Page.onShow`会触发，再次打开模拟器，`Page.onReady`触发。
 
 ## API
 
@@ -441,15 +444,15 @@ A.attached > b.attached > relations(A,B)
 * **$parent**
 
   指向父组件或页面。
-  小程序`relations`执行在`attached/mounted`回调之后，需要在`Component.ready/ComponentEx.onReady`生命周期中进行首次访问。
-  注意小程序的特性，如果关闭掉开发工具的模拟器，Page.onReady不会触发，但Page.onShow会触发，再次打开模拟器，Page.onReady触发。
+  小程序`relations`执行在`attached`回调之后，在`mounted`，`onReady`，`ready`生命周期中进行首次访问。<br>
+  `mounted`执行前默认绑定`Page`，任何时候可以向页面发送事件。
 
   <br>
 
 * **$children**
 
   与当前实例有直接关系的子组件，`$children`不保证任何方式顺序的排列。
-  在`Component.ready/Component.onReady/Page.onLoad`中获取。
+  在`Component.ready`,`Component.onReady`,`Page.onLoad`中获取。
 
   <br>
 
@@ -457,7 +460,7 @@ A.attached > b.attached > relations(A,B)
 
 * **parent**
 
-  强制指定父组件路径，可提前在`mounted`生命周期中访问`$parent`，匹配最接近的对象，查询失败则执行默认行为。
+  强制指定父组件路径，提前在`attached`生命周期中访问`$parent`，匹配最接近的对象，查询失败则执行默认行为。
   如果目标组件路径在发布后会改变，可在编译期访问全局对象`__modules__`进行匹配确认。
   
   ```javascript
@@ -467,11 +470,11 @@ A.attached > b.attached > relations(A,B)
   
   ComponentEx({
       parent,
-      mounted() {
-          console.log(`(${this.is}) mounted => ${this.$parent.is}`);
+      attached() {
+          console.log(`(${this.is}) attached/beforeMount => ${this.$parent.is}`);
       }
   });
-	```
+  ```
   
   <br>
 
@@ -538,7 +541,8 @@ A.attached > b.attached > relations(A,B)
 
 ### 实例方法 / 总线
 
-​	事件总线为框架内建通讯机制，与小程序的事件机制无直接关系。
+避免频繁使用`$parrent`,`$children`进行数据交互。<br>
+事件总线为框架内建通讯机制，与小程序的事件机制无直接关系。
 
 * **$emit**
 
