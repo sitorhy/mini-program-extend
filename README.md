@@ -89,10 +89,8 @@ Page.created > Component.created
              > PageEx.mounted
              > Page.onReady
 ```
-+ 同级`Component`深度优先触发。 <br>
-A(parent) ← B(child) <br>
-A.attached > b.attached > relations.child(A,B) > relations.parent(A,B) <br>
-+ onShow onHide / pageLifetimes.show pageLifetimes.hide 互斥，不要同时配置。
++ 同级`Component`深度优先触发。 <br>`A(parent)` ← `B(child) `<br>`A.attached` > `B.attached` > `relations.child(A,B)` > `relations.parent(A,B)` <br>
++ `onShow` `onHide` / `pageLifetimes.show` `pageLifetimes.hide` 互斥，不要同时配置。
 + 如果关闭掉开发工具的模拟器，`Page.onReady`不会触发，但`Page.onShow`会触发，再次打开模拟器，`Page.onReady`触发。
 
 ## API
@@ -222,14 +220,20 @@ A.attached > b.attached > relations.child(A,B) > relations.parent(A,B) <br>
   🔴 示例：
   ```javascript
   PageEx({
-    data: {
-      color: 'red'
-    },
-    computed: {
-      numStyle() {
-        return `color:${this.color}`; // String
+      data: {
+          color: 'red',
+          num: 100
+      },
+      computed: {
+          numStyle() {
+              const styles = [`color:${this.color}`];
+              return styles.join("");
+          },
+          classes() {
+              const classes = ["class1", "class2"];
+              return classes.join(" ");
+          }
       }
-    }
   });
   ```
   WXML：
@@ -452,31 +456,54 @@ A.attached > b.attached > relations.child(A,B) > relations.parent(A,B) <br>
 * **$children**
 
   与当前实例有直接关系的子组件，`$children`不保证任何方式顺序的排列。
-  在`Component.ready`,`Component.onReady`,`Page.onLoad`中获取。
+  在`ready`，`onReady`，`onLoad`，`mounted`中获取。
 
   <br>
 
 ### 选项 / 组合
 
-* **parent**
+* **relations**
 
-  强制指定父组件路径，提前在`attached`生命周期中访问`$parent`，匹配最接近的对象，查询失败则执行默认行为。
-  如果目标组件路径在发布后会改变，可在编译期访问全局对象`__modules__`进行匹配确认。
-  
-  ```javascript
-  const paths = Object.keys(__modules__);
-  const reg = new RegExp("components/parent/index");
-  const parent = paths.find(p => reg.test(p)).replace('.js', '');
-  
-  ComponentEx({
-      parent,
-      attached() {
-          console.log(`(${this.is}) attached/beforeMount => ${this.$parent.is}`);
-      }
-  });
-  ```
-  
-  <br>
+  通常用不上，`$parent`，`$children`不完整，避免在回调中使用。
+```javascript
+// behaviors.js 导出
+const ParentBehavior = Behavior({});
+const ChildBehavior = Behavior({});
+
+// 子组件
+ComponentEx({
+    behaviors: [ChildBehavior],
+    relations: {
+        'getParent': {
+            type: 'parent',
+            target: ParentBehavior,
+            linked: function (target, key) {
+                console.log(key); // getParent
+            },
+            unlinked: function (target, key) {
+
+            }
+        }
+    }
+});
+
+// 父组件
+ComponentEx({
+    behaviors: [ParentBehavior],
+    relations: {
+        'getChild': {
+            type: 'child',
+            target: ChildBehavior,
+            linked: function (target, key) {
+                console.log(key); // getChild
+            },
+            unlinked: function (target, key) {
+
+            }
+        }
+    }
+});
+```
 
 ### 实例方法 / 数据
 

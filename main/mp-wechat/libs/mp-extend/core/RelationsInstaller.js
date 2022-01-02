@@ -4,8 +4,10 @@ import {Collectors, Stream} from "../libs/Stream";
 
 const PARENT_TAG_OBS = `parent-${uuid()}`;
 const CHILD_TAG_OBS = `child-${uuid()}`;
-const MATCH_PARENTS = new Map();
 const RelationSign = Symbol("__wxREL__");
+const RTCSign = Symbol("__wxRTC__");
+const RTCGetterSign = Symbol("__wxRTC_Getter__");
+const ExecutedDescendantSign = Symbol("__wxEXE_Descendant");
 
 function injectParentInstance(target, parent) {
     Object.defineProperty(target, "$parent", {
@@ -55,7 +57,7 @@ const ParentBehavior = Behavior({
         // 默认绑定到Page
         if (Reflect.get(this, "__wxExparserNodeId__") !== Reflect.get(root, "__wxExparserNodeId__")) {
             if (!this.$parent) {
-                injectParentInstance(this, root);
+                injectParentInstance(this, Reflect.get(root, RTCGetterSign)());
             }
         }
     },
@@ -70,7 +72,7 @@ const ChildBehavior = Behavior({
     attached() {
         const root = getCurrentPages().find(p => Reflect.get(p, "__wxWebviewId__") === Reflect.get(this, "__wxWebviewId__"));
         if (Reflect.get(this, "__wxExparserNodeId__") !== Reflect.get(root, "__wxExparserNodeId__")) {
-            appendChildInstance(root, this);
+            appendChildInstance(root, Reflect.get(this, RTCGetterSign)());
         }
     },
     detached() {
@@ -82,6 +84,20 @@ const ChildBehavior = Behavior({
 });
 
 export default class RelationsInstaller extends OptionInstaller {
+    getRuntimeContext(thisArg, context, fnSetData) {
+        if (Reflect.has(thisArg, RTCSign)) {
+            return Reflect.get(thisArg, RTCSign).get(thisArg, context.get("properties"), context.get("computed"), fnSetData);
+        }
+        return thisArg;
+    }
+
+    releaseRuntimeContext(thisArg) {
+        if (Reflect.has(thisArg, RTCSign)) {
+            Reflect.get(thisArg, RTCSign).release();
+            Reflect.deleteProperty(this, RTCSign);
+        }
+    }
+
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
         defFields.behaviors = [
             ParentBehavior, ChildBehavior
@@ -101,39 +117,50 @@ export default class RelationsInstaller extends OptionInstaller {
      * linkChanged - 列表节点增删时触发
      */
     relations() {
+        const getContextInstance = (thisArg) => {
+            return Reflect.get(thisArg, RTCGetterSign)();
+        };
+
+        const callRelations = (thisArg, target, type, reverseType, callback) => {
+            const targetRelations = Reflect.get(target, RelationSign);
+            if (targetRelations && targetRelations[type]) {
+                if (
+                    targetRelations[type].some(([, relation]) => {
+                        return !!(relation.target && thisArg.hasBehavior(relation.target)) && relation.target !== ParentBehavior && relation.target !== ChildBehavior;
+                    })
+                ) {
+                    const selfRelations = Reflect.get(thisArg, RelationSign);
+                    if (selfRelations[reverseType]) {
+                        selfRelations[reverseType].forEach(([key, relation]) => {
+                            if (relation.target !== ParentBehavior && relation.target !== ChildBehavior && target.hasBehavior(relation.target)) {
+                                if (isFunction(relation[callback])) {
+                                    relation[callback].call(getContextInstance(thisArg), getContextInstance(target), key);
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        };
+
         return {
             [PARENT_TAG_OBS]: {
                 type: "parent",
                 target: ParentBehavior,
                 linked(target) {
-                    const root = getCurrentPages().find(p => Reflect.get(p, "__wxWebviewId__") === Reflect.get(this, "__wxWebviewId__"));
-                    if (!this.$parent || Reflect.get(this.$parent, "__wxExparserNodeId__") === Reflect.get(root, "__wxExparserNodeId__")) {
-                        injectParentInstance(this, target);
-                    }
+                    // 父节点从 Page 变更为 Component 实例
+                    injectParentInstance(this, getContextInstance(target));
 
-                    const relations = Reflect.get(this, RelationSign);
-                    if (relations && Array.isArray(relations["parent"])) {
-                        relations["parent"].forEach(([key, relation]) => {
-                            if (isFunction(relation.linked)) {
-                                relation.linked.call(this, target, key);
-                            }
-                        });
-                    }
+                    // target.relations 包含 type = child 且 relation.target 在本组件包含
+                    // 本组件 relations 包含 type = parent 且 relation.target 在 target包含
+                    callRelations(this, target, "child", "parent", "linked");
                 },
-                unlinked() {
-                    if (this.$parent) {
-                        removeChildInstance(this.$parent, this);
-                    }
+                linkChanged(target) {
+                    callRelations(this, target, "child", "parent", "linkChanged");
+                },
+                unlinked(target) {
+                    callRelations(this, target, "child", "parent", "unlinked");
                     deleteParentProperty(this);
-
-                    const relations = Reflect.get(this, RelationSign);
-                    if (relations && Array.isArray(relations["parent"])) {
-                        relations["parent"].forEach(([key, relation]) => {
-                            if (isFunction(relation.unlinked)) {
-                                relation.unlinked.call(this, key);
-                            }
-                        });
-                    }
                 }
             },
             [CHILD_TAG_OBS]: {
@@ -141,100 +168,83 @@ export default class RelationsInstaller extends OptionInstaller {
                 target: ChildBehavior,
                 linked(target) {
                     const root = getCurrentPages().find(p => Reflect.get(p, "__wxWebviewId__") === Reflect.get(this, "__wxWebviewId__"));
-                    if (!target.$parent || Reflect.get(target.$parent, "__wxExparserNodeId__") === Reflect.get(root, "__wxExparserNodeId__")) {
-                        appendChildInstance(this, target);
-                    }
+                    appendChildInstance(this, getContextInstance(target));
                     // 从根节点排除掉
                     removeChildInstance(root, target);
-
-                    const relations = Reflect.get(this, RelationSign);
-                    if (relations && Array.isArray(relations["child"])) {
-                        relations["child"].forEach(([key, relation]) => {
-                            if (isFunction(relation.linked)) {
-                                relation.linked.call(this, target, key);
-                            }
-                        });
-                    }
+                    callRelations(this, target, "parent", "child", "linked");
+                },
+                linkChanged(target) {
+                    callRelations(this, target, "parent", "child", "linkChanged");
                 },
                 unlinked(target) {
-                    if (target.$parent) {
-                        removeChildInstance(target.$parent, target);
-                    }
+                    callRelations(this, target, "parent", "child", "unlinked");
                     removeChildInstance(this, target);
-
-                    const relations = Reflect.get(this, RelationSign);
-                    if (relations && Array.isArray(relations["child"])) {
-                        relations["child"].forEach(([key, relation]) => {
-                            if (isFunction(relation.unlinked)) {
-                                relation.unlinked.call(this, target, key);
-                            }
-                        });
-                    }
                 }
             }
         };
     }
 
-    configuration(extender, context, options) {
-        let {parent = null} = options;
-        if (parent) {
-            if (parent.startsWith("/")) {
-                context.set("parent", parent.slice(1));
-            } else {
-                context.set("parent", parent);
-            }
-            parent = context.get("parent");
-            if (!MATCH_PARENTS.has(parent)) {
-                MATCH_PARENTS.set(parent, []);
-            }
-        }
-        return null;
-    }
-
     lifetimes(extender, context, options) {
-        const parent = context.get("parent");
+        const createContext = () => {
+            return extender.createRuntimeContextSingleton();
+        };
+
+        const releaseContext = (thisArg) => {
+            this.releaseRuntimeContext(thisArg);
+        };
+
+        const getContext = (thisArg, fnSetData) => {
+            return this.getRuntimeContext(thisArg, context, fnSetData);
+        };
+
         return {
             created() {
-                if (options.relations) {
-                    const relationsGroup = Stream.of(Object.entries(options.relations)).filter(([, relation]) => relation.type === "parent" || relation.type === "child")
-                        .collect(
-                            Collectors.groupingBy(([, relation]) => {
-                                return relation.type;
-                            })
-                        );
-                    Reflect.set(this, RelationSign, relationsGroup);
-                }
+                Object.defineProperty(this, RTCSign, {
+                    configurable: false,
+                    enumerable: false,
+                    value: createContext(),
+                    writable: false
+                });
 
-                if (MATCH_PARENTS.size > 0) {
-                    const components = MATCH_PARENTS.get(this.is);
-                    if (Array.isArray(components)) {
-                        components.push(this);
-                    }
-                    if (parent) {
-                        if (MATCH_PARENTS.has(parent)) {
-                            const parents = MATCH_PARENTS.get(parent);
-                            if (Array.isArray(parents) && parents.length > 0) {
-                                const near = parents[parents.length - 1];
-                                injectParentInstance(this, near);
-                                appendChildInstance(near, this);
-                            }
-                        }
-                    }
+                Object.defineProperty(this, RTCGetterSign, {
+                    configurable: false,
+                    enumerable: false,
+                    value: () => {
+                        return getContext(this, this.setData.bind(this));
+                    },
+                    writable: false
+                });
+
+                Object.defineProperty(this, ExecutedDescendantSign, {
+                    configurable: false,
+                    enumerable: false,
+                    value: [],
+                    writable: false
+                });
+
+                if (options.relations) {
+                    const relationsGroup = Stream.of(Object.entries(options.relations)).collect(
+                        Collectors.groupingBy(([, relation]) => {
+                            return relation.type;
+                        })
+                    );
+                    Reflect.set(this, RelationSign, relationsGroup);
                 }
             },
             attached() {
-                if (MATCH_PARENTS.size > 0) {
-                    const components = MATCH_PARENTS.get(this.is);
-                    if (Array.isArray(components)) {
-                        const index = components.indexOf(this);
-                        if (index >= 0) {
-                            components.splice(index, 1);
-                        }
-                        if (components.length <= 0) {
-                            MATCH_PARENTS.delete(this.is);
-                        }
-                    }
+                const executedDescendantSign = Reflect.get(this, ExecutedDescendantSign);
+                if (Array.isArray(executedDescendantSign)) {
+                    executedDescendantSign.splice(0);
                 }
+            },
+            detached() {
+                releaseContext(this);
+                Reflect.deleteProperty(this, RTCGetterSign);
+                const executedDescendantSign = Reflect.get(this, ExecutedDescendantSign);
+                if (Array.isArray(executedDescendantSign)) {
+                    executedDescendantSign.splice(0);
+                }
+                Reflect.deleteProperty(this, ExecutedDescendantSign);
             }
         };
     }
@@ -247,10 +257,81 @@ export default class RelationsInstaller extends OptionInstaller {
                         return relation.type;
                     })
                 );
-            // descendant 已被被内置 child 优先级覆盖
             const ancestor = relationsGroup.ancestor;
             const descendant = relationsGroup.descendant;
-            // ancestor descendant 暂不作干预
+
+            const getContextInstance = (thisArg) => {
+                return Reflect.get(thisArg, RTCGetterSign)();
+            };
+
+            const callTargetRelations = (excludeKeys, thisArg, target, type, reverseType, callback) => {
+                const executedRelationKeys = [];
+                const selfRelations = Reflect.get(thisArg, RelationSign);
+                if (selfRelations && selfRelations[reverseType]) {
+                    if (
+                        selfRelations[reverseType].some(([, relation]) => {
+                            return !!(relation.target && target.hasBehavior(relation.target)) && relation.target !== ParentBehavior && relation.target !== ChildBehavior;
+                        })
+                    ) {
+                        const targetRelations = Reflect.get(target, RelationSign);
+                        if (targetRelations[type]) {
+                            targetRelations[type].forEach(([key, relation]) => {
+                                if (!excludeKeys.includes(key)) {
+                                    if (relation.target !== ParentBehavior && relation.target !== ChildBehavior && thisArg.hasBehavior(relation.target)) {
+                                        if (isFunction(relation[callback])) {
+                                            executedRelationKeys.push(key);
+                                            relation[callback].call(getContextInstance(target), getContextInstance(thisArg), key);
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+                return executedRelationKeys;
+            };
+
+            // 修正当 parent child ancestor 关系存在，descendant 并不会触发，
+            if (Array.isArray(ancestor)) {
+                ancestor.forEach(([key, relation]) => {
+                    const linked = relation.linked;
+                    const linkChanged = relation.linkChanged;
+                    const unlinked = relation.unlinked;
+                    if (isFunction(linked)) {
+                        relation.linked = function (target) {
+                            // target.relations 存在 type = descendant 且 relation.target 在本组件包含
+                            // 本组件 relations 存在 type = ancestor 且 relation.target 在 target 包含
+                            const executedRelationKeys = Reflect.get(this, ExecutedDescendantSign);
+                            const keys = callTargetRelations(executedRelationKeys, this, target, "descendant", "ancestor", "linked");
+                            if (keys.length) {
+                                Array.prototype.push.apply(executedRelationKeys, keys);
+                            }
+                            linked.call(getContextInstance(this), getContextInstance(target), key);
+                        };
+                    }
+                    if (isFunction(linkChanged)) {
+                        relation.linkChanged = function (target) {
+                            linkChanged.call(getContextInstance(this), getContextInstance(target), key);
+                            const executedRelationKeys = Reflect.get(this, ExecutedDescendantSign);
+                            const keys = callTargetRelations(executedRelationKeys, this, target, "descendant", "ancestor", "linkChanged");
+                            if (keys.length) {
+                                Array.prototype.push.apply(executedRelationKeys, keys);
+                            }
+                        };
+                    }
+                    if (isFunction(unlinked)) {
+                        relation.unlinked = function (target) {
+                            unlinked.call(getContextInstance(this), getContextInstance(target), key);
+                            const executedRelationKeys = Reflect.get(this, ExecutedDescendantSign);
+                            const keys = callTargetRelations(executedRelationKeys, this, target, "descendant", "ancestor", "linkChanged");
+                            if (keys.length) {
+                                Array.prototype.push.apply(executedRelationKeys, keys);
+                            }
+                        };
+                    }
+                });
+            }
+
             context.set("relations", Object.assign(
                 this.relations(),
                 ancestor ? Stream.of(ancestor).collect(Collectors.toMap()) : null,
