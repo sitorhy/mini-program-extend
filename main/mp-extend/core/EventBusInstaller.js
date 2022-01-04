@@ -91,7 +91,7 @@ export default class EventBusInstaller extends OptionInstaller {
                         if (!Object.hasOwnProperty.call(this, "$emit")) {
                             const $emit = (event, data) => {
                                 const e = new RoutedEventArgs(this, event, data);
-                                let p = this.$parent;
+                                let p = this;
                                 while (p) {
                                     const emitter = Reflect.get(p, EVTSign);
                                     if (emitter) {
@@ -177,13 +177,6 @@ export default class EventBusInstaller extends OptionInstaller {
                                         if (e.handled === true) {
                                             break;
                                         }
-                                    } else {
-                                        if (typeof __wxConfig !== "undefined") {
-                                            if (__wxConfig.pages && __wxConfig.pages.includes(i.is)) {
-                                                console.error("make sure the page built with PageEx before using $dispatch.");
-                                            }
-                                        }
-                                        break;
                                     }
                                 }
                             };

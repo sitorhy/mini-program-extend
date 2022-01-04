@@ -149,7 +149,7 @@ export default class EventEmitter {
     /**
      * on别名
      * @param events
-     * @param callback
+     * @param {({data:any,event:string,handled?:boolean,source:object,originalSource:object})=>void} callback;
      */
     $on(events, callback) {
         return this.on(events, callback);
