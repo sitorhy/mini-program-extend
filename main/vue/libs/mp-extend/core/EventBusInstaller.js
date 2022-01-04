@@ -94,9 +94,11 @@ export default class EventBusInstaller extends OptionInstaller {
                                 let p = this.$parent;
                                 while (p) {
                                     const emitter = Reflect.get(p, EVTSign);
-                                    emitter.emit(e.event, e);
-                                    if (e.handled === true) {
-                                        break;
+                                    if (emitter) {
+                                        emitter.emit(e.event, e);
+                                        if (e.handled === true) {
+                                            break;
+                                        }
                                     }
                                     p = p.$parent;
                                 }
@@ -175,6 +177,13 @@ export default class EventBusInstaller extends OptionInstaller {
                                         if (e.handled === true) {
                                             break;
                                         }
+                                    } else {
+                                        if (typeof __wxConfig !== "undefined") {
+                                            if (__wxConfig.pages && __wxConfig.pages.includes(i.is)) {
+                                                console.error("make sure the page built with PageEx before using $dispatch.");
+                                            }
+                                        }
+                                        break;
                                     }
                                 }
                             };

@@ -55,31 +55,26 @@ const ParentBehavior = Behavior({
     attached() {
         const root = getCurrentPages().find(p => Reflect.get(p, "__wxWebviewId__") === Reflect.get(this, "__wxWebviewId__"));
         // 默认绑定到Page
-        if (Reflect.get(this, "__wxExparserNodeId__") !== Reflect.get(root, "__wxExparserNodeId__")) {
-            if (!this.$parent) {
-                injectParentInstance(this, Reflect.get(root, RTCGetterSign)());
-            }
+        if (Reflect.has(root, RTCGetterSign)) {
+            injectParentInstance(this, Reflect.get(root, RTCGetterSign)());
+        } else {
+            // 没有使用PageEx构建
+            injectParentInstance(this, root);
         }
     },
     detached() {
         const root = getCurrentPages().find(p => Reflect.get(p, "__wxWebviewId__") === Reflect.get(this, "__wxWebviewId__"));
-        if (Reflect.get(this, "__wxExparserNodeId__") !== Reflect.get(root, "__wxExparserNodeId__")) {
-            deleteParentProperty(root, this);
-        }
+        deleteParentProperty(root, this);
     }
 });
 const ChildBehavior = Behavior({
     attached() {
         const root = getCurrentPages().find(p => Reflect.get(p, "__wxWebviewId__") === Reflect.get(this, "__wxWebviewId__"));
-        if (Reflect.get(this, "__wxExparserNodeId__") !== Reflect.get(root, "__wxExparserNodeId__")) {
-            appendChildInstance(root, Reflect.get(this, RTCGetterSign)());
-        }
+        appendChildInstance(root, Reflect.get(this, RTCGetterSign)());
     },
     detached() {
         const root = getCurrentPages().find(p => Reflect.get(p, "__wxWebviewId__") === Reflect.get(this, "__wxWebviewId__"));
-        if (Reflect.get(this, "__wxExparserNodeId__") !== Reflect.get(root, "__wxExparserNodeId__")) {
-            removeChildInstance(root, this);
-        }
+        removeChildInstance(root, this);
     }
 });
 
