@@ -307,7 +307,7 @@ Page.created > Component.created
   arr2 [{"num":1919}] => [{"num":810}]
   ```
 
-  🔴 指定`immediate = true`，侦听器初始化时会触发一次回调，但此时组件还没有触发`mounted`生命周期回调，所以还不能修改状态。
+  🔴 指定`immediate = true`，侦听器初始化时会触发一次回调。
 
   ```javascript
   PageEx({
@@ -345,8 +345,8 @@ Page.created > Component.created
   ```
   num = 114
   created
-  mounted
   onLoad
+  mounted
   ```
 
 <br>
