@@ -172,11 +172,11 @@ declare namespace extend {
 
         $broadcast: (event: string, data: any) => void;
 
-        $once: (event: string, listener: (event: string, data: EventArgs) => void) => void;
+        $once: (event: string, listener: (event: string, data: RoutedEventArgs | EventArgs) => void) => void;
 
-        $on: (event: string, listener: (event: string, data: EventArgs) => void) => void;
+        $on: (event: string, listener: (event: string, data: RoutedEventArgs | EventArgs) => void) => void;
 
-        $off: (event?: string, listener?: (event: string, data: EventArgs) => void) => void;
+        $off: (event?: string, listener?: (event: string, data: RoutedEventArgs | EventArgs) => void) => void;
     }
 }
 
@@ -185,7 +185,9 @@ export declare function PageEx<T extends extend.PageExOptions & object>(options:
 export declare function ComponentEx<T extends extend.ComponentExOptions & object>(options: T): void;
 
 export const Extension: {
-    use: <T extends extend.OptionInstaller>(installer: T) => void;
+    use: <T extends extend.OptionInstaller>(installer: T, priority?: number) => void;
+
+    mixin: <T extends extend.Options>(mixin: T) => void;
 };
 
 export class MPExtender extends extend.MPExtender {

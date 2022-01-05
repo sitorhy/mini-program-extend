@@ -1,11 +1,17 @@
 import _MPExtender from "./core/MPExtender";
 import _OptionInstaller from "./core/OptionInstaller";
 
+import MixinInstaller from "./core/MixinInstaller";
+
 export const Extension = {
     _installerClasses: new Map(),
 
     use: function (installerClass, priority = 100) {
         this._installerClasses.set(installerClass, priority);
+    },
+
+    mixin: function (mixin) {
+        MixinInstaller.addGlobalMixin(mixin);
     }
 };
 

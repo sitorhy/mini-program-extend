@@ -227,7 +227,7 @@ Page.created > Component.created
       computed: {
           numStyle() {
               const styles = [`color:${this.color}`];
-              return styles.join("");
+              return styles.join(";");
           },
           classes() {
               const classes = ["class1", "class2"];
@@ -464,7 +464,8 @@ Page.created > Component.created
 
 * **relations**
 
-  通常用不上，`$parent`，`$children`不完整，避免在回调中使用。
+  🔴 该配置通常用不上，`$parent`，`$children`不完整，应避免在回调中使用。
+
 ```javascript
 // behaviors.js 导出
 const ParentBehavior = Behavior({});
@@ -504,6 +505,74 @@ ComponentEx({
     }
 });
 ```
+
+
+
+* **mixins**
+
+  🔴 主要用于混入生命周期或数据，方法每一次重定义都会覆盖上一次定义。
+
+```javascript
+  const Mixin = {
+      data: {
+          b: 200
+      },
+      methods: {
+          test() {
+              console.log('test');
+          }
+      },
+      mounted() {
+          console.log('mounted 1');
+      }
+  };
+  
+  PageEx({
+      mixins: [Mixin],
+      data: {
+          a: 100
+      },
+      methods: {
+          test() {
+              console.log(this.a + this.b);
+          }
+      },
+      mounted() {
+          this.test();
+      }
+  });
+```
+
+  输出
+
+  ```
+  mounted 1
+  300
+  ```
+* **全局混入**
+
+  在`app.js`注入。
+
+```javascript
+import {Extension} from "wechat-mini-program-extend";
+
+Extension.mixin({
+    methods: {
+        getUserInfo() {
+            console.log('114514')
+        }
+    }
+});
+
+App({
+    onLaunch(options) {
+        // ...
+    }
+});
+```
+
+
+
 
 ### 实例方法 / 数据
 
@@ -629,7 +698,7 @@ ComponentEx({
 
 * **$dispatch**
 
-  🔴 以祖先组件为起点，自身为终点的方向（捕获顺序）触发一个总线事件，捕获事件可被拦截。页面可使用`PageEx`构建。
+  🔴 以祖先组件为起点，自身为终点的方向（捕获顺序）触发一个总线事件，捕获事件可被拦截。页面使用`PageEx`构建，使事件可以从页面往下传递。
 
   ```javascript
   this.$dispatch('event', `来自${this.is}组件`);
@@ -645,4 +714,5 @@ ComponentEx({
   this.$broadcast('broadcast', `来自${this.is}组件`);
   ```
 
-  
+
+

@@ -18,6 +18,25 @@ import RESERVED_OPTIONS_WORDS from "../utils/options";
  * 生命周期: 复合
  */
 export default class MixinInstaller extends OptionInstaller {
+    static globalMixins = [];
+
+    static addGlobalMixin(mixin) {
+        if (!MixinInstaller.globalMixins.includes(mixin)) {
+            MixinInstaller.globalMixins.push(mixin);
+        }
+    }
+
+    static removeGlobalMixin(mixin) {
+        const index = MixinInstaller.globalMixins.indexOf(mixin);
+        if (index >= 0) {
+            MixinInstaller.globalMixins.splice(index, 1);
+        }
+    }
+
+    static clearGlobalMixins() {
+        MixinInstaller.globalMixins.splice(0);
+    }
+
     collectOptions(fields = [], options = {}, collection = new Map()) {
         if (Array.isArray(options.mixins)) {
             options.mixins.forEach(m => this.collectOptions(fields, m, collection));
@@ -124,6 +143,9 @@ export default class MixinInstaller extends OptionInstaller {
     }
 
     configuration(extender, context, options) {
+        if (options && MixinInstaller.globalMixins.length) {
+            options.mixins = MixinInstaller.globalMixins.concat(Array.isArray(options.mixins) ? options.mixins : []);
+        }
         return this.reduceConfiguration(options);
     }
 
