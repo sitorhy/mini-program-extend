@@ -348,7 +348,7 @@ export default class MPExtender {
             ]
         };
         installers.forEach(installer => {
-            Object.assign(config, installer.build(this, this._context, options));
+            Object.assign(config, installer.build(this, this._context, reduceOptions));
         });
         return config;
     }
