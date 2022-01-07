@@ -338,6 +338,13 @@ export default class RelationsInstaller extends OptionInstaller {
     }
 
     build(extender, context, options) {
+        // Page 不注入 relations
+        if (typeof __wxAppCurrentFile__ === "string" && __wxConfig) {
+            const page = __wxAppCurrentFile__.replace(/.js$/, "");
+            if (__wxConfig.pages.indexOf(page) >= 0) {
+                return null;
+            }
+        }
         return {relations: context.get("relations")};
     }
 }
