@@ -13,6 +13,7 @@ import InstanceInstaller from "./InstanceInstaller";
 import RelationsInstaller from "./RelationsInstaller";
 import EventBusInstaller from "./EventBusInstaller";
 import UpdateInstaller from "./UpdateInstaller";
+import StoreInstaller from "./StoreInstaller";
 
 import {Singleton} from "../libs/Singleton";
 import {isFunction, isNullOrEmpty, isPlainObject} from "../utils/common";
@@ -48,6 +49,7 @@ export default class MPExtender {
     _context = new Map();
 
     constructor() {
+        this.use(new StoreInstaller(), 2);
         this.use(new MixinInstaller(), 5);
         this.use(new MethodsInstaller(), 10);
         this.use(new PropertiesInstaller(), 15);
@@ -141,7 +143,6 @@ export default class MPExtender {
 
     /**
      * 扩展运行时上下文
-     * @param {object} options - 筛选配置，只读可以忽略
      * @param { function (prop:string):boolean } predicate - 拦截属性
      * @param { function (prop:string,runtimeContext:Proxy):object } supplier - 返回拦截属性的值
      * @returns {Singleton}

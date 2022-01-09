@@ -6,8 +6,8 @@
   "author": "sitorhy <sitorhy>",
   "license": "MIT",
   "keywords": [
+    "wechat",
     "miniprogram",
-    "mini-program",
     "miniprogram-computed",
 	"wechat-mini-program-extend",
 	"miniprogram-extend"
