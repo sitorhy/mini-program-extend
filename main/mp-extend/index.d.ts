@@ -166,6 +166,8 @@ declare namespace extend {
 
         inject(): object;
 
+        $nextTick: (callback: () => void) => void;
+
         $emit: (event: string, data: any) => void;
 
         $dispatch: (event: string, data: any) => void;

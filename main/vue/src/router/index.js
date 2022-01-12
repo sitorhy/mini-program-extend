@@ -9,6 +9,7 @@ import Provide from '../views/Provide.vue';
 import Mixins from '../views/Mixins.vue';
 import Options from '../views/Options.vue';
 import Snake from '../views/Snake.vue';
+import Store from '../views/Store.vue';
 
 Vue.use(VueRouter);
 
@@ -77,6 +78,11 @@ const routes = [
         path: '/snake',
         name: 'Snake',
         component: Snake
+    },
+    {
+        path: '/store',
+        name: 'Store',
+        component: Store
     }
 ]
 
