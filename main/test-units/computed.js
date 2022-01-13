@@ -16,7 +16,8 @@ export default {
             data: function () {
                 return {
                     a: 1,
-                    timestamp: 0
+                    timestamp: 0,
+                    propThroughNum: 114514
                 };
             },
             computed: {
@@ -68,6 +69,11 @@ export default {
             },
             destroyed() {
                 clearInterval(this.timer);
+            },
+            methods: {
+                changePropNum() {
+                    this.propThroughNum = 1919;
+                }
             }
         }
     ]

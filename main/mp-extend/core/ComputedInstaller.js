@@ -267,11 +267,12 @@ export default class ComputedInstaller extends OptionInstaller {
                 originalSetData.call(instance, nextCalculated);
             }
         };
-        return {
-            "**": function (data) {
-                beforeUpdate(this, data);
-            }
-        };
+        const props = context.get("properties");
+        return Stream.of(Object.keys(props)).map(name => {
+            return [name, function (val) {
+                beforeUpdate(this, {[name]: val});
+            }];
+        }).collect(Collectors.toMap());
     }
 
     install(extender, context, options) {
