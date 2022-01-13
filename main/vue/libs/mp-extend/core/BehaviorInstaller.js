@@ -23,7 +23,7 @@ export default class BehaviorInstaller extends FrameworkInstaller {
         return {};
     }
 
-    observers() {
+    observers(extender, context, options) {
         return {};
     }
 

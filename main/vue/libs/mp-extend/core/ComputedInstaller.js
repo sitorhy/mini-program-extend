@@ -251,6 +251,29 @@ export default class ComputedInstaller extends OptionInstaller {
         }
     }
 
+    observers(extender, context, options) {
+        const beforeUpdate = (instance, data) => {
+            const copy = Object.assign({}, data);
+            this.beforeUpdate(extender, context, options, instance, copy);
+            const computed = context.get("computed");
+            const nextCalculated = {};
+            Object.keys(computed).forEach((key) => {
+                if (!equal(copy[key], data[key])) {
+                    nextCalculated[key] = copy[key];
+                }
+            });
+            if (Object.keys(nextCalculated).length) {
+                const originalSetData = instance.setData;
+                originalSetData.call(instance, nextCalculated);
+            }
+        };
+        return {
+            "**": function (data) {
+                beforeUpdate(this, data);
+            }
+        };
+    }
+
     install(extender, context, options) {
         const {computed = null} = options;
         context.set("computed", Object.assign.apply(

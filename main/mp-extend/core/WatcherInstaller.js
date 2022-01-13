@@ -520,7 +520,7 @@ export default class WatcherInstaller extends OptionInstaller {
             undefined,
             [
                 {},
-                ...extender.installers.map(i => i.observers()),
+                ...extender.installers.map(i => i.observers(extender, context, options)),
                 options.observers
             ]
         );
