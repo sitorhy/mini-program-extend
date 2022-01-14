@@ -90,11 +90,9 @@ export default class ComputedInstaller extends OptionInstaller {
                         return Reflect.get(state, p);
                     }
                     if (Reflect.has(computed, p)) {
-                        const expr = Reflect.get(computed, p);
-                        if (isFunction(expr)) {
-                            return expr.call(receiver);
-                        } else if (isPlainObject(expr) && isFunction(expr.get)) {
-                            return (expr.get).call(receiver);
+                        const calc = Reflect.get(computed, p);
+                        if (isFunction(calc.get)) {
+                            return (calc.get).call(receiver);
                         }
                     } else if (Reflect.has(methods, p)) {
                         const method = Reflect.get(methods, p);
@@ -108,9 +106,8 @@ export default class ComputedInstaller extends OptionInstaller {
         );
 
         return Stream.of(Object.entries(computed)).map(([name, calc]) => {
-            const expr = isPlainObject(calc) && isFunction(calc.get) ? calc.get : (isFunction(calc) ? calc : null);
-            if (isFunction(expr)) {
-                return [name, expr.call(computedContext)];
+            if (isFunction(calc.get)) {
+                return [name, calc.get.call(computedContext)];
             }
             return undefined;
         }).filter(i => !!i).collect(Collectors.toMap());
@@ -118,10 +115,11 @@ export default class ComputedInstaller extends OptionInstaller {
 
     beforeUpdate(extender, context, options, instance, data) {
         const computed = context.get("computed");
+        /*
         const setters = Reflect.get(instance, CMPCSetterSign);
         const getters = Reflect.get(instance, CMPCGetterSign);
-
-        const setterIncludes = Object.keys(data).filter(i => setters.includes(i));
+         */
+        const setterIncludes = Object.keys(data).filter(i => Reflect.has(computed, i) && isFunction(computed[i].set));
 
         const originalSetData = instance.setData;
 
@@ -137,8 +135,8 @@ export default class ComputedInstaller extends OptionInstaller {
 
         // 刷新计算属性的值
         const nextCalculated = {};
-        getters.forEach((p) => {
-            const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
+        Object.keys(computed).forEach((p) => {
+            const getter = computed[p].get;
             // 获取当前值
             const curVal = Reflect.get(this.getRuntimeContext(instance, context, originalSetData.bind(instance)), p);
 
@@ -166,8 +164,11 @@ export default class ComputedInstaller extends OptionInstaller {
         const state = context.get("state");
         const computed = context.get("computed");
 
+        /*
         const setters = Object.keys(computed).filter(i => isPlainObject(computed[i]) && isFunction(computed[i].set));
         const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
+        */
+
 
         // 检查是否安装StateInstaller
         if (isPlainObject(state)) {
@@ -182,6 +183,7 @@ export default class ComputedInstaller extends OptionInstaller {
             };
 
             const createCMPC = (thisArg) => {
+                /*
                 Object.defineProperty(thisArg, CMPCGetterSign, {
                     value: getters,
                     enumerable: false,
@@ -191,14 +193,16 @@ export default class ComputedInstaller extends OptionInstaller {
                     value: setters,
                     enumerable: false,
                     configurable: false
-                });
+                });*/
+
                 return new ComputedSourceSingleton();
             };
 
             const releaseCMPC = (thisArg) => {
                 this.releaseComputedContext(thisArg);
+                /*
                 Reflect.deleteProperty(thisArg, CMPCGetterSign);
-                Reflect.deleteProperty(thisArg, CMPCSetterSign);
+                Reflect.deleteProperty(thisArg, CMPCSetterSign);*/
             };
 
             // 主动触发一次 setData，初始化计算属性，防止组件没有任何赋值操作
@@ -277,13 +281,34 @@ export default class ComputedInstaller extends OptionInstaller {
 
     install(extender, context, options) {
         const {computed = null} = options;
-        context.set("computed", Object.assign.apply(
-            undefined,
-            [
-                {},
-                ...extender.installers.map(i => i.computed()),
-                computed
-            ]
-        ));
+        context.set("computed", Stream.of(
+                Object.entries(
+                    Object.assign.apply(
+                        undefined,
+                        [
+                            {},
+                            ...extender.installers.map(i => i.computed()),
+                            computed
+                        ]
+                    )
+                )
+            ).map(([prop, handler]) => {
+                const normalize = {
+                    get: null,
+                    set: null
+                };
+                if (handler) {
+                    if (isFunction(handler)) {
+                        normalize.get = handler;
+                    } else if (isFunction(handler.get)) {
+                        normalize.get = handler.get;
+                    }
+                    if (isFunction(handler.set)) {
+                        normalize.set = handler.set;
+                    }
+                }
+                return [prop, normalize];
+            }).collect(Collectors.toMap())
+        );
     }
 }

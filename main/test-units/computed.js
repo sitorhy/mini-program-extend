@@ -21,6 +21,14 @@ export default {
                 };
             },
             computed: {
+                squarePropThroughNum: {
+                    get() {
+                        return this.propThroughNum * this.propThroughNum;
+                    },
+                    set(v) {
+                        this.propThroughNum = Math.sqrt(v);
+                    }
+                },
                 doubleBase: function () {
                     return this.base * 2;
                 },
@@ -73,6 +81,9 @@ export default {
             methods: {
                 changePropNum() {
                     this.propThroughNum = 1919;
+                },
+                changeSquarePropNum() {
+                    this.squarePropThroughNum = 144;
                 }
             }
         }
