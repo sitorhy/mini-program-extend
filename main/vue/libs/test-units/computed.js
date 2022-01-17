@@ -17,10 +17,20 @@ export default {
                 return {
                     a: 1,
                     timestamp: 0,
-                    propThroughNum: 114514
+                    propThroughNum: 114514,
+                    plus: 1
                 };
             },
             computed: {
+                plusSelf: {
+                    get() {
+                        return this.plus;
+                    },
+                    set(v) {
+                        console.log(`plus Self setter : ${this.plusSelf} <= △${v}`);
+                    //    this.plus = this.plusSelf + v;
+                    }
+                },
                 squarePropThroughNum: {
                     get() {
                         return this.propThroughNum * this.propThroughNum;
@@ -74,6 +84,8 @@ export default {
                 this.timer = setInterval(() => {
                     this.timestamp = Date.now();
                 }, 1000);
+
+                this.testPlusSelf();
             },
             destroyed() {
                 clearInterval(this.timer);
@@ -84,6 +96,9 @@ export default {
                 },
                 changeSquarePropNum() {
                     this.squarePropThroughNum = 144;
+                },
+                testPlusSelf() {
+                    this.plusSelf = this.plusSelf + 1;
                 }
             }
         }

@@ -7,6 +7,7 @@
     <div><span>aDouble=</span><span>{{ aDouble }}</span></div>
     <div><span>cPlus=</span><span>{{ cPlus }}</span></div>
     <div><span>squarePropThroughNum=</span><span>{{ squarePropThroughNum }}</span></div>
+    <div><span>plusSelf=</span><span>{{ plusSelf }}</span></div>
     <div><span>动态测试=</span><span>{{ formatTime }}</span></div>
 
     <div>
@@ -14,6 +15,9 @@
     </div>
     <div>
       <button @click="changeSquarePropNum">Change SquarePropNum</button>
+    </div>
+    <div>
+      <button @click="testPlusSelf">自增测试</button>
     </div>
   </div>
 </template>

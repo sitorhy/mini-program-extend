@@ -13,6 +13,7 @@ export default class UpdateInstaller extends OptionInstaller {
                 lifetimes: {
                     created() {
                         const originalSetData = this.setData;
+                        context.set("originalSetData", originalSetData);
                         Object.defineProperty(this, SetDataSign, {
                             get() {
                                 return originalSetData;
@@ -33,6 +34,7 @@ export default class UpdateInstaller extends OptionInstaller {
                     detached() {
                         this.setData = Reflect.get(this, SetDataSign);
                         Reflect.deleteProperty(this, SetDataSign);
+                        context.delete("originalSetData");
                     }
                 }
             })
