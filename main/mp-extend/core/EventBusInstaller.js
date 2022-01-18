@@ -20,6 +20,7 @@ class EventArgs {
         Object.defineProperty(this, SourceSign, {
             enumerable: false,
             configurable: false,
+            writable: true,
             value: null
         });
 
@@ -63,7 +64,8 @@ class RoutedEventArgs extends EventArgs {
         Object.defineProperty(this, HandledSign, {
             enumerable: false,
             configurable: true,
-            value: false
+            value: false,
+            writable: true
         });
     }
 

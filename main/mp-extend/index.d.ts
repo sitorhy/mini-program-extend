@@ -174,11 +174,11 @@ declare namespace extend {
 
         $broadcast: (event: string, data: any) => void;
 
-        $once: (event: string, listener: (event: string, data: RoutedEventArgs | EventArgs) => void) => void;
+        $once: (event: string, listener: (event: RoutedEventArgs | EventArgs) => void) => void;
 
-        $on: (event: string, listener: (event: string, data: RoutedEventArgs | EventArgs) => void) => void;
+        $on: (event: string, listener: (event: RoutedEventArgs | EventArgs) => void) => void;
 
-        $off: (event?: string, listener?: (event: string, data: RoutedEventArgs | EventArgs) => void) => void;
+        $off: (event?: string, listener?: (event: RoutedEventArgs | EventArgs) => void) => void;
     }
 }
 
