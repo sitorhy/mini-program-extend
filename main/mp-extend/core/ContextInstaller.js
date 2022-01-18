@@ -48,7 +48,7 @@ export default class ContextInstaller extends OptionInstaller {
                             value: createContext(),
                             writable: false
                         });
-                        initContext(this, this.setData.bind(this));
+                        initContext(this);
                     }
                 }
             })

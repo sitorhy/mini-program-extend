@@ -28,7 +28,7 @@ export default {
                     },
                     set(v) {
                         console.log(`plus Self setter : ${this.plusSelf} <= △${v}`);
-                    //    this.plus = this.plusSelf + v;
+                        this.plus = this.plusSelf + v;
                     }
                 },
                 squarePropThroughNum: {
@@ -84,8 +84,6 @@ export default {
                 this.timer = setInterval(() => {
                     this.timestamp = Date.now();
                 }, 1000);
-
-                this.testPlusSelf();
             },
             destroyed() {
                 clearInterval(this.timer);

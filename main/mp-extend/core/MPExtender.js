@@ -88,13 +88,16 @@ export default class MPExtender {
         let runtimeContext;
 
         const runtimeDataContext = createReactiveObject(context.data, context.data, function (path, value) {
-            if (isFunction(fnSetData)) {
-                fnSetData(!isNullOrEmpty(path) ? {[path]: value} : value);
-            } else {
-                Reflect.get(runtimeContext, "setData").call(runtimeContext, !isNullOrEmpty(path) ? {[path]: value} : value);
-            }
             if (setters.includes(path)) {
+                // 计算属性赋值调用对应 setter 修改 state
                 computed[path].set.call(runtimeContext, value);
+            } else {
+                // 非计算属性赋值
+                if (isFunction(fnSetData)) {
+                    fnSetData(!isNullOrEmpty(path) ? {[path]: value} : value);
+                } else {
+                    Reflect.get(runtimeContext, "setData").call(runtimeContext, !isNullOrEmpty(path) ? {[path]: value} : value);
+                }
             }
             getters.forEach((p) => {
                 const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
@@ -141,7 +144,6 @@ export default class MPExtender {
 
     /**
      * 扩展运行时上下文
-     * @param {object} options - 筛选配置，只读可以忽略
      * @param { function (prop:string):boolean } predicate - 拦截属性
      * @param { function (prop:string,runtimeContext:Proxy):object } supplier - 返回拦截属性的值
      * @returns {Singleton}

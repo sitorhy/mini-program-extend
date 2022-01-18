@@ -23,6 +23,7 @@ class ComputedSourceSingleton extends Singleton {
             const self = this;
             return new Proxy(runtimeContext, {
                 get(target, p, receiver) {
+                    // 拦截 data 属性访问
                     if (isPlainObject(self.source) && Reflect.has(self.source, p)) {
                         return Reflect.get(self.source, p);
                     }
@@ -35,6 +36,12 @@ class ComputedSourceSingleton extends Singleton {
         });
     }
 
+    /**
+     *
+     * @param runtimeContext - 上下文
+     * @param source - 重定向取值对象
+     * @returns {*}
+     */
     get(runtimeContext, source) {
         this.source = source;
         return super.get(runtimeContext);
@@ -113,14 +120,27 @@ export default class ComputedInstaller extends OptionInstaller {
 
     beforeUpdate(extender, context, options, instance, data) {
         const computed = context.get("computed");
-        const originalSetData = context.has("originalSetData") ? context.get("originalSetData") : instance.setData;
+        const setterIncludes = Object.keys(data).filter(i => Reflect.has(computed, i) && isFunction(computed[i].set));
+        // 是否安装 UpdateInstaller
+        const originalSetData = context.has("originalSetData") ? context.get("originalSetData").bind(instance) : instance.setData.bind(instance);
+
+        // setData数据是否包含计算属性，调用对应的setter触发器
+        if (setterIncludes.length) {
+            // this.setData(..) 形式 , 前置更新 state
+            setterIncludes.forEach((i) => {
+                (computed[i].set).call(
+                    this.getRuntimeContext(instance, context, originalSetData),
+                    data[i]
+                );
+            });
+        }
 
         // 刷新计算属性的值
         const nextCalculated = {};
         Object.keys(computed).forEach((p) => {
             const getter = computed[p].get;
             // 获取当前值
-            const curVal = Reflect.get(this.getRuntimeContext(instance, context, originalSetData.bind(instance)), p);
+            const curVal = Reflect.get(this.getRuntimeContext(instance, context, originalSetData), p);
 
             if (isFunction(getter)) {
                 // 计算下一个值
@@ -128,7 +148,7 @@ export default class ComputedInstaller extends OptionInstaller {
                     this.getComputedContext(
                         instance,
                         context,
-                        originalSetData.bind(instance),
+                        originalSetData,
                         data
                     )
                 );
@@ -138,7 +158,7 @@ export default class ComputedInstaller extends OptionInstaller {
                     nextCalculated[p] = pValue;
                 }
             } else {
-                throw new Error(`Getter is missing for computed property "${p}".`);
+                throw new Error(`Getter is missing for computed property "${p}"`);
             }
         });
 
@@ -177,8 +197,8 @@ export default class ComputedInstaller extends OptionInstaller {
                     return [i, Reflect.get(instance, "data")[i]];
                 }).collect(Collectors.toMap());
                 if (!equal(calculated, currentCalculated)) {
-                    const originalSetData = context.has("originalSetData") ? context.get("originalSetData") : instance.setData;
-                    originalSetData.call(instance, calculated);
+                    const originalSetData = context.has("originalSetData") ? context.get("originalSetData").bind(instance) : instance.setData.bind(instance);
+                    originalSetData(calculated);
                 }
             };
 
@@ -231,8 +251,8 @@ export default class ComputedInstaller extends OptionInstaller {
                 }
             });
             if (Object.keys(nextCalculated).length) {
-                const originalSetData = context.has("originalSetData") ? context.get("originalSetData") : instance.setData;
-                originalSetData.call(instance, nextCalculated);
+                const originalSetData = context.has("originalSetData") ? context.get("originalSetData").bind(instance) : instance.setData.bind(instance);
+                originalSetData(nextCalculated);
             }
         };
         const props = context.get("properties");
