@@ -1,4 +1,15 @@
 declare namespace extend {
+    class EventArgs {
+        originalSource: object;
+        event: string;
+        data: any;
+        source: any;
+    }
+
+    class RoutedEventArgs extends EventArgs {
+        handled: boolean;
+    }
+
     type PropType = string | number | boolean | object;
 
     type VuePropOption<T> = {
@@ -88,13 +99,13 @@ declare namespace extend {
         definitionFilter?: (defFields: object, definitionFilterArr?: object[]) => void;
     }
 
-    interface MPExtender {
+    class MPExtender {
         use<T extends OptionInstaller>(installer: T): void;
 
         extends(options: object): object;
     }
 
-    interface FrameworkInstaller {
+    class FrameworkInstaller {
         configuration(extender: MPExtender, context: Map<any, any>, options: object): object;
 
         install(extender: MPExtender, context: Map<any, any>, options: object): object;
@@ -102,7 +113,7 @@ declare namespace extend {
         build(extender: MPExtender, context: Map<any, any>, options: object): object;
     }
 
-    interface BehaviorInstaller extends FrameworkInstaller {
+    class BehaviorInstaller extends FrameworkInstaller {
         definitionFilter(extender: MPExtender, context: Map<any, any>, options: object, defFields: object, definitionFilterArr: ((defFields: object, definitionFilterArr?: object[]) => void)[]);
 
         behaviors(): string[];
@@ -130,7 +141,7 @@ declare namespace extend {
         relations(): ComponentRelation;
     }
 
-    interface OptionInstaller extends BehaviorInstaller {
+    class OptionInstaller extends BehaviorInstaller {
         computed(): object;
 
         watch(): object;
@@ -154,6 +165,18 @@ declare namespace extend {
         provide(): object;
 
         inject(): object;
+
+        $emit: (event: string, data: any) => void;
+
+        $dispatch: (event: string, data: any) => void;
+
+        $broadcast: (event: string, data: any) => void;
+
+        $once: (event: string, listener: (event: string, data: RoutedEventArgs | EventArgs) => void) => void;
+
+        $on: (event: string, listener: (event: string, data: RoutedEventArgs | EventArgs) => void) => void;
+
+        $off: (event?: string, listener?: (event: string, data: RoutedEventArgs | EventArgs) => void) => void;
     }
 }
 
@@ -162,11 +185,13 @@ export declare function PageEx<T extends extend.PageExOptions & object>(options:
 export declare function ComponentEx<T extends extend.ComponentExOptions & object>(options: T): void;
 
 export const Extension: {
-    use: <T extends extend.OptionInstaller>(installer: T) => void;
+    use: <T extends extend.OptionInstaller>(installer: T, priority?: number) => void;
+
+    mixin: <T extends extend.Options>(mixin: T) => void;
 };
 
-export declare interface MPExtender extends extend.MPExtender {
+export class MPExtender extends extend.MPExtender {
 }
 
-export declare interface OptionInstaller extends extend.OptionInstaller {
+export class OptionInstaller extends extend.OptionInstaller {
 }

@@ -56,10 +56,14 @@ const ParentBehavior = Behavior({
         const root = getCurrentPages().find(p => Reflect.get(p, "__wxWebviewId__") === Reflect.get(this, "__wxWebviewId__"));
         // 默认绑定到Page
         if (Reflect.has(root, RTCGetterSign)) {
-            injectParentInstance(this, Reflect.get(root, RTCGetterSign)());
+            if (Reflect.get(this, "__wxExparserNodeId__") !== Reflect.get(root, "__wxExparserNodeId__")) {
+                injectParentInstance(this, Reflect.get(root, RTCGetterSign)());
+            }
         } else {
             // 没有使用PageEx构建
-            injectParentInstance(this, root);
+            if (Reflect.get(this, "__wxExparserNodeId__") !== Reflect.get(root, "__wxExparserNodeId__")) {
+                injectParentInstance(this, root);
+            }
         }
     },
     detached() {
@@ -70,7 +74,9 @@ const ParentBehavior = Behavior({
 const ChildBehavior = Behavior({
     attached() {
         const root = getCurrentPages().find(p => Reflect.get(p, "__wxWebviewId__") === Reflect.get(this, "__wxWebviewId__"));
-        appendChildInstance(root, Reflect.get(this, RTCGetterSign)());
+        if (Reflect.get(this, "__wxExparserNodeId__") !== Reflect.get(root, "__wxExparserNodeId__")) {
+            appendChildInstance(root, Reflect.get(this, RTCGetterSign)());
+        }
     },
     detached() {
         const root = getCurrentPages().find(p => Reflect.get(p, "__wxWebviewId__") === Reflect.get(this, "__wxWebviewId__"));
@@ -143,9 +149,10 @@ export default class RelationsInstaller extends OptionInstaller {
                 type: "parent",
                 target: ParentBehavior,
                 linked(target) {
+                    const root = getCurrentPages().find(p => Reflect.get(p, "__wxWebviewId__") === Reflect.get(this, "__wxWebviewId__"));
+                    removeChildInstance(root, this);
                     // 父节点从 Page 变更为 Component 实例
                     injectParentInstance(this, getContextInstance(target));
-
                     // target.relations 包含 type = child 且 relation.target 在本组件包含
                     // 本组件 relations 包含 type = parent 且 relation.target 在 target包含
                     callRelations(this, target, "child", "parent", "linked");

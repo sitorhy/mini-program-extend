@@ -1,5 +1,6 @@
 {
   "usingComponents": {
-    "doubleBase": "./doubleBase"
+    "doubleBase": "./doubleBase",
+    "changePropNum": "./changePropNum"
   }
 }

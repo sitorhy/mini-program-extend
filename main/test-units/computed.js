@@ -16,10 +16,39 @@ export default {
             data: function () {
                 return {
                     a: 1,
-                    timestamp: 0
+                    timestamp: 0,
+                    propThroughNum: 114514,
+                    plus: 1,
+                    prefix: "prefix-",
+                    strPlus: ""
                 };
             },
             computed: {
+                plusSelf: {
+                    get() {
+                        return this.plus;
+                    },
+                    set(v) {
+                        console.log(`plus Self setter : ${this.plusSelf} <= △${v}`);
+                        this.plus = this.plusSelf + v;
+                    }
+                },
+                strPlusSelf: {
+                    set(v) {
+                        this.strPlus = this.plusSelf + " " + v;
+                    },
+                    get() {
+                        return this.prefix + this.strPlus;
+                    }
+                },
+                squarePropThroughNum: {
+                    get() {
+                        return this.propThroughNum * this.propThroughNum;
+                    },
+                    set(v) {
+                        this.propThroughNum = Math.sqrt(v);
+                    }
+                },
                 doubleBase: function () {
                     return this.base * 2;
                 },
@@ -68,6 +97,18 @@ export default {
             },
             destroyed() {
                 clearInterval(this.timer);
+            },
+            methods: {
+                changePropNum() {
+                    this.propThroughNum = 1919;
+                },
+                changeSquarePropNum() {
+                    this.squarePropThroughNum = 144;
+                },
+                testPlusSelf() {
+                    this.plusSelf = this.plusSelf + 1;
+                    this.strPlusSelf = "114514";
+                }
             }
         }
     ]

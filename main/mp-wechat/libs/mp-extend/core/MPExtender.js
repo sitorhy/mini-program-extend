@@ -90,13 +90,16 @@ export default class MPExtender {
         let runtimeContext;
 
         const runtimeDataContext = createReactiveObject(context.data, context.data, function (path, value) {
-            if (isFunction(fnSetData)) {
-                fnSetData(!isNullOrEmpty(path) ? {[path]: value} : value);
-            } else {
-                Reflect.get(runtimeContext, "setData").call(runtimeContext, !isNullOrEmpty(path) ? {[path]: value} : value);
-            }
             if (setters.includes(path)) {
+                // 计算属性赋值调用对应 setter 修改 state
                 computed[path].set.call(runtimeContext, value);
+            } else {
+                // 非计算属性赋值
+                if (isFunction(fnSetData)) {
+                    fnSetData(!isNullOrEmpty(path) ? {[path]: value} : value);
+                } else {
+                    Reflect.get(runtimeContext, "setData").call(runtimeContext, !isNullOrEmpty(path) ? {[path]: value} : value);
+                }
             }
             getters.forEach((p) => {
                 const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
