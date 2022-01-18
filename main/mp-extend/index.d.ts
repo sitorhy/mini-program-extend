@@ -166,17 +166,19 @@ declare namespace extend {
 
         inject(): object;
 
+        $nextTick: (callback: () => void) => void;
+
         $emit: (event: string, data: any) => void;
 
         $dispatch: (event: string, data: any) => void;
 
         $broadcast: (event: string, data: any) => void;
 
-        $once: (event: string, listener: (event: string, data: RoutedEventArgs | EventArgs) => void) => void;
+        $once: (event: string, listener: (event: RoutedEventArgs | EventArgs) => void) => void;
 
-        $on: (event: string, listener: (event: string, data: RoutedEventArgs | EventArgs) => void) => void;
+        $on: (event: string, listener: (event: RoutedEventArgs | EventArgs) => void) => void;
 
-        $off: (event?: string, listener?: (event: string, data: RoutedEventArgs | EventArgs) => void) => void;
+        $off: (event?: string, listener?: (event: RoutedEventArgs | EventArgs) => void) => void;
     }
 }
 
