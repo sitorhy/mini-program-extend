@@ -1,5 +1,5 @@
 import OptionInstaller from "./OptionInstaller";
-import EventEmitter from "./EventEmitter";
+import EventEmitter from "../libs/EventEmitter";
 
 const EVTSign = Symbol("__wxEVT__");
 

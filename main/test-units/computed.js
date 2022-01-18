@@ -18,7 +18,9 @@ export default {
                     a: 1,
                     timestamp: 0,
                     propThroughNum: 114514,
-                    plus: 1
+                    plus: 1,
+                    prefix: "prefix-",
+                    strPlus: ""
                 };
             },
             computed: {
@@ -29,6 +31,14 @@ export default {
                     set(v) {
                         console.log(`plus Self setter : ${this.plusSelf} <= △${v}`);
                         this.plus = this.plusSelf + v;
+                    }
+                },
+                strPlusSelf: {
+                    set(v) {
+                        this.strPlus = this.plusSelf + " " + v;
+                    },
+                    get() {
+                        return this.prefix + this.strPlus;
                     }
                 },
                 squarePropThroughNum: {
@@ -97,6 +107,7 @@ export default {
                 },
                 testPlusSelf() {
                     this.plusSelf = this.plusSelf + 1;
+                    this.strPlusSelf = "114514";
                 }
             }
         }
