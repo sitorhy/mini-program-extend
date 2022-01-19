@@ -1,52 +1,9 @@
 import OptionInstaller from "./OptionInstaller";
 import {isFunction, isPlainObject} from "../utils/common";
 import {Collectors, Stream} from "../libs/Stream";
-import {Singleton} from "../libs/Singleton";
 import equal from "../libs/fast-deep-equal/index";
 
 const RTCSign = Symbol("__wxRTC__");
-const CMPCSign = Symbol("__wxCMPC__");
-
-class ComputedSourceSingleton extends Singleton {
-    _source = undefined;
-
-    get source() {
-        return this._source;
-    }
-
-    set source(value) {
-        this._source = value;
-    }
-
-    constructor() {
-        super((runtimeContext) => {
-            const self = this;
-            return new Proxy(runtimeContext, {
-                get(target, p, receiver) {
-                    // 拦截 data 属性访问
-                    if (isPlainObject(self.source) && Reflect.has(self.source, p)) {
-                        return Reflect.get(self.source, p);
-                    }
-                    return Reflect.get(target, p);
-                },
-                set(target, p, value, receiver) {
-                    return Reflect.set(target, p, value);
-                }
-            });
-        });
-    }
-
-    /**
-     *
-     * @param runtimeContext - 上下文
-     * @param source - 重定向取值对象
-     * @returns {*}
-     */
-    get(runtimeContext, source) {
-        this.source = source;
-        return super.get(runtimeContext);
-    }
-}
 
 /**
  * 为防止闭环，计算属性初始化在data,props初始化之后
@@ -63,17 +20,6 @@ export default class ComputedInstaller extends OptionInstaller {
         if (Reflect.has(thisArg, RTCSign)) {
             Reflect.get(thisArg, RTCSign).release();
             Reflect.deleteProperty(this, RTCSign);
-        }
-    }
-
-    getComputedContext(thisArg, context, fnSetData, source) {
-        return Reflect.get(thisArg, CMPCSign).get(this.getRuntimeContext(thisArg, context, fnSetData), source);
-    }
-
-    releaseComputedContext(thisArg) {
-        if (Reflect.has(thisArg, CMPCSign)) {
-            Reflect.get(thisArg, CMPCSign).release();
-            Reflect.deleteProperty(this, CMPCSign);
         }
     }
 
@@ -145,11 +91,8 @@ export default class ComputedInstaller extends OptionInstaller {
             if (isFunction(getter)) {
                 // 计算下一个值
                 const pValue = getter.call(
-                    this.getComputedContext(
-                        instance,
-                        context,
-                        originalSetData,
-                        data
+                    this.getRuntimeContext(
+                        instance, context, originalSetData
                     )
                 );
 
@@ -184,15 +127,7 @@ export default class ComputedInstaller extends OptionInstaller {
             const releaseContext = (thisArg) => {
                 this.releaseRuntimeContext(thisArg);
             };
-
-            const createCMPC = () => {
-                return new ComputedSourceSingleton();
-            };
-
-            const releaseCMPC = (thisArg) => {
-                this.releaseComputedContext(thisArg);
-            };
-
+            
             // 主动触发一次 setData，初始化计算属性，防止组件没有任何赋值操作
             const checkCalculated = (extender, context, options, instance) => {
                 const calculated = {};
@@ -217,12 +152,6 @@ export default class ComputedInstaller extends OptionInstaller {
                                 value: createContext(),
                                 writable: false
                             });
-                            Object.defineProperty(this, CMPCSign, {
-                                configurable: false,
-                                enumerable: false,
-                                value: createCMPC(),
-                                writable: false
-                            });
                             initContext(this, context.has("originalSetData") ? context.get("originalSetData") : this.setData.bind(this));
                         },
                         attached() {
@@ -236,7 +165,6 @@ export default class ComputedInstaller extends OptionInstaller {
                     lifetimes: {
                         detached() {
                             releaseContext(this);
-                            releaseCMPC(this);
                         }
                     }
                 })
