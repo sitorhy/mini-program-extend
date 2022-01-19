@@ -93,6 +93,7 @@ export default class MPExtender {
                 computed[path].set.call(runtimeContext, value);
             } else {
                 // 非计算属性赋值
+                // path 为空 可视为根对象
                 if (isFunction(fnSetData)) {
                     fnSetData(!isNullOrEmpty(path) ? {[path]: value} : value);
                 } else {
@@ -104,7 +105,11 @@ export default class MPExtender {
                 const curVal = Reflect.get(runtimeContext, p);
                 const pValue = getter.call(runtimeContext);
                 if (!equal(curVal, pValue)) {
-                    Reflect.set(runtimeDataContext, p, pValue);
+                    if (isFunction(fnSetData)) {
+                        fnSetData({[p]: pValue});
+                    } else {
+                        Reflect.get(runtimeContext, "setData").call(runtimeContext, {[p]: pValue});
+                    }
                 }
             });
         });
