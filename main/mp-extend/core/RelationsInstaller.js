@@ -122,11 +122,12 @@ export default class RelationsInstaller extends OptionInstaller {
                         writable: false
                     });
 
+                    // 原生 Behavior 无法创建上下文
                     Object.defineProperty(this, RTCGetterSign, {
                         configurable: false,
                         enumerable: false,
                         value: () => {
-                            return getContext(this, this.setData.bind(this));
+                            return getContext(this, context.has("originalSetData") ? context.get("originalSetData") : this.setData.bind(this));
                         },
                         writable: false
                     });
@@ -140,6 +141,12 @@ export default class RelationsInstaller extends OptionInstaller {
                 },
                 detached() {
                     releaseContext(this);
+                    Reflect.deleteProperty(this, RTCGetterSign);
+                    const executedDescendantSign = Reflect.get(this, ExecutedDescendantSign);
+                    if (Array.isArray(executedDescendantSign)) {
+                        executedDescendantSign.splice(0);
+                    }
+                    Reflect.deleteProperty(this, ExecutedDescendantSign);
                 }
             }),
             ParentBehavior, ChildBehavior
@@ -244,14 +251,6 @@ export default class RelationsInstaller extends OptionInstaller {
                 if (Array.isArray(executedDescendantSign)) {
                     executedDescendantSign.splice(0);
                 }
-            },
-            detached() {
-                Reflect.deleteProperty(this, RTCGetterSign);
-                const executedDescendantSign = Reflect.get(this, ExecutedDescendantSign);
-                if (Array.isArray(executedDescendantSign)) {
-                    executedDescendantSign.splice(0);
-                }
-                Reflect.deleteProperty(this, ExecutedDescendantSign);
             }
         };
     }
