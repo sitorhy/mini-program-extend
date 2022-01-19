@@ -84,13 +84,16 @@ export default class MPExtender {
      */
     createRuntimeCompatibleContext(context, computed, fnSetData) {
         const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
-        const setters = isPlainObject(computed) ? Object.keys(computed).filter(i => isPlainObject(computed[i]) && isFunction(computed[i].set)) : [];
         let runtimeContext;
 
         const runtimeDataContext = createReactiveObject(context.data, context.data, function (path, value) {
-            if (setters.includes(path)) {
-                // 计算属性赋值调用对应 setter 修改 state
-                computed[path].set.call(runtimeContext, value);
+            if (computed[path]) {
+                if (isFunction(computed[path].set)) {
+                    // 计算属性赋值调用对应 setter 修改 state
+                    computed[path].set.call(runtimeContext, value);
+                } else {
+                    throw new Error(`Computed property "${path}" was assigned to but it has no setter.`);
+                }
             } else {
                 // 非计算属性赋值
                 // path 为空 可视为根对象
