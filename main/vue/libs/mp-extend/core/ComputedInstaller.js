@@ -66,47 +66,59 @@ export default class ComputedInstaller extends OptionInstaller {
 
     beforeUpdate(extender, context, options, instance, data) {
         const computed = context.get("computed");
-        const setterIncludes = Object.keys(data).filter(i => Reflect.has(computed, i) && isFunction(computed[i].set));
-        // 是否安装 UpdateInstaller
+        const pendingSetters = [];
+
         const originalSetData = context.has("originalSetData") ? context.get("originalSetData").bind(instance) : instance.setData.bind(instance);
 
-        // setData数据是否包含计算属性，调用对应的setter触发器
-        if (setterIncludes.length) {
-            // this.setData(..) 形式 , 前置更新 state
-            setterIncludes.forEach((i) => {
-                (computed[i].set).call(
-                    this.getRuntimeContext(instance, context, originalSetData),
-                    data[i]
-                );
+        Object.keys(data).forEach(p => {
+            if (computed[p]) {
+                pendingSetters.push([p, data[p]]);
+                delete data[p];
+            }
+        });
+
+        if (pendingSetters.length) {
+            pendingSetters.forEach(([p, param]) => {
+                if (computed[p] && isFunction(computed[p].set)) {
+                    computed[p].set.call(
+                        this.getRuntimeContext(
+                            instance, context, originalSetData
+                        ),
+                        param
+                    );
+                } else {
+                    throw new Error(`Computed property "${p}" was assigned to but it has no setter.`);
+                }
             });
         }
+    }
 
-        // 刷新计算属性的值
-        const nextCalculated = {};
-        Object.keys(computed).forEach((p) => {
-            const getter = computed[p].get;
-            // 获取当前值
-            const curVal = Reflect.get(this.getRuntimeContext(instance, context, originalSetData), p);
+    updated(extender, context, options, instance, data) {
+        const computed = context.get("computed");
+        const originalSetData = context.has("originalSetData") ? context.get("originalSetData").bind(instance) : instance.setData.bind(instance);
 
-            if (isFunction(getter)) {
-                // 计算下一个值
+        const nextComputedValues = [];
+
+        Object.keys(computed).forEach(p => {
+            if (computed[p] && (isFunction(computed[p].get) || isFunction(computed[p]))) {
+                const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
                 const pValue = getter.call(
                     this.getRuntimeContext(
                         instance, context, originalSetData
                     )
                 );
-
-                // 深度比较，必须，否则会死循环
-                if (!equal(curVal, pValue)) {
-                    nextCalculated[p] = pValue;
+                if (!equal(pValue, instance.data[p])) {
+                    nextComputedValues.push([p, pValue]);
                 }
             } else {
-                throw new Error(`Getter is missing for computed property "${p}"`);
+                throw new Error(`Getter is missing for computed property "${p}".`);
             }
         });
 
-        // 合并新的计算属性值到data中
-        Object.assign(data, nextCalculated);
+        if (nextComputedValues.length) {
+            const next = Stream.of(nextComputedValues).collect(Collectors.toMap());
+            originalSetData(next);
+        }
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
@@ -127,7 +139,7 @@ export default class ComputedInstaller extends OptionInstaller {
             const releaseContext = (thisArg) => {
                 this.releaseRuntimeContext(thisArg);
             };
-            
+
             // 主动触发一次 setData，初始化计算属性，防止组件没有任何赋值操作
             const checkCalculated = (extender, context, options, instance) => {
                 const calculated = {};
@@ -173,25 +185,13 @@ export default class ComputedInstaller extends OptionInstaller {
     }
 
     observers(extender, context, options) {
-        const beforeUpdate = (instance, data) => {
-            const copy = Object.assign({}, data);
-            this.beforeUpdate(extender, context, options, instance, copy);
-            const computed = context.get("computed");
-            const nextCalculated = {};
-            Object.keys(computed).forEach((key) => {
-                if (!equal(copy[key], data[key])) {
-                    nextCalculated[key] = copy[key];
-                }
-            });
-            if (Object.keys(nextCalculated).length) {
-                const originalSetData = context.has("originalSetData") ? context.get("originalSetData").bind(instance) : instance.setData.bind(instance);
-                originalSetData(nextCalculated);
-            }
-        };
         const props = context.get("properties");
-        return Stream.of(Object.keys(props)).map(name => {
-            return [name, function (val) {
-                beforeUpdate(this, {[name]: val});
+        const onPropertyChanged = (instance, data) => {
+            this.updated(extender, context, options, instance, data);
+        };
+        return Stream.of(Object.keys(props)).map(p => {
+            return [p, function (val) {
+                onPropertyChanged(this, {[p]: val});
             }];
         }).collect(Collectors.toMap());
     }
