@@ -2,8 +2,8 @@ import OptionInstaller from "./OptionInstaller";
 import {isFunction, isPlainObject, isString, isSymbol, uuid} from "../utils/common";
 import {Blend} from "../libs/Blend";
 
-const ANCESTOR_TAG_OBFS = `ancestor-${uuid()}`;
-const DESCENDANT_TAG_OBFS = `descendant-${uuid()}`;
+const ANCESTOR_TAG_OBS = `ancestor-${uuid()}`;
+const DESCENDANT_TAG_OBS = `descendant-${uuid()}`;
 
 const ProvideSign = Symbol("__wxProvide__");
 const InjectSign = Symbol("__wxInject__");
@@ -12,7 +12,7 @@ const ProvideBehavior = Behavior({});
 const InjectBehavior = Behavior({});
 const LinkBehavior = Behavior({
     relations: {
-        [ANCESTOR_TAG_OBFS]: {
+        [ANCESTOR_TAG_OBS]: {
             type: "ancestor",
             target: ProvideBehavior,
             linked(target) {
@@ -47,7 +47,7 @@ const LinkBehavior = Behavior({
                 Reflect.deleteProperty(this, InjectSign);
             }
         },
-        [DESCENDANT_TAG_OBFS]: {
+        [DESCENDANT_TAG_OBS]: {
             type: "descendant",
             target: InjectBehavior
         }

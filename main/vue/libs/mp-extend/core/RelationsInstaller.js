@@ -100,7 +100,48 @@ export default class RelationsInstaller extends OptionInstaller {
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
+        const createContext = () => {
+            return extender.createRuntimeContextSingleton();
+        };
+
+        const releaseContext = (thisArg) => {
+            this.releaseRuntimeContext(thisArg);
+        };
+
+        const getContext = (thisArg, fnSetData) => {
+            return this.getRuntimeContext(thisArg, context, fnSetData);
+        };
+
         defFields.behaviors = [
+            Behavior({
+                created() {
+                    Object.defineProperty(this, RTCSign, {
+                        configurable: false,
+                        enumerable: false,
+                        value: createContext(),
+                        writable: false
+                    });
+
+                    Object.defineProperty(this, RTCGetterSign, {
+                        configurable: false,
+                        enumerable: false,
+                        value: () => {
+                            return getContext(this, this.setData.bind(this));
+                        },
+                        writable: false
+                    });
+
+                    Object.defineProperty(this, ExecutedDescendantSign, {
+                        configurable: false,
+                        enumerable: false,
+                        value: [],
+                        writable: false
+                    });
+                },
+                detached() {
+                    releaseContext(this);
+                }
+            }),
             ParentBehavior, ChildBehavior
         ].concat(defFields.behaviors || []);
     }
@@ -187,43 +228,8 @@ export default class RelationsInstaller extends OptionInstaller {
     }
 
     lifetimes(extender, context, options) {
-        const createContext = () => {
-            return extender.createRuntimeContextSingleton();
-        };
-
-        const releaseContext = (thisArg) => {
-            this.releaseRuntimeContext(thisArg);
-        };
-
-        const getContext = (thisArg, fnSetData) => {
-            return this.getRuntimeContext(thisArg, context, fnSetData);
-        };
-
         return {
             created() {
-                Object.defineProperty(this, RTCSign, {
-                    configurable: false,
-                    enumerable: false,
-                    value: createContext(),
-                    writable: false
-                });
-
-                Object.defineProperty(this, RTCGetterSign, {
-                    configurable: false,
-                    enumerable: false,
-                    value: () => {
-                        return getContext(this, this.setData.bind(this));
-                    },
-                    writable: false
-                });
-
-                Object.defineProperty(this, ExecutedDescendantSign, {
-                    configurable: false,
-                    enumerable: false,
-                    value: [],
-                    writable: false
-                });
-
                 if (options.relations) {
                     const relationsGroup = Stream.of(Object.entries(options.relations)).collect(
                         Collectors.groupingBy(([, relation]) => {
@@ -240,7 +246,6 @@ export default class RelationsInstaller extends OptionInstaller {
                 }
             },
             detached() {
-                releaseContext(this);
                 Reflect.deleteProperty(this, RTCGetterSign);
                 const executedDescendantSign = Reflect.get(this, ExecutedDescendantSign);
                 if (Array.isArray(executedDescendantSign)) {

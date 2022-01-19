@@ -47,6 +47,14 @@ export default class BehaviorInstaller extends FrameworkInstaller {
         return {};
     }
 
+    /**
+     * 重载该方法创建的回调函数，使用的this对象为代理对象
+     *
+     * @param extender
+     * @param context
+     * @param options
+     * @returns {{}}
+     */
     lifetimes(extender, context, options) {
         return {};
     }

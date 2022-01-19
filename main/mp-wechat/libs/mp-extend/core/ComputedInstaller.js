@@ -177,6 +177,10 @@ export default class ComputedInstaller extends OptionInstaller {
                 return extender.createRuntimeContextSingleton();
             };
 
+            const initContext = (thisArg, fnSetData) => {
+                return this.getRuntimeContext(thisArg, context, fnSetData);
+            };
+
             const releaseContext = (thisArg) => {
                 this.releaseRuntimeContext(thisArg);
             };
@@ -219,6 +223,7 @@ export default class ComputedInstaller extends OptionInstaller {
                                 value: createCMPC(),
                                 writable: false
                             });
+                            initContext(this, context.has("originalSetData") ? context.get("originalSetData") : this.setData.bind(this));
                         },
                         attached() {
                             checkCalculated(extender, context, options, this);
