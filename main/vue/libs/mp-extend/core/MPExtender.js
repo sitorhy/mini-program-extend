@@ -78,12 +78,14 @@ export default class MPExtender {
     /**
      * 创建运行时上下文
      * @param {object} context - 传入this
+     * @param {object} properties - 属性配置
      * @param {object} computed - 计算属性配置
      * @param {Function} fnSetData - 自定义setData函数，可传入原生setData函数，提高效率
      * @returns {*}
      */
-    createRuntimeCompatibleContext(context, computed, fnSetData) {
+    createRuntimeCompatibleContext(context, properties, computed, fnSetData) {
         const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
+
         let runtimeContext;
 
         const runtimeDataContext = createReactiveObject(context.data, context.data, function (path, value) {
@@ -124,6 +126,42 @@ export default class MPExtender {
                     if (p === "data") {
                         return runtimeDataContext;
                     }
+
+                    if (p === "$props") {
+                        const $props = {};
+                        if (properties) {
+                            Object.keys(runtimeDataContext).filter(i => Reflect.has(properties, i)).forEach(i => {
+                                Object.defineProperty($props, i, {
+                                    get() {
+                                        return Reflect.get(runtimeDataContext, i);
+                                    },
+                                    set(v) {
+                                        return Reflect.set(runtimeDataContext, i, v);
+                                    }
+                                })
+                            });
+                        }
+                        return $props;
+                    }
+
+                    if (p === "$data") {
+                        const $data = {};
+                        Object.keys(runtimeDataContext).filter(i =>
+                            (properties ? !Reflect.has(properties, i) : true) &&
+                            (computed ? !Reflect.has(computed, i) : true)
+                        ).forEach(i => {
+                            Object.defineProperty($data, i, {
+                                get() {
+                                    return Reflect.get(runtimeDataContext, i);
+                                },
+                                set(v) {
+                                    return Reflect.set(runtimeDataContext, i, v);
+                                }
+                            })
+                        });
+                        return $data;
+                    }
+
                     if (Reflect.has(target, p)) {
                         const prop = Reflect.get(target, p);
                         if (isFunction(prop)) {
@@ -158,44 +196,12 @@ export default class MPExtender {
      */
     createRuntimeContextSingleton(predicate = null, supplier = null) {
         return new Singleton((thisArg, properties, computed, fnSetData) => {
-            const runtimeContext = this.createRuntimeCompatibleContext(thisArg, computed, fnSetData);
-            const props = Object.keys(properties || {});
+            const runtimeContext = this.createRuntimeCompatibleContext(thisArg, properties, computed, fnSetData);
             return new Proxy(runtimeContext, {
                 get(target, p, receiver) {
-                    if (p === "$props") {
-                        const $props = {};
-                        Object.keys(Reflect.get(target, "data")).filter(i => props.includes(i)).forEach(i => {
-                            Object.defineProperty($props, i, {
-                                get() {
-                                    return Reflect.get(target, i);
-                                },
-                                set(v) {
-                                    return Reflect.set(target, i, v);
-                                }
-                            })
-                        });
-                        return $props;
-                    }
-
-                    if (p === "$data") {
-                        const $data = {};
-                        Object.keys(Reflect.get(target, "data")).filter(i => !props.includes(i)).forEach(i => {
-                            Object.defineProperty($data, i, {
-                                get() {
-                                    return Reflect.get(target, i);
-                                },
-                                set(v) {
-                                    return Reflect.set(target, i, v);
-                                }
-                            })
-                        });
-                        return $data;
-                    }
-
                     if (isFunction(predicate) && isFunction(supplier) && predicate(p) === true) {
                         return supplier(p, runtimeContext);
                     }
-
                     return Reflect.get(target, p);
                 }
             });
@@ -253,6 +259,41 @@ export default class MPExtender {
                     if (p === "data") {
                         return compatibleDataContext;
                     }
+
+                    if (p === "$props") {
+                        const $props = {};
+                        if (properties) {
+                            Object.keys(compatibleDataContext).filter(i => Reflect.has(properties, i)).forEach(i => {
+                                Object.defineProperty($props, i, {
+                                    get() {
+                                        return Reflect.get(compatibleDataContext, i);
+                                    },
+                                    set(v) {
+                                        return Reflect.set(compatibleDataContext, i, v);
+                                    }
+                                })
+                            });
+                        }
+                        return $props;
+                    }
+
+                    if (p === "$data") {
+                        const $data = {};
+                        Object.keys(compatibleDataContext).filter(i =>
+                            (properties ? !Reflect.has(properties, i) : true)
+                        ).forEach(i => {
+                            Object.defineProperty($data, i, {
+                                get() {
+                                    return Reflect.get(compatibleDataContext, i);
+                                },
+                                set(v) {
+                                    return Reflect.set(compatibleDataContext, i, v);
+                                }
+                            })
+                        });
+                        return $data;
+                    }
+
                     // 重定向到methods
                     if (isPlainObject(methods) && Reflect.has(methods, p)) {
                         const method = Reflect.get(methods, p);
@@ -285,44 +326,7 @@ export default class MPExtender {
      */
     createInitializationContextSingleton() {
         return new Singleton((obj, data, properties, methods) => {
-            const compileTimeContext = this.createInitializationCompatibleContext(obj, data, properties, methods)
-            const props = Object.keys(properties);
-            return new Proxy(compileTimeContext, {
-                get(target, p, receiver) {
-                    if (p === "$props") {
-                        const $props = {};
-                        Object.keys(properties).forEach(i => {
-                            Object.defineProperty($props, i, {
-                                get() {
-                                    return Reflect.get(target, i);
-                                },
-                                set(v) {
-                                    return Reflect.set(target, i, v);
-                                }
-                            });
-                        });
-                        return $props;
-                    }
-                    if (p === "$data") {
-                        const $data = {};
-                        Object.keys(Object.assign({}, (obj || {}).data, data)).filter(i => !props.includes(i)).forEach(i => {
-                            Object.defineProperty($data, i, {
-                                get() {
-                                    return Reflect.get(target, i);
-                                },
-                                set(v) {
-                                    return Reflect.set(target, i, v);
-                                }
-                            })
-                        });
-                        return $data;
-                    }
-                    return Reflect.get(target, p);
-                },
-                set(target, p, value, receiver) {
-                    return Reflect.set(target, p, value, receiver);
-                }
-            });
+            return this.createInitializationCompatibleContext(obj, data, properties, methods);
         });
     }
 

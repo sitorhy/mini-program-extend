@@ -31,7 +31,7 @@ export default {
             computed: {
                 plusSelf: {
                     get() {
-                        return this.plus;
+                        return this.$data.plus;
                     },
                     set(v) {
                         console.log(`plus Self setter : ${this.plusSelf} <= △${v}`);

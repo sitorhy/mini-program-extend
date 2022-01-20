@@ -26,34 +26,11 @@ export default class ComputedInstaller extends OptionInstaller {
     attemptToInstantiateCalculated(extender, context, options, defFields, definitionFilterArr) {
         const computed = context.get("computed");
         const methods = context.get("methods");
+        const properties = context.get("properties");
         const state = Object.assign({}, context.get("state")); // 复制结果集，避免修改原值
-        const computedContext = new Proxy(
-            {
-                data: state
-            },
-            {
-                get(target, p, receiver) {
-                    // 兼容小程序格式
-                    if (p === "data") {
-                        return Reflect.get(target, p);
-                    }
-                    if (Reflect.has(state, p)) {
-                        return Reflect.get(state, p);
-                    }
-                    if (Reflect.has(computed, p)) {
-                        const calc = Reflect.get(computed, p);
-                        if (isFunction(calc.get)) {
-                            return (calc.get).call(receiver);
-                        }
-                    } else if (Reflect.has(methods, p)) {
-                        const method = Reflect.get(methods, p);
-                        if (isFunction(method)) {
-                            return method.bind(receiver);
-                        }
-                    }
-                    return undefined;
-                }
-            }
+
+        const computedContext = extender.createInitializationContextSingleton().get(
+            null, state, properties, methods
         );
 
         return Stream.of(Object.entries(computed)).map(([name, calc]) => {
