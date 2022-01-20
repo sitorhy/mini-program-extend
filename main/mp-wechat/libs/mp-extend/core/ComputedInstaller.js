@@ -104,7 +104,6 @@ export default class ComputedInstaller extends OptionInstaller {
         // 检查是否安装StateInstaller
         if (isPlainObject(state)) {
             const calculated = this.attemptToInstantiateCalculated(extender, context, options, defFields, definitionFilterArr);
-            console.log(calculated)
             const createContext = () => {
                 return extender.createRuntimeContextSingleton();
             };

@@ -326,8 +326,8 @@ export default class MPExtender {
      * @returns {Singleton}
      */
     createInitializationContextSingleton() {
-        return new Singleton((obj, data, properties, methods) => {
-            return this.createInitializationCompatibleContext(obj, data, properties, methods);
+        return new Singleton((obj, data, properties, computed, methods) => {
+            return this.createInitializationCompatibleContext(obj, data, properties, computed, methods);
         });
     }
 
