@@ -30,7 +30,7 @@ export default class ComputedInstaller extends OptionInstaller {
         const state = Object.assign({}, context.get("state")); // 复制结果集，避免修改原值
 
         const computedContext = extender.createInitializationContextSingleton().get(
-            null, state, properties, methods
+            null, state, properties, computed, methods
         );
 
         return Stream.of(Object.entries(computed)).map(([name, calc]) => {
@@ -104,7 +104,7 @@ export default class ComputedInstaller extends OptionInstaller {
         // 检查是否安装StateInstaller
         if (isPlainObject(state)) {
             const calculated = this.attemptToInstantiateCalculated(extender, context, options, defFields, definitionFilterArr);
-
+            console.log(calculated)
             const createContext = () => {
                 return extender.createRuntimeContextSingleton();
             };
@@ -117,6 +117,7 @@ export default class ComputedInstaller extends OptionInstaller {
                 this.releaseRuntimeContext(thisArg);
             };
 
+            // 属性 prop 存在外部绑定时（如 page?prop=114514） 会在 attached 后会替换默认值 此时计算属性失去时效性
             // 主动触发一次 setData，初始化计算属性，防止组件没有任何赋值操作
             const checkCalculated = (extender, context, options, instance) => {
                 const calculated = {};

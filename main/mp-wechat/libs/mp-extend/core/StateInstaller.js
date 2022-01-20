@@ -126,7 +126,7 @@ export default class StateInstaller extends OptionInstaller {
                 .filter(([p]) => !RESERVED_OPTIONS_WORDS.has(p) && !RESERVED_LIFECYCLES_WORDS.has(p))
                 .collect(Collectors.toMap());
             return new Proxy(
-                contextSingleton.get(obj, data, properties, methods), {
+                contextSingleton.get(obj, data, properties, null, methods), {
                     get(target, p, receiver) {
                         if (p === "$options") {
                             return $options;

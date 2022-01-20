@@ -213,10 +213,11 @@ export default class MPExtender {
      * @param obj - 注入对象，只读形式可传入null
      * @param state - 小程序格式，不能传函数
      * @param properties - 小程序格式，不能使用生成函数
+     * @param computed - 计算属性配置
      * @param methods - 依赖方法
      * @returns {any}
      */
-    createInitializationCompatibleContext(obj, state, properties, methods) {
+    createInitializationCompatibleContext(obj, state, properties, computed, methods) {
         const compatibleDataContext = new Proxy(
             (obj || {}),
             {
