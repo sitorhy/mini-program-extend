@@ -17,50 +17,25 @@ export default class StateInstaller extends OptionInstaller {
      * @param context
      * @param methods
      * @param options
-     * @returns {{}}
+     * @returns {{}} - 规格化后的配置，替换原配置
      */
     attemptToInstantiateProps(extender, context, methods, options) {
         const properties = context.get("properties") || {};
         const $options = Stream.of(Object.entries(options))
             .filter(([p]) => !RESERVED_OPTIONS_WORDS.has(p) && !RESERVED_LIFECYCLES_WORDS.has(p))
             .collect(Collectors.toMap());
-        const propsContext = new Proxy(
-            {},
-            {
-                get(target, p, receiver) {
-                    if (p === "$options") {
-                        return $options;
-                    }
-                    if (Reflect.has(properties, p)) {
-                        const prop = Reflect.get(properties, p);
-                        if (Reflect.has(prop, "value")) {
-                            return prop.value;
-                        } else if (isFunction(prop.default)) {
-                            return prop.default.call(receiver);
-                        } else {
-                            return prop.default;
-                        }
-                    }
-                    return undefined;
-                }
-            }
-        );
+        const propertiesInstance = {};
 
-        return Stream.of(Object.entries(properties)).map(([name, constructor]) => {
+        extender.createPropertiesCompatibleContext(propertiesInstance, properties, $options);
+
+        return Stream.of(Object.entries(properties)).map(([prop, constructor]) => {
             const normalize = {
                 type: constructor.type,
                 optionalTypes: constructor.optionalTypes,
                 observer: constructor.observer,
-                value: constructor.value
+                value: propertiesInstance[prop]
             };
-            if (Reflect.has(constructor, "value")) {
-                normalize.value = constructor.value;
-            } else if (isFunction(constructor.default)) {
-                normalize.value = constructor.default.call(propsContext);
-            } else {
-                normalize.value = constructor.default;
-            }
-            return [name, normalize];
+            return [prop, normalize];
         }).collect(Collectors.toMap());
     }
 

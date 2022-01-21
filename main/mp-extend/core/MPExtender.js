@@ -20,6 +20,8 @@ import {createReactiveObject} from "../utils/object";
 
 import equal from "../libs/fast-deep-equal/index";
 import {Collectors, Stream} from "../libs/Stream";
+import RESERVED_OPTIONS_WORDS from "../utils/options";
+import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
 
 class InstallersSingleton extends Singleton {
     /**
@@ -206,6 +208,72 @@ export default class MPExtender {
                 }
             });
         });
+    }
+
+    /**
+     * 创建只读属性临时上下文，实例化对象并合并到接收对象 receiver 中，混合格式以小程序格式优先
+     * @param propertiesReceiver - 接收属性实例化后的值，禁止传入空值
+     * @param properties - 属性配置，支持混合Vue和小程序格式
+     * @param constants - 常量集合, $options
+     * @returns {{}|undefined|*}
+     */
+    createPropertiesCompatibleContext(propertiesReceiver, properties, constants = {}) {
+        const context = new Proxy(
+            propertiesReceiver,
+            {
+                get(target, p, receiver) {
+                    if (p === "$options") {
+                        return constants;
+                    }
+                    if (Reflect.has(propertiesReceiver, p)) {
+                        // 属性已实例化
+                        return Reflect.get(propertiesReceiver, p);
+                    } else if (Reflect.has(properties, p)) {
+                        const prop = Reflect.get(properties, p);
+                        if (Reflect.has(prop, "value")) {
+                            return prop.value;
+                        } else if (isFunction(prop.default)) {
+                            return prop.default.call(receiver);
+                        } else {
+                            return prop.default;
+                        }
+                    }
+                    return undefined;
+                }
+            }
+        );
+
+        Object.keys(properties).forEach(prop => {
+            const constructor = properties[prop];
+            if (Reflect.has(constructor, "value")) {
+                propertiesReceiver[prop] = constructor.value;
+            } else if (isFunction(constructor.default)) {
+                propertiesReceiver[prop] = constructor.default.call(context);
+            } else {
+                propertiesReceiver[prop] = constructor.default;
+            }
+        });
+
+        return context;
+    }
+
+
+    /**
+     * 创建状态实例化上下文，返回实例化结果
+     * @param properties - 规格化后的属性配置，生成函数不依赖属性默认值可以传入null
+     * @param data - 通常为状态生成函数，传入对象则直接合并到返回值
+     * @param constants - 常量集合, $options
+     * @returns {{}}
+     */
+    createDataCompatibleContext(properties, data, constants = {}) {
+        const state = {};
+        if (isFunction(data)) {
+            const propertiesContext = this.createPropertiesCompatibleContext(properties, constants);
+            Object.assign(state, data.call(propertiesContext));
+        } else {
+            Object.assign(state, data);
+        }
+        return state;
     }
 
     /**
