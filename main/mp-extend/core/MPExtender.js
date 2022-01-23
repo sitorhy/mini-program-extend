@@ -214,15 +214,15 @@ export default class MPExtender {
      * 创建只读常量上下文，配置值不允许修改
      * @param options
      */
-    createConstantsContext(options){
-        const $options = Stream.of(Object.entries(options))
-            .filter(([p]) => !RESERVED_OPTIONS_WORDS.has(p) && !RESERVED_LIFECYCLES_WORDS.has(p))
+    createConstantsContext(options) {
+        const $options = Stream.of(Object.keys(options).filter(p => !RESERVED_OPTIONS_WORDS.has(p) && !RESERVED_LIFECYCLES_WORDS.has(p)))
+            .map(p => [p, options[p]])
             .collect(Collectors.toMap());
 
         return new Proxy($options, {
             set(target, p, value, receiver) {
                 if (Reflect.has(options, p)) {
-                    Reflect.set(options, p, value);
+                    return Reflect.set(options, p, value);
                 }
                 return Reflect.set(target, p, value);
             }
@@ -231,26 +231,43 @@ export default class MPExtender {
 
     /**
      * 创建只读属性临时上下文，实例化对象并合并到接收对象 receiver 中，混合格式以小程序格式优先
-     * @param propertiesReceiver - 接收属性实例化后的值，禁止传入空值
+     * @param propertiesReceiver - 接收属性实例化后的值，禁止传入空值，传入非空集合则默认对应属性已实例化
      * @param properties - 属性配置，支持混合Vue和小程序格式
      * @param constants - 常量集合, $options
      * @returns {{}|undefined|*}
      */
     createPropertiesCompatibleContext(propertiesReceiver, properties, constants = {}) {
+        const propsSingleton = new Singleton((receiver) => {
+            const $props = {};
+            Object.keys(properties).forEach(prop => {
+                Object.defineProperty($props, prop, {
+                    get() {
+                        return Reflect.get(receiver, prop);
+                    },
+                    set(v) {
+                        Reflect.set(receiver, prop, v);
+                    }
+                });
+            });
+        });
+
         const context = new Proxy(
             propertiesReceiver,
             {
                 has(target, p) {
-                    return Reflect.has(target, p) || ["$options"].includes(p);
+                    return Reflect.has(target, p) || ["$options", "$props"].includes(p);
                 },
                 ownKeys(target) {
                     return [
-                        ...new Set(["$options"].concat(target))
+                        ...new Set(["$options", "$props"].concat(Object.keys(target)))
                     ];
                 },
                 get(target, p, receiver) {
                     if (p === "$options") {
                         return constants;
+                    }
+                    if (p === "$props") {
+                        return propsSingleton.get(receiver);
                     }
                     if (Reflect.has(target, p)) {
                         // 属性已实例化
@@ -268,8 +285,8 @@ export default class MPExtender {
                     return undefined;
                 },
                 set(target, p, value, receiver) {
-                    if (p === "$options") {
-                        return Reflect.set(constants, p, value);
+                    if (["$options", "$props"].includes(p)) {
+                        return false;
                     }
                     if (Reflect.has(properties, p)) {
                         Reflect.set(properties[p], "value", value);
@@ -279,14 +296,17 @@ export default class MPExtender {
             }
         );
 
+        // 初始化默认值
         Object.keys(properties).forEach(prop => {
             const constructor = properties[prop];
-            if (Reflect.has(constructor, "value")) {
-                propertiesReceiver[prop] = constructor.value;
-            } else if (isFunction(constructor.default)) {
-                propertiesReceiver[prop] = constructor.default.call(context);
-            } else {
-                propertiesReceiver[prop] = constructor.default;
+            if (!Reflect.has(propertiesReceiver, prop)) {
+                if (Reflect.has(constructor, "value")) {
+                    propertiesReceiver[prop] = constructor.value;
+                } else if (isFunction(constructor.default)) {
+                    propertiesReceiver[prop] = constructor.default.call(context);
+                } else {
+                    propertiesReceiver[prop] = constructor.default;
+                }
             }
         });
 
@@ -305,33 +325,75 @@ export default class MPExtender {
      */
     createDataCompatibleContext(stateReceiver, properties, data, methods, constants = {}) {
         const propertiesContext = this.createPropertiesCompatibleContext(stateReceiver, properties || {}, constants);
-        const context = new Proxy(
-            propertiesContext,
-            {
-                has(target, p) {
-                    return Reflect.has(target, p) || (methods ? false : Reflect.has(methods, p)) || ["data"].includes(p);
-                },
+
+        const dataSingleton = new Singleton(() => {
+            const $data = {};
+            return new Proxy($data, {
                 ownKeys(target) {
                     return [
-                        ...new Set(["data"].concat(Object.keys(target)).concat(methods ? Object.keys(methods) : []))
+                        ...new Set(Object.keys(stateReceiver).concat(Object.keys(target)))
+                    ];
+                },
+                has(target, p) {
+                    return Reflect.has(stateReceiver, p) || Reflect.has(target, p);
+                },
+                get(target, p, receiver) {
+                    if (!Reflect.has(properties, p) && Reflect.has(stateReceiver, p)) {
+                        return Reflect.get(stateReceiver, p);
+                    }
+                    return Reflect.get(target, p);
+                },
+                set(target, p, value, receiver) {
+                    if (!Reflect.has(properties, p) && Reflect.has(stateReceiver, p)) {
+                        return Reflect.set(stateReceiver, p, value);
+                    }
+                    return Reflect.set(target, p, value);
+                }
+            });
+        });
+
+        const context = new Proxy(
+            stateReceiver,
+            {
+                has(target, p) {
+                    return Reflect.has(target, p) || Reflect.has(propertiesContext, p) || (methods ? false : Reflect.has(methods, p)) || ["data", "$data"].includes(p);
+                },
+                ownKeys(target) {
+                    const keys = [];
+                    [methods, propertiesContext, target].forEach(i => {
+                        if (i) {
+                            Array.prototype.push.apply(keys, Object.keys(i));
+                        }
+                    });
+                    return [
+                        ...new Set(["data", "$data"].concat(keys))
                     ];
                 },
                 get(target, p, receiver) {
                     if (p === "data") {
-                        return receiver;
+                        return target;
+                    }
+                    if (p === "$data") {
+                        return dataSingleton.get();
+                    }
+                    if (Reflect.has(propertiesContext, p)) {
+                        return Reflect.get(propertiesContext, p);
                     }
                     if (methods && Reflect.has(methods, p)) {
                         const method = methods[p];
                         if (isFunction(method)) {
                             return method.bind(receiver);
                         }
-                        return method; // 直接返回，通常解析器会直接报错
+                        return method; // 逻辑错误 直接返回
                     }
                     return Reflect.get(target, p);
                 },
                 set(target, p, value, receiver) {
-                    if (p === "data") {
-                        return Reflect.set(target, p, value);
+                    if (["data", "$data"].includes(p)) {
+                        return false;
+                    }
+                    if (Reflect.has(propertiesContext, p)) {
+                        return Reflect.set(propertiesContext, p, value);
                     }
                     if (methods && Reflect.has(methods, p)) {
                         return Reflect.set(methods, p, value);
@@ -349,6 +411,13 @@ export default class MPExtender {
             });
             Object.assign(stateReceiver, dataReceiver);
         } else {
+            if (data) {
+                Object.keys(data).forEach(p => {
+                    if (Reflect.has(stateReceiver, p)) {
+                        throw new Error(`The data property "${p}" is already declared as a prop. Use prop default value instead.`);
+                    }
+                });
+            }
             Object.assign(stateReceiver, data);
         }
         return context;
@@ -356,124 +425,24 @@ export default class MPExtender {
 
     /**
      * 创建临时上下文
-     * @param obj - 注入对象，只读形式可传入null
-     * @param state - 小程序格式，不能传函数
-     * @param properties - 小程序格式，不能使用生成函数
+     * @param options - 配置
+     * @param properties - 规格化属性配置
+     * @param state - 已实例化的状态对象，该对象包含实例化后的属性默认值
      * @param computed - 计算属性配置
      * @param methods - 依赖方法
      * @returns {any}
      */
-    createInitializationCompatibleContext(obj, state, properties, computed, methods) {
-        const compatibleDataContext = new Proxy(
-            (obj || {}),
-            {
-                has(target, p) {
-                    // 检查是否存在对应状态
-                    return (state && Reflect.has(state, p)) || (properties && Reflect.has(properties, p));
-                },
-                get(target, p) {
-                    // 状态命中，返回 state 或 props 的值
-                    if (state && Reflect.has(state, p)) {
-                        return Reflect.get(state, p);
-                    }
-                    if (properties && Reflect.has(properties, p)) {
-                        return properties[p].value;
-                    }
-                    return Reflect.get(target, p);
-                },
-                set(target, p, value, receiver) {
-                    // 状态命中，检查是否命中静态的props
-                    if (isPlainObject(properties) && Reflect.has(properties, p)) {
-                        properties[p].value = value;
-                        return true;
-                    } else {
-                        if (Reflect.has(state, p)) {
-                            state[p] = value;
-                            return true;
-                        }
-                        // 其余状态一律写入data
-                        return Reflect.set(state, p, value);
-                    }
-                }
-            }
-        );
-
-        return new Proxy(
-            (obj || {}),
-            {
-                get(target, p, receiver) {
-                    // 小程序形式读取状态 const a = this.state.a;
-                    if (p === "data") {
-                        return compatibleDataContext;
-                    }
-
-                    if (p === "$props") {
-                        const $props = {};
-                        if (properties) {
-                            Object.keys(compatibleDataContext).filter(i => Reflect.has(properties, i)).forEach(i => {
-                                Object.defineProperty($props, i, {
-                                    get() {
-                                        return Reflect.get(compatibleDataContext, i);
-                                    },
-                                    set(v) {
-                                        return Reflect.set(compatibleDataContext, i, v);
-                                    }
-                                })
-                            });
-                        }
-                        return $props;
-                    }
-
-                    if (p === "$data") {
-                        const $data = {};
-                        Object.keys(compatibleDataContext).filter(i =>
-                            (properties ? !Reflect.has(properties, i) : true)
-                        ).forEach(i => {
-                            Object.defineProperty($data, i, {
-                                get() {
-                                    return Reflect.get(compatibleDataContext, i);
-                                },
-                                set(v) {
-                                    return Reflect.set(compatibleDataContext, i, v);
-                                }
-                            })
-                        });
-                        return $data;
-                    }
-
-                    // 重定向到methods
-                    if (isPlainObject(methods) && Reflect.has(methods, p)) {
-                        const method = Reflect.get(methods, p);
-                        if (isFunction(method)) {
-                            return method.bind(receiver);
-                        }
-                        return method;
-                    }
-                    // Vue形式读取 const a = this.a;
-                    if (Reflect.has(compatibleDataContext, p)) {
-                        // 初始化过程直接修改配置，无需同步数据，不需要创建EffectObject
-                        return Reflect.get(compatibleDataContext, p);
-                    }
-                    // 读取 state 外的其他属性
-                    return Reflect.get(target, p);
-                },
-                set(target, p, value, receiver) {
-                    // 尝试重定向到 compatibleDataContext, this.a = 100;
-                    if (Reflect.has(compatibleDataContext, p)) {
-                        return Reflect.set(compatibleDataContext, p, value);
-                    }
-                    return Reflect.set(target, p, value, receiver);
-                }
-            }
-        );
+    createInitializationCompatibleContext(options, properties, state, computed, methods) {
+        const constants = this.createConstantsContext(options);
+        return this.createDataCompatibleContext(state, properties, null, methods, constants);
     }
 
     /**
      * @returns {Singleton}
      */
     createInitializationContextSingleton() {
-        return new Singleton((obj, data, properties, computed, methods) => {
-            return this.createInitializationCompatibleContext(obj, data, properties, computed, methods);
+        return new Singleton((options, properties, state, computed, methods) => {
+            return this.createInitializationCompatibleContext(options, properties, state, computed, methods);
         });
     }
 

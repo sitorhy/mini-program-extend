@@ -170,6 +170,8 @@ declare namespace extend {
 
         $props: object;
 
+        $options: object;
+
         $nextTick: (callback: () => void) => void;
 
         $emit: (event: string, data: any) => void;

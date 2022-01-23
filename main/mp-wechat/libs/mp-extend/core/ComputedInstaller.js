@@ -30,7 +30,7 @@ export default class ComputedInstaller extends OptionInstaller {
         const state = Object.assign({}, context.get("state")); // 复制结果集，避免修改原值
 
         const computedContext = extender.createInitializationContextSingleton().get(
-            null, state, properties, computed, methods
+            options, properties, state, computed, methods
         );
 
         return Stream.of(Object.entries(computed)).map(([name, calc]) => {
