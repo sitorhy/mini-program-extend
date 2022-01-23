@@ -211,6 +211,25 @@ export default class MPExtender {
     }
 
     /**
+     * 创建只读常量上下文，配置值不允许修改
+     * @param options
+     */
+    createConstantsContext(options){
+        const $options = Stream.of(Object.entries(options))
+            .filter(([p]) => !RESERVED_OPTIONS_WORDS.has(p) && !RESERVED_LIFECYCLES_WORDS.has(p))
+            .collect(Collectors.toMap());
+
+        return new Proxy($options, {
+            set(target, p, value, receiver) {
+                if (Reflect.has(options, p)) {
+                    Reflect.set(options, p, value);
+                }
+                return Reflect.set(target, p, value);
+            }
+        });
+    }
+
+    /**
      * 创建只读属性临时上下文，实例化对象并合并到接收对象 receiver 中，混合格式以小程序格式优先
      * @param propertiesReceiver - 接收属性实例化后的值，禁止传入空值
      * @param properties - 属性配置，支持混合Vue和小程序格式
@@ -221,13 +240,21 @@ export default class MPExtender {
         const context = new Proxy(
             propertiesReceiver,
             {
+                has(target, p) {
+                    return Reflect.has(target, p) || ["$options"].includes(p);
+                },
+                ownKeys(target) {
+                    return [
+                        ...new Set(["$options"].concat(target))
+                    ];
+                },
                 get(target, p, receiver) {
                     if (p === "$options") {
                         return constants;
                     }
-                    if (Reflect.has(propertiesReceiver, p)) {
+                    if (Reflect.has(target, p)) {
                         // 属性已实例化
-                        return Reflect.get(propertiesReceiver, p);
+                        return Reflect.get(target, p);
                     } else if (Reflect.has(properties, p)) {
                         const prop = Reflect.get(properties, p);
                         if (Reflect.has(prop, "value")) {
@@ -239,6 +266,15 @@ export default class MPExtender {
                         }
                     }
                     return undefined;
+                },
+                set(target, p, value, receiver) {
+                    if (p === "$options") {
+                        return Reflect.set(constants, p, value);
+                    }
+                    if (Reflect.has(properties, p)) {
+                        Reflect.set(properties[p], "value", value);
+                    }
+                    return Reflect.set(target, p, value);
                 }
             }
         );
@@ -260,20 +296,62 @@ export default class MPExtender {
 
     /**
      * 创建状态实例化上下文，返回实例化结果
+     * @param stateReceiver - 接收状态值
      * @param properties - 规格化后的属性配置，生成函数不依赖属性默认值可以传入null
      * @param data - 通常为状态生成函数，传入对象则直接合并到返回值
+     * @param methods - 方法集合
      * @param constants - 常量集合, $options
      * @returns {{}}
      */
-    createDataCompatibleContext(properties, data, constants = {}) {
-        const state = {};
+    createDataCompatibleContext(stateReceiver, properties, data, methods, constants = {}) {
+        const propertiesContext = this.createPropertiesCompatibleContext(stateReceiver, properties || {}, constants);
+        const context = new Proxy(
+            propertiesContext,
+            {
+                has(target, p) {
+                    return Reflect.has(target, p) || (methods ? false : Reflect.has(methods, p)) || ["data"].includes(p);
+                },
+                ownKeys(target) {
+                    return [
+                        ...new Set(["data"].concat(Object.keys(target)).concat(methods ? Object.keys(methods) : []))
+                    ];
+                },
+                get(target, p, receiver) {
+                    if (p === "data") {
+                        return receiver;
+                    }
+                    if (methods && Reflect.has(methods, p)) {
+                        const method = methods[p];
+                        if (isFunction(method)) {
+                            return method.bind(receiver);
+                        }
+                        return method; // 直接返回，通常解析器会直接报错
+                    }
+                    return Reflect.get(target, p);
+                },
+                set(target, p, value, receiver) {
+                    if (p === "data") {
+                        return Reflect.set(target, p, value);
+                    }
+                    if (methods && Reflect.has(methods, p)) {
+                        return Reflect.set(methods, p, value);
+                    }
+                    return Reflect.set(target, p, value);
+                }
+            }
+        );
         if (isFunction(data)) {
-            const propertiesContext = this.createPropertiesCompatibleContext(properties, constants);
-            Object.assign(state, data.call(propertiesContext));
+            const dataReceiver = data.call(context);
+            Object.keys(dataReceiver).forEach(p => {
+                if (Reflect.has(stateReceiver, p)) {
+                    throw new Error(`The data property "${p}" is already declared as a prop. Use prop default value instead.`);
+                }
+            });
+            Object.assign(stateReceiver, dataReceiver);
         } else {
-            Object.assign(state, data);
+            Object.assign(stateReceiver, data);
         }
-        return state;
+        return context;
     }
 
     /**
