@@ -29,16 +29,21 @@ export default class ComputedInstaller extends OptionInstaller {
         const properties = context.get("properties");
         const state = Object.assign({}, context.get("state")); // 复制结果集，避免修改原值
 
-        const computedContext = extender.createInitializationContextSingleton().get(
+        const contextSingleton = extender.createInitializationContextSingleton();
+        const computedContext = contextSingleton.get(
             options, properties, state, computed, methods
         );
 
-        return Stream.of(Object.entries(computed)).map(([name, calc]) => {
+        const calculated = Stream.of(Object.entries(computed)).map(([name, calc]) => {
             if (isFunction(calc.get)) {
                 return [name, calc.get.call(computedContext)];
             }
             return undefined;
         }).filter(i => !!i).collect(Collectors.toMap());
+
+        contextSingleton.release();
+
+        return calculated;
     }
 
     beforeUpdate(extender, context, options, instance, data) {
@@ -116,20 +121,6 @@ export default class ComputedInstaller extends OptionInstaller {
                 this.releaseRuntimeContext(thisArg);
             };
 
-            // 属性 prop 存在外部绑定时（如 page?prop=114514） 会在 attached 后会替换默认值 此时计算属性失去时效性
-            // 主动触发一次 setData，初始化计算属性，防止组件没有任何赋值操作
-            const checkCalculated = (extender, context, options, instance) => {
-                const calculated = {};
-                this.beforeUpdate(extender, context, options, instance, calculated);
-                const currentCalculated = Stream.of(Object.keys(calculated)).map(i => {
-                    return [i, Reflect.get(instance, "data")[i]];
-                }).collect(Collectors.toMap());
-                if (!equal(calculated, currentCalculated)) {
-                    const originalSetData = context.has("originalSetData") ? context.get("originalSetData").bind(instance) : instance.setData.bind(instance);
-                    originalSetData(calculated);
-                }
-            };
-
             defFields.behaviors = [
                 Behavior({
                     data: calculated,
@@ -142,9 +133,6 @@ export default class ComputedInstaller extends OptionInstaller {
                                 writable: false
                             });
                             initContext(this, context.has("originalSetData") ? context.get("originalSetData") : this.setData.bind(this));
-                        },
-                        attached() {
-                            checkCalculated(extender, context, options, this);
                         }
                     }
                 })

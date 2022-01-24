@@ -1,0 +1,8 @@
+<view>
+    <view>
+        <text>p1={{ p1 }}</text>
+    </view>
+    <view>
+        <text>p2={{ p2 }}</text>
+    </view>
+</view>
