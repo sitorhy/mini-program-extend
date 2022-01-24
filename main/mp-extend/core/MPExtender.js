@@ -222,7 +222,7 @@ export default class MPExtender {
         return new Proxy($options, {
             set(target, p, value, receiver) {
                 if (Reflect.has(options, p)) {
-                    return Reflect.set(options, p, value);
+                    Reflect.set(options, p, value);
                 }
                 return Reflect.set(target, p, value);
             }
