@@ -5,7 +5,7 @@ import {isFunction, isPrimitive, isSymbol} from "./common";
  * @param path
  * @returns {string|null}
  */
-function selectPathRoot(path) {
+export function selectPathRoot(path) {
     const v = /^[\w]+/.exec(path);
     if (v) {
         return v[0];
@@ -26,7 +26,7 @@ function selectPathRoot(path) {
  * @param path
  * @returns {*[]}
  */
-function splitPath(path) {
+export function splitPath(path) {
     const paths = [];
 
     let pathRight = path;
@@ -97,29 +97,9 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
         {
             get(target, p, receiver) {
                 const value = Reflect.get(target, p, receiver);
-                if (isPrimitive(value) || !value || isSymbol(p)) {
+                if (isFunction(value) || isPrimitive(value) || !value || isSymbol(p)) {
                     // 不可枚举的值，直接返回
                     return value;
-                } else if (isFunction(value)) {
-                    if (value === target.constructor) {
-                        return value;
-                    } else {
-                        if (Array.isArray(target)) {
-                            // 数组 splice / push 执行后会自动 触发 set
-                            // 例如 data = {a:[1,2,3]} a.push(4) , 会触发 data.a = [1,2,3,4]
-                            return value;
-                        } else {
-                            return new Proxy(value, {
-                                apply(func, thisArg, argumentsList) {
-                                    const result = Reflect.apply(func, thisArg, argumentsList);
-                                    if (isFunction(onChanged)) {
-                                        onChanged(path, target);
-                                    }
-                                    return result;
-                                }
-                            });
-                        }
-                    }
                 } else {
                     if (Number.isSafeInteger(Number.parseInt(p))) {
                         return createReactiveObject(root, value, onChanged, `${path}[${p}]`);

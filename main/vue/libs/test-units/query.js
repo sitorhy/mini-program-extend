@@ -21,6 +21,7 @@ export default {
                 return this.p6Entity;
             },
             set(v) {
+                console.log('p6 setter');
                 this.p6Entity = v;
             }
         },

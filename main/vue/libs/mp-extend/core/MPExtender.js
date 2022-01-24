@@ -98,7 +98,11 @@ export default class MPExtender {
                     // 计算属性赋值调用对应 setter 修改 state
                     computed[path].set.call(runtimeContext, value);
                 } else {
-                    throw new Error(`Computed property "${path}" was assigned to but it has no setter.`);
+                    if (isFunction(fnSetData)) {
+                        fnSetData({[path]: value});
+                    } else {
+                        Reflect.get(runtimeContext, "setData").call(runtimeContext, {[path]: value});
+                    }
                 }
             } else {
                 // 非计算属性赋值
@@ -429,19 +433,14 @@ export default class MPExtender {
      * @param constants
      */
     createComputedCompatibleContext(computedReceiver, properties, computed, methods, constants) {
-        const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
-
-        const compatibleDataContext = createReactiveObject(computedReceiver, computedReceiver, function (path, value) {
-            computedReceiver[path] = value;
-        });
-        const context = this.createDataCompatibleContext(compatibleDataContext, properties, null, methods, constants);
-
+        const context = this.createDataCompatibleContext(computedReceiver, properties, null, methods, constants);
         Object.keys(computed).filter(i => !Reflect.has(computedReceiver, i)).forEach((prop) => {
             const getter = computed[prop] && isFunction(computed[prop].get) ? computed[prop].get : computed[prop];
             if (isFunction(getter)) {
-                Reflect.set(compatibleDataContext, prop, getter.call(context));
+                computedReceiver[prop] = getter.call(context);
             }
         });
+        return context;
     }
 
     /**
