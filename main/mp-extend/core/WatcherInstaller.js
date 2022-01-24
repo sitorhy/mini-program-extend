@@ -419,7 +419,7 @@ export default class WatcherInstaller extends OptionInstaller {
                 if (watcher.path) { // 是否函数式侦听器，函数式侦听器由 "**" 侦听器负责
                     const depth = this.matchDeepWatcherPath(data, watcher.path);
                     if (depth) {
-                        const trace = traceObject(runtimeContext.data, depth, true, false);
+                        const trace = traceObject(runtimeContext.data, depth, true, false, undefined);
                         watcher.oldValue = [this.selectData(trace, watcher.path)];
                     }
                 }

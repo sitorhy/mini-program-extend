@@ -23,27 +23,13 @@ export default class ComputedInstaller extends OptionInstaller {
         }
     }
 
-    attemptToInstantiateCalculated(extender, context, options, defFields, definitionFilterArr) {
+    attemptToInstantiateCalculated(extender, context, options) {
         const computed = context.get("computed");
+        const $options = context.has("constants") ? context.get("constants") : extender.createConstantsContext(options);
         const methods = context.get("methods");
         const properties = context.get("properties");
-        const state = Object.assign({}, context.get("state")); // 复制结果集，避免修改原值
-
-        const contextSingleton = extender.createInitializationContextSingleton();
-        const computedContext = contextSingleton.get(
-            options, properties, state, computed, methods
-        );
-
-        const calculated = Stream.of(Object.entries(computed)).map(([name, calc]) => {
-            if (isFunction(calc.get)) {
-                return [name, calc.get.call(computedContext)];
-            }
-            return undefined;
-        }).filter(i => !!i).collect(Collectors.toMap());
-
-        contextSingleton.release();
-
-        return calculated;
+        const state = context.get("state");
+        extender.createComputedCompatibleContext(state, properties, computed, methods, $options);
     }
 
     beforeUpdate(extender, context, options, instance, data) {
@@ -108,7 +94,6 @@ export default class ComputedInstaller extends OptionInstaller {
 
         // 检查是否安装StateInstaller
         if (isPlainObject(state)) {
-            const calculated = this.attemptToInstantiateCalculated(extender, context, options, defFields, definitionFilterArr);
             const createContext = () => {
                 return extender.createRuntimeContextSingleton();
             };
@@ -123,7 +108,6 @@ export default class ComputedInstaller extends OptionInstaller {
 
             defFields.behaviors = [
                 Behavior({
-                    data: calculated,
                     lifetimes: {
                         created() {
                             Object.defineProperty(this, RTCSign, {
@@ -192,5 +176,7 @@ export default class ComputedInstaller extends OptionInstaller {
                 return [prop, normalize];
             }).collect(Collectors.toMap())
         );
+
+        this.attemptToInstantiateCalculated(extender, context, options);
     }
 }

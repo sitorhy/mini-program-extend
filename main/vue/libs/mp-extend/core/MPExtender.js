@@ -22,6 +22,7 @@ import equal from "../libs/fast-deep-equal/index";
 import {Collectors, Stream} from "../libs/Stream";
 import RESERVED_OPTIONS_WORDS from "../utils/options";
 import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
+import ConstantsInstaller from "./ConstantsInstaller";
 
 class InstallersSingleton extends Singleton {
     /**
@@ -52,13 +53,14 @@ export default class MPExtender {
     constructor() {
         this.use(new MixinInstaller(), 5);
         this.use(new MethodsInstaller(), 10);
-        this.use(new PropertiesInstaller(), 15);
-        this.use(new DataInstaller(), 20);
-        this.use(new StateInstaller(), 25);
-        this.use(new ComputedInstaller(), 30);
-        this.use(new ProviderInstaller(), 35);
-        this.use(new WatcherInstaller(), 40);
-        this.use(new LifeCycleInstaller(), 45);
+        this.use(new ConstantsInstaller(), 15);
+        this.use(new PropertiesInstaller(), 20);
+        this.use(new DataInstaller(), 25);
+        this.use(new StateInstaller(), 30);
+        this.use(new ComputedInstaller(), 35);
+        this.use(new ProviderInstaller(), 40);
+        this.use(new WatcherInstaller(), 45);
+        this.use(new LifeCycleInstaller(), 50);
         this.use(new InstanceInstaller(), 95);
         this.use(new EventBusInstaller(), 150);
         this.use(new RelationsInstaller(), 200);
@@ -198,15 +200,7 @@ export default class MPExtender {
      */
     createRuntimeContextSingleton(predicate = null, supplier = null) {
         return new Singleton((thisArg, properties, computed, fnSetData) => {
-            const runtimeContext = this.createRuntimeCompatibleContext(thisArg, properties, computed, fnSetData);
-            return new Proxy(runtimeContext, {
-                get(target, p, receiver) {
-                    if (isFunction(predicate) && isFunction(supplier) && predicate(p) === true) {
-                        return supplier(p, runtimeContext);
-                    }
-                    return Reflect.get(target, p);
-                }
-            });
+            return this.createRuntimeCompatibleContext(thisArg, properties, computed, fnSetData);
         });
     }
 
@@ -221,10 +215,13 @@ export default class MPExtender {
 
         return new Proxy($options, {
             set(target, p, value, receiver) {
-                if (Reflect.has(options, p)) {
-                    Reflect.set(options, p, value);
+                if (Reflect.set(target, p, value)) {
+                    if (Reflect.has(options, p)) {
+                        Reflect.set(options, p, value);
+                    }
+                    return true;
                 }
-                return Reflect.set(target, p, value);
+                return false;
             }
         });
     }
@@ -424,25 +421,49 @@ export default class MPExtender {
     }
 
     /**
+     * 创建计算属性临时上下文
+     * @param computedReceiver - 接收计算属性值，目标属性存在时将忽略计算
+     * @param properties - 规格化属性配置
+     * @param computed - 规格化计算属性配置
+     * @param methods
+     * @param constants
+     */
+    createComputedCompatibleContext(computedReceiver, properties, computed, methods, constants) {
+        const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
+
+        const compatibleDataContext = createReactiveObject(computedReceiver, computedReceiver, function (path, value) {
+            computedReceiver[path] = value;
+        });
+        const context = this.createDataCompatibleContext(compatibleDataContext, properties, null, methods, constants);
+
+        Object.keys(computed).filter(i => !Reflect.has(computedReceiver, i)).forEach((prop) => {
+            const getter = computed[prop] && isFunction(computed[prop].get) ? computed[prop].get : computed[prop];
+            if (isFunction(getter)) {
+                Reflect.set(compatibleDataContext, prop, getter.call(context));
+            }
+        });
+    }
+
+    /**
      * 创建临时上下文
      * @param options - 配置
      * @param properties - 规格化属性配置
      * @param state - 已实例化的状态对象，该对象包含实例化后的属性默认值
      * @param computed - 计算属性配置
      * @param methods - 依赖方法
+     * @param constants - 常量集合
      * @returns {any}
      */
-    createInitializationCompatibleContext(options, properties, state, computed, methods) {
-        const constants = this.createConstantsContext(options);
-        return this.createDataCompatibleContext(state, properties, null, methods, constants);
+    createInitializationCompatibleContext(options, properties, state, computed, methods, constants) {
+        return this.createComputedCompatibleContext(state, properties, computed, methods, constants);
     }
 
     /**
      * @returns {Singleton}
      */
     createInitializationContextSingleton() {
-        return new Singleton((options, properties, state, computed, methods) => {
-            return this.createInitializationCompatibleContext(options, properties, state, computed, methods);
+        return new Singleton((options, properties, state, computed, methods, constants) => {
+            return this.createInitializationCompatibleContext(options, properties, state, computed, methods, constants);
         });
     }
 

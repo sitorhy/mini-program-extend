@@ -84,7 +84,7 @@ export default class StateInstaller extends OptionInstaller {
         const state = {};
         const methods = context.get("methods");
         // 筛选出常量
-        const $options = extender.createConstantsContext(options);
+        const $options = context.has("constants") ? context.get("constants") : extender.createConstantsContext(options);
         // 规格化属性
         const properties = this.attemptToInstantiateProps(extender, state, context.get("properties") || {}, $options);
         // 实例化状态

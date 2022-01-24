@@ -38,6 +38,9 @@ export default {
                         this.plus = this.plusSelf + v;
                     }
                 },
+                doublePlusSelf() {
+                    return this.plusSelf * 2;
+                },
                 strPlusSelf: {
                     set(v) {
                         this.strPlus = this.plusSelf + " " + v;

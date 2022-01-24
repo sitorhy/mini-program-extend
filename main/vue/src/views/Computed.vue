@@ -8,6 +8,7 @@
     <div><span>cPlus=</span><span>{{ cPlus }}</span></div>
     <div><span>squarePropThroughNum=</span><span>{{ squarePropThroughNum }}</span></div>
     <div><span>plusSelf=</span><span>{{ plusSelf }}</span></div>
+    <div><span>doublePlusSelf=</span><span>{{ doublePlusSelf }}</span></div>
     <div><span>strPlusSelf=</span><span>{{ strPlusSelf }}</span></div>
     <div><span>动态测试=</span><span>{{ formatTime }}</span></div>
 
