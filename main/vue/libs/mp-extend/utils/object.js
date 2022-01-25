@@ -168,3 +168,31 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
         }
     );
 }
+
+export function setData(target, payload) {
+    Object.keys(payload).forEach(function (path) {
+        const paths = splitPath(path);
+        const v = payload[path];
+        let o = target;
+        paths.forEach(function (p, pi) {
+            if (pi === paths.length - 1) {
+                o[p] = v;
+            } else {
+                if (/\d+/.test(p)) {
+                    if (Array.isArray(o)) {
+                        const index = parseInt(p);
+                        if (Number.isSafeInteger(index)) {
+                            o = o[index];
+                        } else {
+                            throw new Error(`Unexpected range index "${index}".`);
+                        }
+                    } else {
+                        o = o[p];
+                    }
+                } else {
+                    o = o[p];
+                }
+            }
+        });
+    });
+}

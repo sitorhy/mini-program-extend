@@ -16,7 +16,7 @@ import UpdateInstaller from "./UpdateInstaller";
 
 import {Singleton} from "../libs/Singleton";
 import {isFunction, isNullOrEmpty, isPlainObject} from "../utils/common";
-import {createReactiveObject} from "../utils/object";
+import {createReactiveObject, setData} from "../utils/object";
 
 import equal from "../libs/fast-deep-equal/index";
 import {Collectors, Stream} from "../libs/Stream";
@@ -434,13 +434,34 @@ export default class MPExtender {
      */
     createComputedCompatibleContext(computedReceiver, properties, computed, methods, constants) {
         const context = this.createDataCompatibleContext(computedReceiver, properties, null, methods, constants);
+        const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
+
         Object.keys(computed).filter(i => !Reflect.has(computedReceiver, i)).forEach((prop) => {
             const getter = computed[prop] && isFunction(computed[prop].get) ? computed[prop].get : computed[prop];
             if (isFunction(getter)) {
                 computedReceiver[prop] = getter.call(context);
             }
         });
-        return context;
+        let compatibleContext;
+        const compatibleDataContext = createReactiveObject(computedReceiver, computedReceiver, function (path, value) {
+            if (computed[path]) {
+                if (isFunction(computed[path].set)) {
+                    computed[path].set.call(compatibleContext);
+                }
+            } else {
+                setData(computedReceiver, {[path]: value});
+            }
+            getters.forEach((p) => {
+                const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
+                const curVal = Reflect.get(computedReceiver, p);
+                const pValue = getter.call(compatibleDataContext);
+                if (!equal(curVal, pValue)) {
+                    computed[p].set.call(compatibleDataContext);
+                }
+            });
+        });
+        compatibleContext = this.createDataCompatibleContext(compatibleDataContext, properties, null, methods, constants);
+        return compatibleContext;
     }
 
     /**
