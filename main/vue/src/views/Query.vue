@@ -5,6 +5,7 @@
     <p><span>p3={{ p3 }}</span></p>
     <p><span>p4={{ p4 }}</span></p>
     <p><span>p5={{ p5 }}</span></p>
+    <p><span>p6Count={{ p6Count }}</span></p>
     <p><span>p6Str={{ p6Str }}</span></p>
   </div>
 </template>

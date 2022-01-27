@@ -16,7 +16,7 @@ import UpdateInstaller from "./UpdateInstaller";
 
 import {Singleton} from "../libs/Singleton";
 import {isFunction, isNullOrEmpty, isPlainObject} from "../utils/common";
-import {createReactiveObject, setData} from "../utils/object";
+import {createReactiveObject, selectPathRoot, setData} from "../utils/object";
 
 import equal from "../libs/fast-deep-equal/index";
 import {Collectors, Stream} from "../libs/Stream";
@@ -93,6 +93,7 @@ export default class MPExtender {
         let runtimeContext;
 
         const runtimeDataContext = createReactiveObject(context.data, context.data, function (path, value) {
+            console.log(`${path} => ${value}`);
             if (computed[path]) {
                 if (isFunction(computed[path].set)) {
                     // 计算属性赋值调用对应 setter 修改 state
@@ -109,6 +110,7 @@ export default class MPExtender {
                 // path 为空 可视为根对象
                 if (isFunction(fnSetData)) {
                     fnSetData(!isNullOrEmpty(path) ? {[path]: value} : value);
+                    console.log(`${path} => ${JSON.stringify(context.data[selectPathRoot(path)])}`);
                 } else {
                     Reflect.get(runtimeContext, "setData").call(runtimeContext, !isNullOrEmpty(path) ? {[path]: value} : value);
                 }

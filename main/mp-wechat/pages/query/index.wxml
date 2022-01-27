@@ -15,6 +15,9 @@
         <text>p5={{ p5 }}</text>
     </view>
     <view>
+        <text>p6Count={{ p6Count }}</text>
+    </view>
+    <view>
         <text>p6Str={{ p6Str }}</text>
     </view>
 </view>

@@ -18,6 +18,8 @@ export default {
         },
         p6: {
             get() {
+                console.log('p6 getter');
+                this.p6Count++;
                 return this.p6Entity;
             },
             set(v) {
@@ -32,6 +34,7 @@ export default {
     data() {
         return {
             p3: "",
+            p6Count: 0,
             p6Entity: {a: 100}
         }
     },
