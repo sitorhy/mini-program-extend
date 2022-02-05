@@ -29,7 +29,7 @@ export default class ComputedInstaller extends OptionInstaller {
         const methods = context.get("methods");
         const properties = context.get("properties");
         const state = context.get("state");
-        extender.createComputedCompatibleContext(state, properties, computed, methods, $options);
+        return extender.getComputedDependencies(state, properties, computed, methods, $options);
     }
 
     beforeUpdate(extender, context, options, instance, data) {
@@ -146,6 +146,12 @@ export default class ComputedInstaller extends OptionInstaller {
     }
 
     install(extender, context, options) {
+        const properties = context.get("properties");
+        const methods = context.get("methods");
+        const state = context.get("state");
+        const $options = context.has("constants") ? context.get("constants") : extender.createConstantsContext(options);
+        const beforeCreate = context.get("beforeCreate");
+
         const {computed = null} = options;
         context.set("computed", Stream.of(
                 Object.entries(
@@ -177,6 +183,10 @@ export default class ComputedInstaller extends OptionInstaller {
             }).collect(Collectors.toMap())
         );
 
-        this.attemptToInstantiateCalculated(extender, context, options);
+        const linkAge = this.attemptToInstantiateCalculated(extender, context, options);
+        const stateContext = extender.createInitializationCompatibleContext(state, linkAge, properties, computed, methods, $options);
+        if (isFunction(beforeCreate)) {
+            beforeCreate.call(stateContext);
+        }
     }
 }

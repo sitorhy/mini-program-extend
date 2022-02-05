@@ -16,9 +16,9 @@ import {isPlainObject, isFunction, removeEmpty} from "../utils/common";
  */
 export default class PropertiesInstaller extends OptionInstaller {
     lifetimes(extender, context, options) {
-        const properties = context.get("properties");
         return {
             attached() {
+                const properties = context.get("properties");
                 Object.entries(properties).filter(([, config]) => {
                     return isFunction(config.validator);
                 }).forEach(([prop, constructor]) => {

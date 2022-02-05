@@ -85,26 +85,40 @@ export function traceObject(obj, path, clone, override, value) {
 /**
  * 创建反应式对象
  *
- * @param root 根对象
- * @param target 目标对象
- * @param onChanged 拦截对象修改行为，只读可以不实现
- * @param path 目标对象相对根对象路径
+ * @param root - 根对象
+ * @param target - 目标对象
+ * @param onChanged - 实现对象修改行为，只读可以不实现
+ * @param path - 目标对象相对根对象路径
+ * @param {(path:string,value:any,level:number)=>void} onGet - 解析对象回调，用于获取计算依赖
+ * @param {(path:string,value:any,level:number)=>void} onSet - 设置对象回调，用于获取赋值依赖
+ * @param level - 层级
  * @returns {boolean|any}
  */
-export function createReactiveObject(root, target, onChanged = "", path = "") {
+export function createReactiveObject(root, target, onChanged = "", path = "", onGet = null, onSet = null, level = 0) {
     return new Proxy(
         target,
         {
             get(target, p, receiver) {
                 const value = Reflect.get(target, p, receiver);
                 if (isFunction(value) || isPrimitive(value) || !value || isSymbol(p)) {
+                    if (isFunction(onGet)) {
+                        onGet(`${path ? path + '.' : ''}${p}`, value, level);
+                    }
                     // 不可枚举的值，直接返回
                     return value;
                 } else {
                     if (Number.isSafeInteger(Number.parseInt(p))) {
-                        return createReactiveObject(root, value, onChanged, `${path}[${p}]`);
+                        const nextPath = `${path}[${p}]`;
+                        if (isFunction(onGet)) {
+                            onGet(nextPath, value, level);
+                        }
+                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, level + 1);
                     } else {
-                        return createReactiveObject(root, value, onChanged, `${path ? path + '.' : ''}${p}`);
+                        const nextPath = `${path ? path + '.' : ''}${p}`;
+                        if (isFunction(onGet)) {
+                            onGet(nextPath, value, level);
+                        }
+                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, level + 1);
                     }
                 }
             },
@@ -119,7 +133,11 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
                                 const success = Reflect.set(target, p, value, receiver);
                                 if (success) {
                                     const field = selectPathRoot(path);
-                                    onChanged(field, Reflect.get(root, field));
+                                    const v = Reflect.get(root, field);
+                                    if (isFunction(onSet)) {
+                                        onSet(field, v, level);
+                                    }
+                                    onChanged(field, v);
                                 }
                                 return success;
                             } else {
@@ -127,7 +145,11 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
                             }
                         } else {
                             if (isFunction(onChanged)) {
-                                onChanged(`${path}[${p}]`, value);
+                                const nextPath = `${path}[${p}]`;
+                                if (isFunction(onSet)) {
+                                    onSet(nextPath, value, level);
+                                }
+                                onChanged(nextPath, value);
                             } else {
                                 return Reflect.set(target, p, value, receiver);
                             }
@@ -137,7 +159,11 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
                             return Reflect.set(target, p, value, receiver);
                         } else {
                             if (isFunction(onChanged)) {
-                                onChanged(`${path ? path + '.' : ''}${p}`, value);
+                                const nextPath = `${path ? path + '.' : ''}${p}`;
+                                if (isFunction(onSet)) {
+                                    onSet(nextPath, value, level);
+                                }
+                                onChanged(nextPath, value);
                             } else {
                                 return Reflect.set(target, p, value, receiver);
                             }
@@ -152,14 +178,22 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
                     if (Number.isSafeInteger(tryNum)) {
                         Array.prototype.splice.call(target, tryNum, 1);
                         if (isFunction(onChanged)) {
-                            onChanged(`${path}`, target);
+                            const lastPath = `${path}`;
+                            if (isFunction(onSet)) {
+                                onSet(lastPath, target, level);
+                            }
+                            onChanged(lastPath, target);
                         }
                         return true;
                     }
                 }
                 if (Reflect.deleteProperty(target, p)) {
                     if (isFunction(onChanged)) {
-                        onChanged(`${path}`, target);
+                        const lastPath = `${path}`;
+                        if (isFunction(onSet)) {
+                            onSet(lastPath, target, level);
+                        }
+                        onChanged(lastPath, target);
                     }
                     return true;
                 }

@@ -1,5 +1,6 @@
 import OptionInstaller from "./OptionInstaller";
 import MethodsInstaller from "./MethodsInstaller";
+import ConstantsInstaller from "./ConstantsInstaller";
 import PropertiesInstaller from "./PropertiesInstaller";
 import DataInstaller from "./DataInstaller";
 import StateInstaller from "./StateInstaller";
@@ -19,10 +20,11 @@ import {isFunction, isNullOrEmpty, isPlainObject} from "../utils/common";
 import {createReactiveObject, selectPathRoot, setData} from "../utils/object";
 
 import equal from "../libs/fast-deep-equal/index";
+import clone from "../libs/rfdc/default";
 import {Collectors, Stream} from "../libs/Stream";
 import RESERVED_OPTIONS_WORDS from "../utils/options";
 import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
-import ConstantsInstaller from "./ConstantsInstaller";
+import {Watcher} from "../libs/Watcher";
 
 class InstallersSingleton extends Singleton {
     /**
@@ -52,15 +54,15 @@ export default class MPExtender {
 
     constructor() {
         this.use(new MixinInstaller(), 5);
-        this.use(new MethodsInstaller(), 10);
-        this.use(new ConstantsInstaller(), 15);
-        this.use(new PropertiesInstaller(), 20);
-        this.use(new DataInstaller(), 25);
-        this.use(new StateInstaller(), 30);
-        this.use(new ComputedInstaller(), 35);
-        this.use(new ProviderInstaller(), 40);
-        this.use(new WatcherInstaller(), 45);
-        this.use(new LifeCycleInstaller(), 50);
+        this.use(new LifeCycleInstaller(), 10);
+        this.use(new MethodsInstaller(), 15);
+        this.use(new ConstantsInstaller(), 20);
+        this.use(new PropertiesInstaller(), 25);
+        this.use(new DataInstaller(), 30);
+        this.use(new StateInstaller(), 35);
+        this.use(new ComputedInstaller(), 40);
+        this.use(new ProviderInstaller(), 45);
+        this.use(new WatcherInstaller(), 50);
         this.use(new InstanceInstaller(), 95);
         this.use(new EventBusInstaller(), 150);
         this.use(new RelationsInstaller(), 200);
@@ -93,7 +95,6 @@ export default class MPExtender {
         let runtimeContext;
 
         const runtimeDataContext = createReactiveObject(context.data, context.data, function (path, value) {
-            console.log(`${path} => ${value}`);
             if (computed[path]) {
                 if (isFunction(computed[path].set)) {
                     // 计算属性赋值调用对应 setter 修改 state
@@ -110,7 +111,6 @@ export default class MPExtender {
                 // path 为空 可视为根对象
                 if (isFunction(fnSetData)) {
                     fnSetData(!isNullOrEmpty(path) ? {[path]: value} : value);
-                    console.log(`${path} => ${JSON.stringify(context.data[selectPathRoot(path)])}`);
                 } else {
                     Reflect.get(runtimeContext, "setData").call(runtimeContext, !isNullOrEmpty(path) ? {[path]: value} : value);
                 }
@@ -322,48 +322,27 @@ export default class MPExtender {
      * @param stateReceiver - 接收状态值
      * @param properties - 规格化后的属性配置，生成函数不依赖属性默认值可以传入null
      * @param data - 通常为状态生成函数，传入对象则直接合并到返回值
+     * @param computed - 计算属性配置，提供字段即可
      * @param methods - 方法集合
      * @param constants - 常量集合, $options
      * @returns {{}}
      */
-    createDataCompatibleContext(stateReceiver, properties, data, methods, constants = {}) {
+    createDataCompatibleContext(stateReceiver, properties, data, computed, methods, constants = {}) {
         const propertiesContext = this.createPropertiesCompatibleContext(stateReceiver, properties || {}, constants);
-
-        const dataSingleton = new Singleton(() => {
-            const $data = {};
-            return new Proxy($data, {
-                ownKeys(target) {
-                    return [
-                        ...new Set(Object.keys(stateReceiver).concat(Object.keys(target)))
-                    ];
-                },
-                has(target, p) {
-                    return Reflect.has(stateReceiver, p) || Reflect.has(target, p);
-                },
-                get(target, p, receiver) {
-                    if (!Reflect.has(properties, p) && Reflect.has(stateReceiver, p)) {
-                        return Reflect.get(stateReceiver, p);
-                    }
-                    return Reflect.get(target, p);
-                },
-                set(target, p, value, receiver) {
-                    if (!Reflect.has(properties, p) && Reflect.has(stateReceiver, p)) {
-                        return Reflect.set(stateReceiver, p, value);
-                    }
-                    return Reflect.set(target, p, value);
-                }
-            });
-        });
 
         const context = new Proxy(
             stateReceiver,
             {
                 has(target, p) {
-                    return Reflect.has(target, p) || Reflect.has(propertiesContext, p) || (methods ? false : Reflect.has(methods, p)) || ["data", "$data"].includes(p);
+                    return Reflect.has(target, p)
+                        || Reflect.has(propertiesContext, p)
+                        || (methods ? false : Reflect.has(methods, p))
+                        || (computed ? false : Reflect.has(computed, p))
+                        || ["data", "$data"].includes(p);
                 },
                 ownKeys(target) {
                     const keys = [];
-                    [methods, propertiesContext, target].forEach(i => {
+                    [methods, propertiesContext, computed, target].forEach(i => {
                         if (i) {
                             Array.prototype.push.apply(keys, Object.keys(i));
                         }
@@ -377,7 +356,31 @@ export default class MPExtender {
                         return target;
                     }
                     if (p === "$data") {
-                        return dataSingleton.get();
+                        const keys = Object.keys(stateReceiver).filter(k => {
+                            if (properties) {
+                                if (Reflect.has(properties, k)) {
+                                    return false;
+                                }
+                            }
+                            if (computed) {
+                                if (Reflect.has(computed, k)) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        });
+                        const $data = {};
+                        keys.forEach(k => {
+                            Object.defineProperty($data, k, {
+                                get() {
+                                    return Reflect.get(receiver, k);
+                                },
+                                set(v) {
+                                    Reflect.set(receiver, p, v);
+                                }
+                            })
+                        });
+                        return $data;
                     }
                     if (Reflect.has(propertiesContext, p)) {
                         return Reflect.get(propertiesContext, p);
@@ -427,65 +430,142 @@ export default class MPExtender {
     }
 
     /**
-     * 创建计算属性临时上下文
-     * @param computedReceiver - 接收计算属性值，目标属性存在时将忽略计算
+     * 获取计算属性依赖关系
+     * @param state - 实例化状态，包含属性
      * @param properties - 规格化属性配置
      * @param computed - 规格化计算属性配置
      * @param methods
      * @param constants
      */
-    createComputedCompatibleContext(computedReceiver, properties, computed, methods, constants) {
-        const context = this.createDataCompatibleContext(computedReceiver, properties, null, methods, constants);
+    getComputedDependencies(state, properties, computed, methods, constants = {}) {
+        const plainState = clone(state);
+        const linkAge = new Map();
+        const dependencies = [];
+        const reactiveState = createReactiveObject(plainState, plainState,
+            (path, value) => {
+                setData(plainState, {[path]: value});
+            },
+            "",
+            (path, value, level) => {
+                if (!dependencies.includes(path) && level === 0) {
+                    dependencies.push(path);
+                }
+            },
+            (path, value, level) => {
+                const src = selectPathRoot(path);
+                dependencies.splice(0).map(i => selectPathRoot(i)).filter(i => i !== src).forEach(p => {
+                    if (!linkAge.has(p)) {
+                        linkAge.set(p, []);
+                    }
+                    const targets = linkAge.get(p);
+                    if (!targets.includes(src)) {
+                        targets.push(src);
+                    }
+                });
+            }
+        );
+
+        const context = this.createDataCompatibleContext(reactiveState, properties, null, computed, methods, constants);
         const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
 
-        Object.keys(computed).filter(i => !Reflect.has(computedReceiver, i)).forEach((prop) => {
-            const getter = computed[prop] && isFunction(computed[prop].get) ? computed[prop].get : computed[prop];
-            if (isFunction(getter)) {
-                computedReceiver[prop] = getter.call(context);
-            }
-        });
-        let compatibleContext;
-        const compatibleDataContext = createReactiveObject(computedReceiver, computedReceiver, function (path, value) {
-            if (computed[path]) {
-                if (isFunction(computed[path].set)) {
-                    computed[path].set.call(compatibleContext);
-                }
-            } else {
-                setData(computedReceiver, {[path]: value});
-            }
-            getters.forEach((p) => {
+        getters.forEach(p => {
+            if (!Reflect.has(plainState, p)) {
                 const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
-                const curVal = Reflect.get(computedReceiver, p);
-                const pValue = getter.call(compatibleDataContext);
-                if (!equal(curVal, pValue)) {
-                    computed[p].set.call(compatibleDataContext);
+                if (isFunction(getter)) {
+                    context[p] = getter.call(context);
                 }
-            });
+            }
         });
-        compatibleContext = this.createDataCompatibleContext(compatibleDataContext, properties, null, methods, constants);
-        return compatibleContext;
+
+        return linkAge;
     }
 
     /**
      * 创建临时上下文
-     * @param options - 配置
-     * @param properties - 规格化属性配置
      * @param state - 已实例化的状态对象，该对象包含实例化后的属性默认值
+     * @param {Map} linkAge - 计算属性依赖关系,{ [被依赖属性:string]:依赖属性 }
+     * @param properties - 规格化属性配置
      * @param computed - 计算属性配置
      * @param methods - 依赖方法
      * @param constants - 常量集合
      * @returns {any}
      */
-    createInitializationCompatibleContext(options, properties, state, computed, methods, constants) {
-        return this.createComputedCompatibleContext(state, properties, computed, methods, constants);
+    createInitializationCompatibleContext(state, linkAge, properties, computed, methods, constants = {}) {
+        let context;
+        let watchers = new Map();
+        const locking = new Set();
+        const reactiveState = createReactiveObject(state, state,
+            (path, value) => {
+                // 获取根对象
+                const src = selectPathRoot(path);
+                if (src !== path) {
+                    // 不规范修改，计算属性应该总是返回新对象
+                    // 直接修改内部属性值，默认该对象已修改，锁定对象引用不再执行getter
+                    locking.add(src);
+                }
+                setData(state, {[path]: value});
+                const watcher = watchers.get(src);
+                if (watcher) {
+                    watcher.prepare(src, state[src]);
+                    const targets = linkAge.get(src);
+                    if (!watcher.accept(() => {
+                        // 对象引用变更
+                        if (targets) {
+                            targets.forEach(p => {
+                                const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
+                                if (isFunction(getter)) {
+                                    state[p] = getter.call(context);
+                                }
+                            });
+                        }
+                    })) {
+                        if (targets) {
+                            targets.forEach(p => {
+                                // 非规范修改，排除锁定对象
+                                if (!locking.has(p)) {
+                                    const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
+                                    if (isFunction(getter)) {
+                                        state[p] = getter.call(context);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+                if (src !== path) {
+                    // 解锁对象
+                    locking.delete(src);
+                }
+            });
+
+        context = this.createDataCompatibleContext(reactiveState, properties, null, computed, methods, constants);
+        const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
+
+        getters.forEach(p => {
+            if (!Reflect.has(state, p)) {
+                const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
+                if (isFunction(getter)) {
+                    context[p] = getter.call(context);
+                }
+            }
+        });
+
+        getters.forEach(p => {
+            const w = new Watcher(p);
+            w.prepare(p, state[p]);
+            w.accept();
+            watchers.set(p, w);
+        });
+
+        return context;
     }
 
     /**
      * @returns {Singleton}
      */
     createInitializationContextSingleton() {
-        return new Singleton((options, properties, state, computed, methods, constants) => {
-            return this.createInitializationCompatibleContext(options, properties, state, computed, methods, constants);
+        return new Singleton((state, linkAge, properties, computed, methods, constants) => {
+            return this.createInitializationCompatibleContext(state, linkAge, properties, computed, methods, constants);
         });
     }
 

@@ -49,6 +49,10 @@ export class Watcher {
         }
     }
 
+    /**
+     * 比较多个值 传 object 比较单个值传 name / value
+     * @param args
+     */
     prepare(...args) {
         let obj;
         if (args.length === 1) {
@@ -77,12 +81,14 @@ export class Watcher {
             if (isFunction(changed)) {
                 (watchers.length > 1 ?
                         watchers.map(w => [w.value, w.previous]) :
-                        [watchers[0].value, watchers[0].previous]
+                        [[watchers[0].value, watchers[0].previous]]
                 ).forEach(args => {
                     changed(...args);
                 });
             }
+            return true;
         }
+        return false;
     }
 
     get names() {

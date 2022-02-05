@@ -10,6 +10,7 @@ import Mixins from '../views/Mixins.vue';
 import Options from '../views/Options.vue';
 import Snake from '../views/Snake.vue';
 import Query from "../views/Query";
+import Context from "../views/Context";
 
 Vue.use(VueRouter);
 
@@ -73,6 +74,11 @@ const routes = [
         path: '/mixins',
         name: 'Mixins',
         component: Mixins
+    },
+    {
+        path: '/context',
+        name: 'Context',
+        component: Context
     },
     {
         path: '/snake',

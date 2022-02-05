@@ -18,7 +18,6 @@ export default {
         },
         p6: {
             get() {
-                console.log('p6 getter');
                 this.p6Count++;
                 return this.p6Entity;
             },

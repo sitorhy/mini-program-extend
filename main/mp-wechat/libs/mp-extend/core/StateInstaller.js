@@ -1,7 +1,7 @@
 import OptionInstaller from "./OptionInstaller";
 
 import {Collectors, Stream} from "../libs/Stream";
-import {isFunction, removeEmpty} from "../utils/common";
+import {removeEmpty} from "../utils/common";
 
 /**
  * 实例化临时上下文属性和数据，转换为小程序可直接执行的形式
@@ -42,14 +42,7 @@ export default class StateInstaller extends OptionInstaller {
      * @returns {{}}
      */
     attemptToInstantiateData(extender, stateReceiver, properties, data, methods, constants) {
-        return extender.createDataCompatibleContext(stateReceiver, properties, data, methods, constants);
-    }
-
-    attemptToInstantiateState(extender, context, stateContext) {
-        const beforeCreate = context.get("beforeCreate");
-        if (isFunction(beforeCreate)) {
-            beforeCreate.call(stateContext);
-        }
+        return extender.createDataCompatibleContext(stateReceiver, properties, data, null, methods, constants);
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
@@ -88,9 +81,7 @@ export default class StateInstaller extends OptionInstaller {
         // 规格化属性
         const properties = this.attemptToInstantiateProps(extender, state, context.get("properties") || {}, $options);
         // 实例化状态
-        const stateContext = this.attemptToInstantiateData(extender, state, properties, context.get("data") || {}, methods, $options);
-        // 编译前执行状态修改
-        this.attemptToInstantiateState(extender, context, stateContext);
+        this.attemptToInstantiateData(extender, state, properties, context.get("data") || {}, methods, $options);
         context.set("state", state);
     }
 }
