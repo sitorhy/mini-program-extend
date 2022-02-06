@@ -184,9 +184,11 @@ export default class ComputedInstaller extends OptionInstaller {
         );
 
         const linkAge = this.attemptToInstantiateCalculated(extender, context, options);
-        const stateContext = extender.createInitializationCompatibleContext(state, linkAge, properties, computed, methods, $options);
+        const stateContext = extender.createInitializationContextSingleton();
         if (isFunction(beforeCreate)) {
-            beforeCreate.call(stateContext);
+            // beforeCreate 上下文测试 数据修改功能暂不移除
+            beforeCreate.call(stateContext.get(state, linkAge, properties, computed, methods, $options));
         }
+        stateContext.release();
     }
 }

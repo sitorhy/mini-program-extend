@@ -203,6 +203,30 @@ export function createReactiveObject(root, target, onChanged = "", path = "", on
     );
 }
 
+export function getData(target, path) {
+    const paths = splitPath(path);
+    let parent = target;
+    let v = undefined;
+    paths.forEach(function (p) {
+        if (/\d+/.test(p)) {
+            if (Array.isArray(parent)) {
+                const index = parseInt(p);
+                if (Number.isSafeInteger(index)) {
+                    v = parent[index];
+                } else {
+                    throw new Error(`Unexpected range index "${index}".`);
+                }
+            } else {
+                v = parent[p];
+            }
+        } else {
+            v = parent[p];
+        }
+        parent = v;
+    });
+    return v;
+}
+
 export function setData(target, payload) {
     Object.keys(payload).forEach(function (path) {
         const paths = splitPath(path);

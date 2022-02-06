@@ -6,6 +6,7 @@ function beforeCreate() {
 }
 
 export default {
+    staticData: 100,
     computed: {
         p1() {
             return 666;

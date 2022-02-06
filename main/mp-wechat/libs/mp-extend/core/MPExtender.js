@@ -17,14 +17,13 @@ import UpdateInstaller from "./UpdateInstaller";
 
 import {Singleton} from "../libs/Singleton";
 import {isFunction, isNullOrEmpty, isPlainObject} from "../utils/common";
-import {createReactiveObject, selectPathRoot, setData} from "../utils/object";
+import {createReactiveObject, getData, selectPathRoot, setData} from "../utils/object";
 
 import equal from "../libs/fast-deep-equal/index";
 import clone from "../libs/rfdc/default";
 import {Collectors, Stream} from "../libs/Stream";
 import RESERVED_OPTIONS_WORDS from "../utils/options";
 import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
-import {Watcher} from "../libs/Watcher";
 
 class InstallersSingleton extends Singleton {
     /**
@@ -506,11 +505,13 @@ export default class MPExtender {
                 if (src !== path) {
                     // 不规范修改，计算属性应该总是返回新对象
                     // 直接修改内部属性值，默认该对象已修改，锁定对象引用不再执行getter
-                    setData(state, {[path]: value});
+                    if (getData(state, path) !== value) {
+                        setData(state, {[path]: value});
+                    }
                 } else {
                     // 修改引用
                     const setter = computed[src] && isFunction(computed[src].set) ? computed[src].set : null;
-                    if (!equal(value, state[src])) {
+                    if (value !== state[src]) {
                         if (isFunction(setter)) {
                             setter.call(context, value);
                             const getter = computed[src] && isFunction(computed[src].get) ? computed[src].get : computed[src];
