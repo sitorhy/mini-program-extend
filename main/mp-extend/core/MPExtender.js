@@ -24,7 +24,6 @@ import clone from "../libs/rfdc/default";
 import {Collectors, Stream} from "../libs/Stream";
 import RESERVED_OPTIONS_WORDS from "../utils/options";
 import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
-import {Watcher} from "../libs/Watcher";
 
 class InstallersSingleton extends Singleton {
     /**
