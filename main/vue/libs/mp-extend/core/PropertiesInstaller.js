@@ -19,11 +19,13 @@ export default class PropertiesInstaller extends OptionInstaller {
         return {
             attached() {
                 const properties = context.get("properties");
-                Object.entries(properties).filter(([, config]) => {
-                    return isFunction(config.validator);
-                }).forEach(([prop, constructor]) => {
-                    constructor.validator.apply(this, [this.data[prop]]);
-                });
+                if (properties) {
+                    Object.entries(properties).filter(([, config]) => {
+                        return isFunction(config.validator);
+                    }).forEach(([prop, constructor]) => {
+                        constructor.validator.apply(this, [this.data[prop]]);
+                    });
+                }
             }
         };
     }

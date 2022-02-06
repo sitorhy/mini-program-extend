@@ -13,6 +13,9 @@
       <span>p4={{ p4 }}</span>
     </p>
     <p>
+      <span>p5History={{ p5History }}</span>
+    </p>
+    <p>
       <span>p3RefreshTime={{ p3RefreshTime }}</span>
     </p>
     <button @click="test">测试</button>

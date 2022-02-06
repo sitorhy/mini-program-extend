@@ -20,6 +20,9 @@
         <text>p4={{ wxs.stringify(p4) }}</text>
     </view>
     <view>
+        <text>p5History={{ wxs.stringify(p5History) }}</text>
+    </view>
+    <view>
         <text>p3RefreshTime={{ p3RefreshTime }}</text>
     </view>
 </view>

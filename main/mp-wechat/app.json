@@ -10,7 +10,8 @@
     "pages/provide/index",
     "pages/snake/index",
     "pages/mixins/index",
-    "pages/query/index"
+    "pages/query/index",
+    "pages/context/index"
   ],
   "window": {
     "backgroundTextStyle": "light",

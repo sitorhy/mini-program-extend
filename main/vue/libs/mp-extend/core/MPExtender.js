@@ -492,50 +492,55 @@ export default class MPExtender {
      */
     createInitializationCompatibleContext(state, linkAge, properties, computed, methods, constants = {}) {
         let context;
-        let watchers = new Map();
         const locking = new Set();
         const reactiveState = createReactiveObject(state, state,
             (path, value) => {
                 // 获取根对象
                 const src = selectPathRoot(path);
+                if (locking.has(src)) {
+                    // 对象已锁定，防止交叉引用无限递归
+                    return;
+                }
+                // 锁定字段
+                locking.add(src);
                 if (src !== path) {
                     // 不规范修改，计算属性应该总是返回新对象
                     // 直接修改内部属性值，默认该对象已修改，锁定对象引用不再执行getter
-                    locking.add(src);
-                }
-                setData(state, {[path]: value});
-                const watcher = watchers.get(src);
-                if (watcher) {
-                    watcher.prepare(src, state[src]);
-                    const targets = linkAge.get(src);
-                    if (!watcher.accept(() => {
-                        // 对象引用变更
-                        if (targets) {
-                            targets.forEach(p => {
-                                const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
-                                if (isFunction(getter)) {
-                                    state[p] = getter.call(context);
-                                }
-                            });
-                        }
-                    })) {
-                        if (targets) {
-                            targets.forEach(p => {
-                                // 非规范修改，排除锁定对象
-                                if (!locking.has(p)) {
-                                    const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
-                                    if (isFunction(getter)) {
-                                        state[p] = getter.call(context);
-                                    }
-                                }
-                            });
+                    setData(state, {[path]: value});
+                } else {
+                    // 修改引用
+                    const setter = computed[src] && isFunction(computed[src].set) ? computed[src].set : null;
+                    if (!equal(value, state[src])) {
+                        if (isFunction(setter)) {
+                            setter.call(context, value);
+                            const getter = computed[src] && isFunction(computed[src].get) ? computed[src].get : computed[src];
+                            if (isFunction(getter)) {
+                                state[src] = getter.call(context);
+                            } else {
+                                throw new Error(`Getter is missing for computed property "${src}".`);
+                            }
+                        } else {
+                            setData(state, {[path]: value});
                         }
                     }
                 }
-                if (src !== path) {
-                    // 解锁对象
-                    locking.delete(src);
+                const targets = linkAge.get(src);
+                if (targets) {
+                    targets.forEach(p => {
+                        if (!locking.has(p)) {
+                            // Vue 对短时间内赋值会进行防抖处理 对比框架可能会出现数据丢失的情况出现
+                            // Vue 中 连续执行 a=100,a=200 对a进行 watch 只会输出 200
+                            const getter = computed[p] && isFunction(computed[p].get) ? computed[p].get : computed[p];
+                            if (isFunction(getter)) {
+                                context[p] = getter.call(context);
+                            } else {
+                                context[p] = state[p]; // 依赖非计算属性字段，强制触发
+                            }
+                        }
+                    });
                 }
+                // 解锁
+                locking.delete(src);
             });
 
         context = this.createDataCompatibleContext(reactiveState, properties, null, computed, methods, constants);
@@ -543,18 +548,11 @@ export default class MPExtender {
 
         getters.forEach(p => {
             if (!Reflect.has(state, p)) {
-                const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
+                const getter = computed[p] && isFunction(computed[p].get) ? computed[p].get : computed[p];
                 if (isFunction(getter)) {
-                    context[p] = getter.call(context);
+                    state[p] = getter.call(context);
                 }
             }
-        });
-
-        getters.forEach(p => {
-            const w = new Watcher(p);
-            w.prepare(p, state[p]);
-            w.accept();
-            watchers.set(p, w);
         });
 
         return context;

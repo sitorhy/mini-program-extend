@@ -1,5 +1,7 @@
 function beforeCreate() {
     this.p3.a = 999;
+    this.p3 = {a: 1000};
+    this.p3.a++;
     this.p3.a++;
 }
 
@@ -22,6 +24,10 @@ export default {
         },
         p5() {
             return JSON.stringify(this.p3);
+        },
+        p5History() {
+            this.arr.push(this.p5);
+            return this.arr;
         }
     },
     data() {
@@ -29,7 +35,8 @@ export default {
             p4: {
                 a: 100
             },
-            p3RefreshTime: 0
+            p3RefreshTime: 0,
+            arr: []
         };
     },
     methods: {
