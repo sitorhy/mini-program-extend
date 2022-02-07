@@ -89,8 +89,31 @@ export default class LifeCycleInstaller extends OptionInstaller {
      * @param options
      */
     installBehaviorLifeCycle(extender, context, options) {
-        const lifetimes = extender.installers.map(i => i.lifetimes(extender, context, options)).filter(i => !!i);
-        const pageLifetimes = extender.installers.map(i => i.pageLifetimes(extender, context, options)).filter(i => !!i);
+        const {
+            created,
+            attached,
+            moved,
+            detached,
+            onShow,
+            onHide,
+            onResize
+        } = options;
+
+        const optionLifetimes = {
+            created: options.lifetimes && options.lifetimes.created ? options.lifetimes.created : created,
+            attached: options.lifetimes && options.lifetimes.attached ? options.lifetimes.attached : attached,
+            moved: options.lifetimes && options.lifetimes.moved ? options.lifetimes.moved : moved,
+            detached: options.lifetimes && options.lifetimes.detached ? options.lifetimes.detached : detached
+        };
+
+        const optionPageLifetimes = {
+            show: options.pageLifetimes && options.pageLifetimes.show ? options.pageLifetimes.show : onShow,
+            hide: options.pageLifetimes && options.pageLifetimes.hide ? options.pageLifetimes.hide : onHide,
+            resize: options.pageLifetimes && options.pageLifetimes.resize ? options.pageLifetimes.resize : onResize
+        };
+
+        const lifetimes = extender.installers.map(i => i.lifetimes(extender, context, options)).concat(optionLifetimes).filter(i => !!i);
+        const pageLifetimes = extender.installers.map(i => i.pageLifetimes(extender, context, options)).concat(optionPageLifetimes).filter(i => !!i);
 
         context.set("ready", (() => {
             const readyChain = extender.installers.map(i => i.ready);
@@ -216,53 +239,6 @@ export default class LifeCycleInstaller extends OptionInstaller {
             const {destroyed} = options;
             return Invocation(context.get("destroyed"), null, destroyed);
         })());
-    }
-
-    lifetimes(extender, context, options) {
-        const {
-            lifetimes,
-            created,
-            attached,
-            moved,
-            detached
-        } = options;
-
-        Deconstruct(options, {
-            created: null,
-            attached: null,
-            moved: null,
-            detached: null,
-            lifetimes: null
-        });
-
-        return {
-            created: lifetimes && lifetimes.created ? lifetimes.created : created,
-            attached: lifetimes && lifetimes.attached ? lifetimes.attached : attached,
-            moved: lifetimes && lifetimes.moved ? lifetimes.moved : moved,
-            detached: lifetimes && lifetimes.detached ? lifetimes.detached : detached
-        };
-    }
-
-    pageLifetimes(extender, context, options) {
-        const {
-            pageLifetimes,
-            onShow,
-            onHide,
-            onResize
-        } = options;
-
-        Deconstruct(options, {
-            onShow: null,
-            onHide: null,
-            onResize: null,
-            pageLifetimes: null
-        });
-
-        return {
-            show: pageLifetimes && pageLifetimes.show ? pageLifetimes.show : onShow,
-            hide: pageLifetimes && pageLifetimes.hide ? pageLifetimes.hide : onHide,
-            resize: pageLifetimes && pageLifetimes.resize ? pageLifetimes.resize : onResize
-        };
     }
 
     install(extender, context, options) {

@@ -6,7 +6,7 @@ import DataInstaller from "./DataInstaller";
 import StateInstaller from "./StateInstaller";
 import ProviderInstaller from "./ProviderInstaller";
 import WatcherInstaller from "./WatcherInstaller";
-import ContextInstaller from "./ContextInstaller";
+import HookInstaller from "./HookInstaller";
 import ComputedInstaller from "./ComputedInstaller";
 import MixinInstaller from "./MixinInstaller";
 import LifeCycleInstaller from "./LifeCycleInstaller";
@@ -14,16 +14,19 @@ import InstanceInstaller from "./InstanceInstaller";
 import RelationsInstaller from "./RelationsInstaller";
 import EventBusInstaller from "./EventBusInstaller";
 import UpdateInstaller from "./UpdateInstaller";
+import ContextInstaller from "./ContextInstaller";
 
 import {Singleton} from "../libs/Singleton";
 import {isFunction, isNullOrEmpty, isPlainObject} from "../utils/common";
-import {createReactiveObject, getData, selectPathRoot, setData} from "../utils/object";
+import {createReactiveObject, selectPathRoot, getData, setData} from "../utils/object";
 
 import equal from "../libs/fast-deep-equal/index";
 import clone from "../libs/rfdc/default";
 import {Collectors, Stream} from "../libs/Stream";
 import RESERVED_OPTIONS_WORDS from "../utils/options";
 import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
+
+const RTCSign = Symbol("__wxRTC__");
 
 class InstallersSingleton extends Singleton {
     /**
@@ -65,8 +68,9 @@ export default class MPExtender {
         this.use(new InstanceInstaller(), 95);
         this.use(new EventBusInstaller(), 150);
         this.use(new RelationsInstaller(), 200);
-        this.use(new ContextInstaller(), 250);
+        this.use(new HookInstaller(), 250);
         this.use(new UpdateInstaller(), 300);
+        this.use(new ContextInstaller(), 350);
     }
 
     /**
@@ -199,14 +203,24 @@ export default class MPExtender {
 
     /**
      * 扩展运行时上下文
-     * @param { function (prop:string):boolean } predicate - 拦截属性
-     * @param { function (prop:string,runtimeContext:Proxy):object } supplier - 返回拦截属性的值
      * @returns {Singleton}
      */
-    createRuntimeContextSingleton(predicate = null, supplier = null) {
+    createRuntimeContextSingleton() {
         return new Singleton((thisArg, properties, computed, fnSetData) => {
             return this.createRuntimeCompatibleContext(thisArg, properties, computed, fnSetData);
         });
+    }
+
+    getRuntimeContext(context) {
+        if (!Reflect.has(context, RTCSign)) {
+            Object.defineProperty(context, RTCSign, {
+                value: this.createRuntimeContextSingleton(),
+                configurable: false,
+                enumerable: false,
+                writable: false
+            });
+        }
+        return Reflect.get(context, RTCSign);
     }
 
     /**

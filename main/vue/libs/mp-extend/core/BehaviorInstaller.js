@@ -24,15 +24,15 @@ export default class BehaviorInstaller extends FrameworkInstaller {
     }
 
     observers(extender, context, options) {
-        return {};
+        return null;
     }
 
     data() {
-        return {};
+        return null;
     }
 
     methods() {
-        return {};
+        return null;
     }
 
     ready() {
@@ -44,7 +44,7 @@ export default class BehaviorInstaller extends FrameworkInstaller {
     }
 
     options() {
-        return {};
+        return null;
     }
 
     /**
@@ -56,18 +56,18 @@ export default class BehaviorInstaller extends FrameworkInstaller {
      * @returns {{}}
      */
     lifetimes(extender, context, options) {
-        return {};
+        return null;
     }
 
     pageLifetimes(extender, context, options) {
-        return {};
+        return null;
     }
 
     externalClasses() {
         return [];
     }
 
-    relations() {
-        return {};
+    relations(extender, context, options) {
+        return null;
     }
 }
