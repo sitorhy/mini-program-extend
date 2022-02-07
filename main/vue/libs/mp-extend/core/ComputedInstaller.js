@@ -17,6 +17,7 @@ export default class ComputedInstaller extends OptionInstaller {
     }
 
     beforeUpdate(extender, context, options, instance, data) {
+        /*
         const computed = context.get("computed");
         const pendingSetters = [];
 
@@ -38,10 +39,12 @@ export default class ComputedInstaller extends OptionInstaller {
                     throw new Error(`Computed property "${p}" was assigned to but it has no setter.`);
                 }
             });
-        }
+        }*/
     }
 
     updated(extender, context, options, instance, data) {
+
+        /*
         const computed = context.get("computed");
         const originalSetData = context.has("originalSetData") ? context.get("originalSetData").bind(instance) : instance.setData.bind(instance);
 
@@ -64,10 +67,22 @@ export default class ComputedInstaller extends OptionInstaller {
         if (nextComputedValues.length) {
             const next = Stream.of(nextComputedValues).collect(Collectors.toMap());
             originalSetData(next);
-        }
+        }*/
     }
 
     observers(extender, context, options) {
+        const linkAge = context.get("linkAge");
+
+        const linkAgeObservers = {};
+        for (const p of linkAge.keys()) {
+            linkAgeObservers[`${p}.**`] = function (v) {
+                console.log('observer ' + p);
+            }
+        }
+
+        return linkAgeObservers;
+
+        /*
         const props = context.get("properties");
         const onPropertyChanged = (instance, data) => {
             this.updated(extender, context, options, instance, data);
@@ -77,6 +92,8 @@ export default class ComputedInstaller extends OptionInstaller {
                 onPropertyChanged(this, {[p]: val});
             }];
         }).collect(Collectors.toMap());
+        */
+
     }
 
     install(extender, context, options) {
@@ -124,5 +141,7 @@ export default class ComputedInstaller extends OptionInstaller {
             beforeCreate.call(stateContext.get(state, linkAge, properties, computed, methods, $options));
         }
         stateContext.release();
+        context.set("linkAge", linkAge);
+        console.log(linkAge)
     }
 }

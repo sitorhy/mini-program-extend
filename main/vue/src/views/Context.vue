@@ -23,11 +23,11 @@
 </template>
 
 <script>
-import Context from "../../libs/test-units/context";
+import {compatibleContext} from "../../libs/test-units/context";
 
 export default {
-  name: "Query",
-  ...Context
+  name: "Context",
+  ...compatibleContext
 }
 </script>
 

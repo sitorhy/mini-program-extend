@@ -93,110 +93,75 @@ export default class MPExtender {
      * @returns {*}
      */
     createRuntimeCompatibleContext(context, properties, computed, fnSetData) {
-        const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
-
         let runtimeContext;
 
-        const runtimeDataContext = createReactiveObject(context.data, context.data, function (path, value) {
-            if (computed[path]) {
-                if (isFunction(computed[path].set)) {
-                    // 计算属性赋值调用对应 setter 修改 state
-                    computed[path].set.call(runtimeContext, value);
-                } else {
-                    if (isFunction(fnSetData)) {
-                        fnSetData({[path]: value});
-                    } else {
-                        Reflect.get(runtimeContext, "setData").call(runtimeContext, {[path]: value});
+        const reactiveState = createReactiveObject(context.data, context.data,
+            (path, value) => {
+                console.log(`${path} => ${JSON.stringify(value)}`);
+                fnSetData({[path]: value});
+            });
+
+        const propsSingleton = new Singleton((receiver) => {
+            const $props = {};
+            Object.keys(properties).forEach(prop => {
+                Object.defineProperty($props, prop, {
+                    get() {
+                        return Reflect.get(receiver, prop);
+                    },
+                    set(v) {
+                        Reflect.set(receiver, prop, v);
                     }
-                }
-            } else {
-                // 非计算属性赋值
-                // path 为空 可视为根对象
-                if (isFunction(fnSetData)) {
-                    fnSetData(!isNullOrEmpty(path) ? {[path]: value} : value);
-                } else {
-                    Reflect.get(runtimeContext, "setData").call(runtimeContext, !isNullOrEmpty(path) ? {[path]: value} : value);
-                }
-            }
-            getters.forEach((p) => {
-                const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
-                const curVal = Reflect.get(runtimeContext, p);
-                const pValue = getter.call(runtimeContext);
-                if (!equal(curVal, pValue)) {
-                    if (isFunction(fnSetData)) {
-                        fnSetData({[p]: pValue});
-                    } else {
-                        Reflect.get(runtimeContext, "setData").call(runtimeContext, {[p]: pValue});
-                    }
-                }
+                });
             });
         });
 
-        runtimeContext = new Proxy(
-            context,
-            {
-                get(target, p, receiver) {
-                    if (p === "data") {
-                        return runtimeDataContext;
-                    }
-
-                    if (p === "$props") {
-                        const $props = {};
+        runtimeContext = new Proxy(context, {
+            get(target, p, receiver) {
+                if (p === "$data") {
+                    const keys = Object.keys(context.data || {}).filter(k => {
                         if (properties) {
-                            Object.keys(runtimeDataContext).filter(i => Reflect.has(properties, i)).forEach(i => {
-                                Object.defineProperty($props, i, {
-                                    get() {
-                                        return Reflect.get(runtimeDataContext, i);
-                                    },
-                                    set(v) {
-                                        return Reflect.set(runtimeDataContext, i, v);
-                                    }
-                                })
-                            });
+                            if (Reflect.has(properties, k)) {
+                                return false;
+                            }
                         }
-                        return $props;
-                    }
+                        if (computed) {
+                            if (Reflect.has(computed, k)) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    });
+                    const $data = {};
+                    keys.forEach(k => {
+                        Object.defineProperty($data, k, {
+                            get() {
+                                return Reflect.get(reactiveState, k);
+                            },
+                            set(v) {
+                                Reflect.set(reactiveState, p, v);
+                            }
+                        })
+                    });
+                    return $data;
+                }
+                if (p === "$props") {
+                    return propsSingleton.get(reactiveState);
+                }
 
-                    if (p === "$data") {
-                        const $data = {};
-                        Object.keys(runtimeDataContext).filter(i =>
-                            (properties ? !Reflect.has(properties, i) : true) &&
-                            (computed ? !Reflect.has(computed, i) : true)
-                        ).forEach(i => {
-                            Object.defineProperty($data, i, {
-                                get() {
-                                    return Reflect.get(runtimeDataContext, i);
-                                },
-                                set(v) {
-                                    return Reflect.set(runtimeDataContext, i, v);
-                                }
-                            })
-                        });
-                        return $data;
+                if (Reflect.has(target, p)) {
+                    const prop = Reflect.get(target, p);
+                    if (isFunction(prop)) {
+                        return prop.bind(target);
                     }
-
-                    if (Reflect.has(target, p)) {
-                        const prop = Reflect.get(target, p);
-                        if (isFunction(prop)) {
-                            return prop.bind(target);
-                        }
-                        return prop;
-                    } else {
-                        if (Reflect.has(runtimeDataContext, p)) {
-                            return Reflect.get(runtimeDataContext, p);
-                        }
-                        return Reflect.get(target, p);
+                    return prop;
+                } else {
+                    if (Reflect.has(context.data, p)) {
+                        return Reflect.get(reactiveState, p);
                     }
-                },
-                set(target, p, value, receiver) {
-                    if (Reflect.has(runtimeDataContext, p)) {
-                        return Reflect.set(runtimeDataContext, p, value);
-                    } else {
-                        return Reflect.set(context, p, value);
-                    }
+                    return Reflect.get(target, p);
                 }
             }
-        );
+        });
 
         return runtimeContext;
     }
@@ -221,6 +186,12 @@ export default class MPExtender {
             });
         }
         return Reflect.get(context, RTCSign);
+    }
+
+    deleteRuntimeContext(context) {
+        if (Reflect.has(context, RTCSign)) {
+            Reflect.deleteProperty(context, RTCSign);
+        }
     }
 
     /**

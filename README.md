@@ -1,3 +1,5 @@
+<img src="H:\JavaScript\wechat-mini-program-extend\main\mp-wechat\pages\index\logo.svg" style="zoom:50%;" />
+
 # wechat-mini-program-extend
 
 小程序扩展框架，依赖开发者工具的 npm 构建。具体详情可查阅[官方 npm 文档](https://developers.weixin.qq.com/miniprogram/dev/devtools/npm.html)。

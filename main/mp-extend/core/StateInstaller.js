@@ -47,7 +47,7 @@ export default class StateInstaller extends OptionInstaller {
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
-        const state = clone(context.get("state"));
+        const state = clone(context.get("state")); // 消除反应式对象
         const properties = Stream.of(Object.entries(context.get("properties")))
             .map(([name, constructor]) => {
                 return [name, Object.assign(

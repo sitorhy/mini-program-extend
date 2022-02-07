@@ -5,7 +5,7 @@ function beforeCreate() {
     this.p3.a++;
 }
 
-export default {
+const common = {
     staticData: 100,
     computed: {
         p1() {
@@ -45,7 +45,16 @@ export default {
             this.p3.a++;
         }
     },
+};
+
+export const compatibleContext = {
+    ...common,
     ...typeof wx === "undefined" ? {
         mounted: beforeCreate
     } : {beforeCreate}
+};
+
+export const runtimeContext = {
+    ...common,
+    mounted: beforeCreate
 };

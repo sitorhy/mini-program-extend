@@ -132,13 +132,13 @@ declare namespace extend {
 
         options(): object;
 
-        lifetimes(extender, context, options): Lifetimes;
+        lifetimes(extender: MPExtender, context: Map<any, any>, options: object): Lifetimes;
 
-        pageLifetimes(extender, context, options): PageLifetimes;
+        pageLifetimes(extender: MPExtender, context: Map<any, any>, options: object): PageLifetimes;
 
         externalClasses(): string[];
 
-        relations(): ComponentRelation;
+        relations(extender: MPExtender, context: Map<any, any>, options: object): ComponentRelation;
     }
 
     class OptionInstaller extends BehaviorInstaller {
