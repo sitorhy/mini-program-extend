@@ -1,12 +1,93 @@
 import OptionInstaller from "./OptionInstaller";
-import {isFunction} from "../utils/common";
+import {isFunction, isPlainObject} from "../utils/common";
 import {Collectors, Stream} from "../libs/Stream";
-import equal from "../libs/fast-deep-equal/index";
+import clone from "../libs/rfdc/default";
+import {getData, selectPathRoot, setData} from "../utils/object";
+
+const CMPCLockSign = Symbol("__wxCMPCLock__");
+const CMPCRTCLockSign = Symbol("__wxCMPCRTCLock__");
+const CMPCSubmitSign = Symbol("__wxCMPCSubmit__");
+
+const LockInstallBehavior = Behavior(
+    {
+        lifetimes: {
+            created() {
+                Object.defineProperty(this, CMPCLockSign, {
+                    value: new Set(),
+                    writable: false,
+                    enumerable: false,
+                    configurable: true
+                });
+                Object.defineProperty(this, CMPCSubmitSign, {
+                    value: new Set(),
+                    writable: false,
+                    enumerable: false,
+                    configurable: true
+                });
+            }
+        }
+    }
+);
+
+const PropertyMonitor = {
+    lock: function (thisArg, prop) {
+        Reflect.get(thisArg, CMPCLockSign).add(prop);
+    },
+
+    unlock: function (thisArg, prop) {
+        Reflect.get(thisArg, CMPCLockSign).delete(prop);
+    },
+
+    isLocked: function (thisArg, prop) {
+        return Reflect.get(thisArg, CMPCLockSign).has(prop);
+    }
+};
+
+const RuntimeContextMonitor = {
+    lock: function (thisArg, prop) {
+        Object.defineProperty(thisArg, CMPCRTCLockSign, {
+            configurable: true,
+            value: true,
+            writable: false,
+            enumerable: false
+        });
+    },
+
+    unlock: function (thisArg, prop) {
+        Reflect.deleteProperty(thisArg, CMPCRTCLockSign);
+    },
+
+    isLocked: function (thisArg, prop) {
+        return Reflect.has(thisArg, CMPCRTCLockSign);
+    }
+}
+
+const PropertiesCollection = {
+    add(thisArg, prop) {
+        Reflect.get(thisArg, CMPCSubmitSign).add(prop);
+    },
+
+    delete(thisArg, prop) {
+        Reflect.get(thisArg, CMPCSubmitSign).delete(prop);
+    },
+
+    clear(thisArg) {
+        Reflect.get(thisArg, CMPCSubmitSign).clear();
+    },
+
+    all(thisArg) {
+        return [...Reflect.get(thisArg, CMPCSubmitSign)];
+    }
+}
 
 /**
  * 为防止闭环，计算属性初始化在data,props初始化之后
  */
 export default class ComputedInstaller extends OptionInstaller {
+    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
+        defFields.behaviors = [LockInstallBehavior].concat(defFields.behaviors || []);
+    }
+
     attemptToInstantiateCalculated(extender, context, options) {
         const computed = context.get("computed");
         const $options = context.has("constants") ? context.get("constants") : extender.createConstantsContext(options);
@@ -16,84 +97,107 @@ export default class ComputedInstaller extends OptionInstaller {
         return extender.getComputedDependencies(state, properties, computed, methods, $options);
     }
 
-    beforeUpdate(extender, context, options, instance, data) {
-        /*
-        const computed = context.get("computed");
-        const pendingSetters = [];
-
-        Object.keys(data).forEach(p => {
-            if (computed[p]) {
-                pendingSetters.push([p, data[p]]);
-                delete data[p];
-            }
-        });
-
-        if (pendingSetters.length) {
-            pendingSetters.forEach(([p, param]) => {
-                if (computed[p] && isFunction(computed[p].set)) {
-                    computed[p].set.call(
-                        extender.getRuntimeContext(instance).get(),
-                        param
-                    );
-                } else {
-                    throw new Error(`Computed property "${p}" was assigned to but it has no setter.`);
+    lifetimes(extender, context, options) {
+        return {
+            created() {
+                // 锁定关联
+                RuntimeContextMonitor.lock(this);
+            },
+            attached() {
+                if (extender._initializationCompatibleContextEnabled === true) {
+                    // 启用临时容器测试结果
+                    RuntimeContextMonitor.unlock(this);
+                    return;
                 }
-            });
-        }*/
-    }
 
-    updated(extender, context, options, instance, data) {
-
-        /*
-        const computed = context.get("computed");
-        const originalSetData = context.has("originalSetData") ? context.get("originalSetData").bind(instance) : instance.setData.bind(instance);
-
-        const nextComputedValues = [];
-
-        Object.keys(computed).forEach(p => {
-            if (computed[p] && (isFunction(computed[p].get) || isFunction(computed[p]))) {
-                const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
-                const pValue = getter.call(
-                    extender.getRuntimeContext(instance).get()
-                );
-                if (!equal(pValue, instance.data[p])) {
-                    nextComputedValues.push([p, pValue]);
-                }
-            } else {
-                throw new Error(`Getter is missing for computed property "${p}".`);
-            }
-        });
-
-        if (nextComputedValues.length) {
-            const next = Stream.of(nextComputedValues).collect(Collectors.toMap());
-            originalSetData(next);
-        }*/
-    }
-
-    observers(extender, context, options) {
-        const linkAge = context.get("linkAge");
-
-        const linkAgeObservers = {};
-        for (const p of linkAge.keys()) {
-            linkAgeObservers[`${p}.**`] = function (v) {
-                console.log('observer ' + p);
+                // 初始化计算属性
+                const computed = context.get("computed");
+                const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
+                getters.forEach(p => {
+                    const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
+                    if (isFunction(getter)) {
+                        // 初始值直接提交
+                        this[p] = getter.call(this);
+                    }
+                });
+                // 解锁计算属性关联
+                RuntimeContextMonitor.unlock(this);
             }
         }
+    }
 
-        return linkAgeObservers;
+    beforeUpdate(extender, context, options, instance, data) {
+        // 锁定关联 提交计算结果到组件 提交过程中的读写操作与框架无关
+        if (RuntimeContextMonitor.isLocked(instance)) {
+            return;
+        }
 
-        /*
-        const props = context.get("properties");
-        const onPropertyChanged = (instance, data) => {
-            this.updated(extender, context, options, instance, data);
-        };
-        return Stream.of(Object.keys(props)).map(p => {
-            return [p, function (val) {
-                onPropertyChanged(this, {[p]: val});
-            }];
-        }).collect(Collectors.toMap());
-        */
+        const computed = context.get("computed");
+        const linkAge = context.get("linkAge");
+        const runtimeContext = extender.getRuntimeContext(instance).get();
 
+        for (const path in data) {
+            const value = data[path];
+            const src = selectPathRoot(path);
+
+            // 依赖聚集
+            PropertiesCollection.add(instance, src);
+
+            // 移除已处理值
+            delete data[path];
+
+            if (PropertyMonitor.isLocked(instance, src)) {
+                return;
+            }
+            PropertyMonitor.lock(instance, src);
+            if (src !== path) {
+                if (getData(instance.data, path) !== value) {
+                    setData(instance.data, {[path]: value});
+                }
+            } else {
+                const setter = computed[src] && isFunction(computed[src].set) ? computed[src].set : null;
+                if (value !== instance.data[src]) {
+                    if (isFunction(setter)) {
+                        setter.call(runtimeContext, value);
+                        const getter = computed[src] && isFunction(computed[src].get) ? computed[src].get : computed[src];
+                        if (isFunction(getter)) {
+                            instance.data[src] = getter.call(runtimeContext);
+                        } else {
+                            throw new Error(`Getter is missing for computed property "${src}".`);
+                        }
+                    } else {
+                        setData(instance.data, {[path]: value});
+                    }
+                }
+            }
+            const targets = linkAge.get(src);
+            if (targets) {
+                targets.forEach(p => {
+                    if (!PropertyMonitor.isLocked(instance, p)) {
+                        const getter = computed[p] && isFunction(computed[p].get) ? computed[p].get : computed[p];
+                        if (isFunction(getter)) {
+                            runtimeContext[p] = getter.call(runtimeContext);
+                        } else {
+                            runtimeContext[p] = instance.data[p];
+                        }
+                    }
+                });
+            }
+            PropertyMonitor.unlock(instance, src);
+        }
+
+        RuntimeContextMonitor.lock(instance);
+        const payload = {};
+        const props = PropertiesCollection.all(instance);
+        for (const i of props) {
+            payload[i] = instance.data[i];
+        }
+        PropertiesCollection.clear(instance);
+        const originalSetData = context.get("originalSetData") || this.setData;
+        if (isFunction(originalSetData)) {
+            originalSetData(payload);
+        }
+        RuntimeContextMonitor.unlock(instance);
     }
 
     install(extender, context, options) {
@@ -102,6 +206,7 @@ export default class ComputedInstaller extends OptionInstaller {
         const state = context.get("state");
         const $options = context.has("constants") ? context.get("constants") : extender.createConstantsContext(options);
         const beforeCreate = context.get("beforeCreate");
+        const originalState = clone(state);
 
         const {computed = null} = options;
         context.set("computed", Stream.of(
@@ -135,13 +240,23 @@ export default class ComputedInstaller extends OptionInstaller {
         );
 
         const linkAge = this.attemptToInstantiateCalculated(extender, context, options);
-        const stateContext = extender.createInitializationContextSingleton();
         if (isFunction(beforeCreate)) {
-            // beforeCreate 暂不移除上下文
-            beforeCreate.call(stateContext.get(state, linkAge, properties, computed, methods, $options));
+            // 移除 beforeCreate 临时上下文
+            // beforeCreate 回调中不可访问任何属性
+            if (extender._initializationCompatibleContextEnabled === true) {
+                const stateContext = extender.createInitializationContextSingleton();
+                beforeCreate.call(stateContext.get(state, linkAge, properties, computed, methods, $options));
+                stateContext.release();
+            } else {
+                beforeCreate.call(undefined);
+            }
         }
-        stateContext.release();
         context.set("linkAge", linkAge);
-        console.log(linkAge)
+        context.set("state", originalState);
+
+        // 直接注入测试容器结果，options 配置中仅可配置 beforeCreate 回调
+        if (extender._initializationCompatibleContextEnabled === true) {
+            context.set("state", state);
+        }
     }
 }

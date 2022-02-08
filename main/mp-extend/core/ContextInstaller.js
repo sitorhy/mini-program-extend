@@ -8,7 +8,7 @@ export default class ContextInstaller extends OptionInstaller {
                     created() {
                         const properties = context.get("properties");
                         const computed = context.get("computed");
-                        extender.getRuntimeContext(this).get(this, properties, computed, context.get("originalSetData") || this.setData.bind(this));
+                        extender.getRuntimeContext(this).get(options, this, properties, computed, context.get("originalSetData") || this.setData.bind(this));
                     }
                 }
             })

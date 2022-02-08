@@ -42,7 +42,7 @@ const common = {
     },
     methods: {
         test() {
-            this.p3.a++;
+            console.log(this.data)
         }
     },
 };

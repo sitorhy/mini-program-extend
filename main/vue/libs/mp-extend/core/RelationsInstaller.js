@@ -56,7 +56,7 @@ const ParentBehavior = Behavior({
         // 默认绑定到Page
         if (Reflect.has(root, RTCGetterSign)) {
             if (Reflect.get(this, "__wxExparserNodeId__") !== Reflect.get(root, "__wxExparserNodeId__")) {
-                injectParentInstance(this, Reflect.get(root, RTCGetterSign)(this));
+                injectParentInstance(this, Reflect.get(root, RTCGetterSign)(root));
             }
         } else {
             // 没有使用PageEx构建

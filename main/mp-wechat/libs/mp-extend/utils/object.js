@@ -6,7 +6,7 @@ import {isFunction, isPrimitive, isSymbol} from "./common";
  * @returns {string|null}
  */
 export function selectPathRoot(path) {
-    const v = /^[\w]+/.exec(path);
+    const v = /^\$?[\w]+/.exec(path);
     if (v) {
         return v[0];
     }

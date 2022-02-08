@@ -11,7 +11,8 @@
     "pages/snake/index",
     "pages/mixins/index",
     "pages/query/index",
-    "pages/context/index"
+    "pages/context/index",
+    "pages/context/runtime"
   ],
   "window": {
     "backgroundTextStyle": "light",

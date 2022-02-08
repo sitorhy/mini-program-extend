@@ -17,10 +17,9 @@ import UpdateInstaller from "./UpdateInstaller";
 import ContextInstaller from "./ContextInstaller";
 
 import {Singleton} from "../libs/Singleton";
-import {isFunction, isNullOrEmpty, isPlainObject} from "../utils/common";
+import {isFunction, isPlainObject} from "../utils/common";
 import {createReactiveObject, selectPathRoot, getData, setData} from "../utils/object";
 
-import equal from "../libs/fast-deep-equal/index";
 import clone from "../libs/rfdc/default";
 import {Collectors, Stream} from "../libs/Stream";
 import RESERVED_OPTIONS_WORDS from "../utils/options";
@@ -54,6 +53,9 @@ export default class MPExtender {
     _installers = new InstallersSingleton();
     _context = new Map();
 
+    // @deprecated 上下文容器测试相关，改值不启用，仅开发用途
+    _initializationCompatibleContextEnabled = false;
+
     constructor() {
         this.use(new MixinInstaller(), 5);
         this.use(new LifeCycleInstaller(), 10);
@@ -80,25 +82,41 @@ export default class MPExtender {
         return this._installers.get();
     }
 
-    use(installer, priority = 50) {
+    use(installer, priority = 100) {
         this._installers.prepare(installer, priority);
     }
 
     /**
      * 创建运行时上下文
-     * @param {object} context - 传入this
+     * @param {object} options - 配置
+     * @param {object} instance - 传入this
      * @param {object} properties - 属性配置
      * @param {object} computed - 计算属性配置
      * @param {Function} fnSetData - 自定义setData函数，可传入原生setData函数，提高效率
      * @returns {*}
      */
-    createRuntimeCompatibleContext(context, properties, computed, fnSetData) {
+    createRuntimeCompatibleContext(options, instance, properties, computed, fnSetData) {
         let runtimeContext;
 
-        const reactiveState = createReactiveObject(context.data, context.data,
+        const beforeUpdateChain = (options, instance, data) => {
+            this.installers.forEach(i => {
+                i.beforeUpdate(this, this._context, options, instance, data);
+            });
+        };
+
+        const updatedChain = (options, instance, data) => {
+            this.installers.forEach(i => {
+                i.updated(this, this._context, options, instance, data);
+            });
+        };
+
+        const reactiveState = createReactiveObject(instance.data, instance.data,
             (path, value) => {
-                console.log(`${path} => ${JSON.stringify(value)}`);
-                fnSetData({[path]: value});
+                const data = {[path]: value};
+                beforeUpdateChain(options, instance, data);
+                fnSetData(data, function () {
+                    updatedChain(options, instance, data);
+                });
             });
 
         const propsSingleton = new Singleton((receiver) => {
@@ -115,10 +133,19 @@ export default class MPExtender {
             });
         });
 
-        runtimeContext = new Proxy(context, {
+        runtimeContext = new Proxy(instance, {
+            ownKeys(target) {
+                return [...new Set(["$data", "$props"].concat(Object.keys(instance)).concat(Object.keys(instance.data)))];
+            },
+            has(target, p) {
+                if (["$data", "$props"].includes(p)) {
+                    return true;
+                }
+                return Reflect.has(instance.data, p) || Reflect.has(instance, p);
+            },
             get(target, p, receiver) {
                 if (p === "$data") {
-                    const keys = Object.keys(context.data || {}).filter(k => {
+                    const keys = Object.keys(instance.data || {}).filter(k => {
                         if (properties) {
                             if (Reflect.has(properties, k)) {
                                 return false;
@@ -138,7 +165,7 @@ export default class MPExtender {
                                 return Reflect.get(reactiveState, k);
                             },
                             set(v) {
-                                Reflect.set(reactiveState, p, v);
+                                Reflect.set(reactiveState, k, v);
                             }
                         })
                     });
@@ -155,11 +182,32 @@ export default class MPExtender {
                     }
                     return prop;
                 } else {
-                    if (Reflect.has(context.data, p)) {
+                    if (Reflect.has(instance.data, p)) {
                         return Reflect.get(reactiveState, p);
                     }
                     return Reflect.get(target, p);
                 }
+            },
+            set(target, p, value, receiver) {
+                if (["$data", "$props"].includes(p)) {
+                    return false;
+                }
+                if (Reflect.has(instance.data, p)) {
+                    return Reflect.set(reactiveState, p, value);
+                }
+                if (Reflect.has(instance, p)) {
+                    return Reflect.set(instance, p, value);
+                }
+                return Reflect.set(reactiveState, p, value);
+            },
+            deleteProperty(target, p) {
+                if (["$data", "$props"].includes(p)) {
+                    return false;
+                }
+                if (Reflect.has(instance.data, p)) {
+                    return Reflect.deleteProperty(instance.data, p);
+                }
+                return Reflect.deleteProperty(target, p);
             }
         });
 
@@ -171,8 +219,8 @@ export default class MPExtender {
      * @returns {Singleton}
      */
     createRuntimeContextSingleton() {
-        return new Singleton((thisArg, properties, computed, fnSetData) => {
-            return this.createRuntimeCompatibleContext(thisArg, properties, computed, fnSetData);
+        return new Singleton((options, thisArg, properties, computed, fnSetData) => {
+            return this.createRuntimeCompatibleContext(options, thisArg, properties, computed, fnSetData);
         });
     }
 

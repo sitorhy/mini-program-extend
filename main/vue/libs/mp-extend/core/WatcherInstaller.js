@@ -358,20 +358,26 @@ export default class WatcherInstaller extends OptionInstaller {
                         value: new Map(),
                         writable: false
                     });
-
-                    for (const observerPath of staticWatchers.keys()) {
-                        const watcher = getStaticWatcher(this, observerPath);
-                        if (watcher) {
-                            const curValue = selectRuntimeState(this.data, watcher.path);
-
-                            // 设置侦听器初始值，并触发 immediate 侦听器
-                            watcher.once(this, [curValue]);
-                        }
-                    }
                 },
                 detached() {
                     Reflect.deleteProperty(this, SWATSign);
                     Reflect.deleteProperty(this, DWATSign);
+                }
+            }
+        };
+
+        defFields.behaviors = [Behavior(behavior)].concat((defFields.behaviors || []));
+        defFields.behaviors.push(Behavior({
+            created() {
+                const staticWatchers = Reflect.get(this, SWATSign);
+                for (const observerPath of staticWatchers.keys()) {
+                    const watcher = getStaticWatcher(this, observerPath);
+                    if (watcher) {
+                        const curValue = selectRuntimeState(this.data, watcher.path);
+
+                        // 设置侦听器初始值，并触发 immediate 侦听器
+                        watcher.once(this, [curValue]);
+                    }
                 }
             },
             observers: Stream.of(
@@ -408,9 +414,7 @@ export default class WatcherInstaller extends OptionInstaller {
                     ];
                 })
             ).collect(Collectors.toMap())
-        };
-
-        defFields.behaviors = [Behavior(behavior)].concat((defFields.behaviors || []));
+        }));
     }
 
     updateDeepWatcherRef(runtimeContext, watchers, data) {

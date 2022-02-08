@@ -100,7 +100,7 @@ declare namespace extend {
     }
 
     class MPExtender {
-        use<T extends OptionInstaller>(installer: T): void;
+        use<T extends OptionInstaller>(installer: T, priority?: number): void;
 
         extends(options: object): object;
     }

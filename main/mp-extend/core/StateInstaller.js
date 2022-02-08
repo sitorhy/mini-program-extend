@@ -2,7 +2,6 @@ import OptionInstaller from "./OptionInstaller";
 
 import {Collectors, Stream} from "../libs/Stream";
 import {removeEmpty} from "../utils/common";
-import clone from "../libs/rfdc/default";
 
 /**
  * 实例化临时上下文属性和数据，转换为小程序可直接执行的形式
@@ -47,29 +46,26 @@ export default class StateInstaller extends OptionInstaller {
     }
 
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
-        const state = clone(context.get("state")); // 消除反应式对象
+        const state = context.get("state");
         const properties = Stream.of(Object.entries(context.get("properties")))
-            .map(([name, constructor]) => {
-                return [name, Object.assign(
+            .map(([p, constructor]) => {
+                return [p, Object.assign(
                     removeEmpty({
                         type: constructor.type,
                         optionalTypes: constructor.optionalTypes,
                         observer: constructor.observer
                     }),
                     {
-                        value: state[name]
+                        value: state[p]
                     }
                 )];
             })
             .collect(Collectors.toMap());
 
-        const keys = Object.keys(properties);
-        const data = Stream.of(Object.entries(state)).filter(([name]) => !keys.includes(name)).collect(Collectors.toMap());
-
         defFields.behaviors = (defFields.behaviors || []).concat([
             Behavior({
                 properties,
-                data
+                data: state
             })
         ]);
     }
