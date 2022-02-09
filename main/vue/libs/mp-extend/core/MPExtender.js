@@ -53,7 +53,7 @@ export default class MPExtender {
     _installers = new InstallersSingleton();
     _context = new Map();
 
-    // @deprecated 上下文容器测试相关，改值不启用，仅开发用途
+    // @deprecated 上下文容器测试相关，该值永不启用，仅开发用途
     _initializationCompatibleContextEnabled = false;
 
     constructor() {
