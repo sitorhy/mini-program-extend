@@ -192,13 +192,11 @@ export default class MPExtender {
                 if (["$data", "$props"].includes(p)) {
                     return false;
                 }
-                if (Reflect.has(instance.data, p)) {
+                if (Reflect.has(instance.data, p) || (properties && Reflect.has(properties, p) || (computed && Reflect.has(computed, p)))) {
                     return Reflect.set(reactiveState, p, value);
                 }
-                if (Reflect.has(instance, p)) {
-                    return Reflect.set(instance, p, value);
-                }
-                return Reflect.set(reactiveState, p, value);
+                return Reflect.set(instance, p, value);
+
             },
             deleteProperty(target, p) {
                 if (["$data", "$props"].includes(p)) {
