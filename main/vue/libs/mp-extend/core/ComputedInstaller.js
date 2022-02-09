@@ -200,6 +200,31 @@ export default class ComputedInstaller extends OptionInstaller {
         RuntimeContextMonitor.unlock(instance);
     }
 
+    observers(extender, context, options) {
+        const linkAge = context.get("linkAge");
+        const properties = context.get("properties");
+        const computed = context.get("computed");
+        const observers = {};
+        for (const p of linkAge.keys()) {
+            if (Reflect.has(properties, p)) {
+                observers[p] = function () {
+                    const targets = linkAge.get(p);
+                    if (targets) {
+                        for (const t of targets) {
+                            const getter = computed[t] && isFunction(computed[t].get) ? computed[t].get : computed[t];
+                            if (isFunction(getter)) {
+
+                            } else {
+                                throw new Error(`Getter is missing for computed property "${t}".`);
+                            }
+                        }
+                    }
+                };
+            }
+        }
+        return observers;
+    }
+
     install(extender, context, options) {
         const properties = context.get("properties");
         const methods = context.get("methods");
