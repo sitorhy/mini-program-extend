@@ -75,8 +75,16 @@ const PropertiesCollection = {
         Reflect.get(thisArg, CMPCSubmitSign).clear();
     },
 
+    size(thisArg) {
+        return Reflect.get(thisArg, CMPCSubmitSign).size;
+    },
+
     all(thisArg) {
         return [...Reflect.get(thisArg, CMPCSubmitSign)];
+    },
+
+    slice(thisArg, start) {
+        return this.all(thisArg).slice(start);
     }
 }
 
@@ -135,16 +143,13 @@ export default class ComputedInstaller extends OptionInstaller {
         const computed = context.get("computed");
         const linkAge = context.get("linkAge");
         const runtimeContext = extender.getRuntimeContext(instance).get();
+        const collectionDepth = PropertiesCollection.size(instance);
 
         for (const path in data) {
             const value = data[path];
             const src = selectPathRoot(path);
-
-            console.log(`${src} => ${instance.data[src]}`)
-
             // 依赖聚集
             PropertiesCollection.add(instance, src);
-
             // 移除已处理值
             delete data[path];
 
@@ -164,7 +169,6 @@ export default class ComputedInstaller extends OptionInstaller {
                         const getter = computed[src] && isFunction(computed[src].get) ? computed[src].get : computed[src];
                         if (isFunction(getter)) {
                             instance.data[src] = getter.call(runtimeContext);
-                            console.log(`${src} => ${instance.data[src]}`)
                         } else {
                             throw new Error(`Getter is missing for computed property "${src}".`);
                         }
@@ -175,7 +179,6 @@ export default class ComputedInstaller extends OptionInstaller {
             }
             const targets = linkAge.get(src);
             if (targets) {
-                console.log(targets)
                 targets.forEach(p => {
                     if (!PropertyMonitor.isLocked(instance, p)) {
                         const getter = computed[p] && isFunction(computed[p].get) ? computed[p].get : computed[p];
@@ -192,12 +195,11 @@ export default class ComputedInstaller extends OptionInstaller {
 
         RuntimeContextMonitor.lock(instance);
         const payload = {};
-        const props = PropertiesCollection.all(instance);
-        console.log(props)
+        const props = PropertiesCollection.slice(instance, collectionDepth);
         for (const i of props) {
             payload[i] = instance.data[i];
+            PropertiesCollection.delete(instance, i);
         }
-        PropertiesCollection.clear(instance);
         const originalSetData = context.get("originalSetData") || this.setData;
         if (isFunction(originalSetData)) {
             originalSetData(payload);
@@ -289,7 +291,5 @@ export default class ComputedInstaller extends OptionInstaller {
         if (extender._initializationCompatibleContextEnabled === true) {
             context.set("state", state);
         }
-
-        console.log(linkAge)
     }
 }
