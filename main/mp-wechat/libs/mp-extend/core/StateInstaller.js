@@ -62,6 +62,13 @@ export default class StateInstaller extends OptionInstaller {
             })
             .collect(Collectors.toMap());
 
+        // 消除警告 data field overwritten prop value
+        for (const i in state) {
+            if (properties[i]) {
+                delete state[i];
+            }
+        }
+
         defFields.behaviors = (defFields.behaviors || []).concat([
             Behavior({
                 properties,
