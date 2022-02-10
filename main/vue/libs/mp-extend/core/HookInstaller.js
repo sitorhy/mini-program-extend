@@ -19,7 +19,7 @@ export default class HookInstaller extends OptionInstaller {
                         .map(([name, func]) => {
                             return [name, function () {
                                 if (isFunction(func)) {
-                                    return func.apply(extender.getRuntimeContext(this).get(), arguments);
+                                    return func.apply(extender.getRuntimeContextSingleton(this).get(), arguments);
                                 }
                                 return undefined;
                             }];
@@ -34,7 +34,7 @@ export default class HookInstaller extends OptionInstaller {
                     const handler = i.handler;
                     if (isFunction(handler)) {
                         i.handler = function () {
-                            handler.apply(extender.getRuntimeContext(this).get(), arguments);
+                            handler.apply(extender.getRuntimeContextSingleton(this).get(), arguments);
                         }
                     }
                 });
@@ -45,7 +45,7 @@ export default class HookInstaller extends OptionInstaller {
             if (!["data", "beforeCreate", "provide"].includes(prop) && isFunction(context.get(prop))) {
                 const func = context.get(prop);
                 context.set(prop, function () {
-                    func.apply(extender.getRuntimeContext(this).get(), arguments);
+                    func.apply(extender.getRuntimeContextSingleton(this).get(), arguments);
                 });
             }
         }

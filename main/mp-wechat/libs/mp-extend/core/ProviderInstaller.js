@@ -66,7 +66,7 @@ export default class ProviderInstaller extends OptionInstaller {
                 attached() {
                     const provide = context.get("provide");
                     const inject = context.get("inject");
-                    const runtimeContext = extender.getRuntimeContext(this).get();
+                    const runtimeContext = extender.getRuntimeContextSingleton(this).get();
                     if (isFunction(provide)) {
                         const provider = provide.call(runtimeContext);
                         Object.defineProperty(this, ProvideSign, {

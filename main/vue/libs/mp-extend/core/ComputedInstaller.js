@@ -142,7 +142,7 @@ export default class ComputedInstaller extends OptionInstaller {
 
         const computed = context.get("computed");
         const linkAge = context.get("linkAge");
-        const runtimeContext = extender.getRuntimeContext(instance).get();
+        const runtimeContext = extender.getRuntimeContextSingleton(instance).get();
         const collectionDepth = PropertiesCollection.size(instance);
 
         for (const path in data) {

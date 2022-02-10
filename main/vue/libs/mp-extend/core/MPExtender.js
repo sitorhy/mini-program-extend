@@ -222,11 +222,23 @@ export default class MPExtender {
         });
     }
 
-    getRuntimeContext(context) {
+    /**
+     * 框架环境外获取运行时上下文，在 created 中调用该方法不能确保上下文已初始化
+     * @param context - 组件对象，通常传 this
+     * @returns {*}
+     */
+    static getRuntimeContext(context) {
+        if (!Reflect.has(context, RTCSign)) {
+            throw new Error("Runtime context has not been initialized.");
+        }
+        return Reflect.get(context, RTCSign).get();
+    }
+
+    getRuntimeContextSingleton(context) {
         if (!Reflect.has(context, RTCSign)) {
             Object.defineProperty(context, RTCSign, {
                 value: this.createRuntimeContextSingleton(),
-                configurable: false,
+                configurable: true,
                 enumerable: false,
                 writable: false
             });
