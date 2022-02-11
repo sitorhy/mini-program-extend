@@ -1,0 +1,12 @@
+<top>
+    <view>
+        <parent>
+            <child></child>
+            <child></child>
+        </parent>
+        <parent>
+            <child></child>
+            <child></child>
+        </parent>
+    </view>
+</top>

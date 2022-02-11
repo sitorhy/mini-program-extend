@@ -12,7 +12,8 @@
     "pages/mixins/index",
     "pages/query/index",
     "pages/context/index",
-    "pages/context/runtime"
+    "pages/context/runtime",
+    "pages/relations/index"
   ],
   "window": {
     "backgroundTextStyle": "light",
