@@ -2,6 +2,7 @@
   "usingComponents": {
     "custom-component": "./custom-component"
   },
+  "restartStrategy": "homePageAndLatestPage",
   "enablePullDownRefresh": true,
   "backgroundColor": "#dfdfdf",
   "onReachBottomDistance": 50

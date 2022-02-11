@@ -258,6 +258,7 @@ export default class LifeCycleInstaller extends OptionInstaller {
             onShareTimeline,
             onAddToFavorites,
             onTabItemTap,
+            onSaveExitState,
             onPageScroll,
             onResize,
             ready,
@@ -276,6 +277,7 @@ export default class LifeCycleInstaller extends OptionInstaller {
                 onShareTimeline,
                 onAddToFavorites,
                 onTabItemTap,
+                onSaveExitState,
                 onPageScroll,
                 onResize,
                 ready: function () {

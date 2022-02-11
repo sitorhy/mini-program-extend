@@ -34,6 +34,7 @@ const RESERVED_OPTIONS_WORDS = new Set(
         "onPageScroll",
         "onResize",
         "onTabItemTap",
+        "onSaveExitState",
         "props",
         "propsData",
         "computed",

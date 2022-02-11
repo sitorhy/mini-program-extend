@@ -1,3 +1,5 @@
+<img src="https://github.com/sitorhy/wechat-mini-program-extend/blob/main/main/mp-wechat/pages/index/logo.svg" width="100" height="100" />
+
 # wechat-mini-program-extend
 
 小程序扩展框架，依赖开发者工具的 npm 构建。具体详情可查阅[官方 npm 文档](https://developers.weixin.qq.com/miniprogram/dev/devtools/npm.html)。

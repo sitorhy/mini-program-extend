@@ -5,7 +5,7 @@
 </view>
 
 <view class="container">
-    <navigator url="/pages/mp-checked/index?word=hello">
+    <navigator url="/pages/mp-checked/index?word=hello&rand={{rand}}">
         <button type="primary">环境自检</button>
     </navigator>
     <navigator url="/pages/props/index?name=田所浩二">
