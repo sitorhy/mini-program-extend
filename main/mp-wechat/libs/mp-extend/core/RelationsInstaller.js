@@ -27,6 +27,7 @@ const RelationInjection = {
             Object.defineProperty(target, "$children", {
                 configurable: true,
                 enumerable: false,
+                writable: false,
                 value: []
             });
         }
@@ -94,7 +95,7 @@ const RelationshipManager = {
         }
     },
 
-    callTarget: function (excludeKeys, thisArg, target, type, reverseType, callback) {
+    callOnce: function (excludeKeys, thisArg, target, type, reverseType, callback) {
         const executedRelationKeys = [];
         const selfRelations = RelationshipManager.get(thisArg);
         if (selfRelations && selfRelations[reverseType]) {
@@ -255,7 +256,7 @@ export default class RelationsInstaller extends OptionInstaller {
                         // target.relations 存在 type = descendant 且 relation.target 在本组件包含
                         // 本组件 relations 存在 type = ancestor 且 relation.target 在 target 包含
                         const executedRelationKeys = ExecutedRelationCollection.get(this);
-                        const keys = RelationshipManager.callTarget(executedRelationKeys, this, target, "descendant", "ancestor", "linked");
+                        const keys = RelationshipManager.callOnce(executedRelationKeys, this, target, "descendant", "ancestor", "linked");
                         if (keys.length) {
                             // 存在多个 ancestor 配置时 descendant 会被多次遍历反复执行
                             // 需要在 ancestor 执行期间标记执行过的 descendant 并作为下一个 ancestor 的执行依据
@@ -269,7 +270,7 @@ export default class RelationsInstaller extends OptionInstaller {
                     relation.linkChanged = function (target) {
                         linkChanged.call(extender.getRuntimeContextSingleton(this).get(), extender.getRuntimeContextSingleton(target).get(), key);
                         const executedRelationKeys = ExecutedRelationCollection.get(this);
-                        const keys = RelationshipManager.callTarget(executedRelationKeys, this, target, "descendant", "ancestor", "linkChanged");
+                        const keys = RelationshipManager.callOnce(executedRelationKeys, this, target, "descendant", "ancestor", "linkChanged");
                         if (keys.length) {
                             ExecutedRelationCollection.push(this, keys);
                         }
@@ -279,7 +280,7 @@ export default class RelationsInstaller extends OptionInstaller {
                     relation.unlinked = function (target) {
                         unlinked.call(extender.getRuntimeContextSingleton(this).get(), extender.getRuntimeContextSingleton(target).get(), key);
                         const executedRelationKeys = ExecutedRelationCollection.get(this);
-                        const keys = RelationshipManager.callTarget(executedRelationKeys, this, target, "descendant", "ancestor", "linkChanged");
+                        const keys = RelationshipManager.callOnce(executedRelationKeys, this, target, "descendant", "ancestor", "linkChanged");
                         if (keys.length) {
                             ExecutedRelationCollection.push(this, keys);
                         }
