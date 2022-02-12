@@ -1,29 +1,47 @@
 import {isFunction} from "../utils/common";
 
 function applyFunctions(functions, args) {
+    let result;
+    let validResult;
     functions.forEach((func) => {
         if (isFunction(func)) {
-            func.apply(this, args);
+            validResult = func.apply(this, args);
+            if (validResult !== undefined) {
+                result = validResult;
+            }
         }
     });
+    return result;
 }
 
 export function Invocation(target, before, after) {
     return function (...args) {
+        let result;
+        let validResult;
         if (isFunction(before)) {
-            before.apply(this, args);
+            validResult = before.apply(this, args);
         } else if (Array.isArray(before)) {
-            applyFunctions.call(this, before, args);
+            validResult = applyFunctions.call(this, before, args);
+        }
+        if (validResult !== undefined) {
+            result = validResult;
         }
         if (isFunction(target)) {
-            target.apply(this, args);
+            validResult = target.apply(this, args);
         } else if (Array.isArray(target)) {
-            applyFunctions.call(this, target, args);
+            validResult = applyFunctions.call(this, target, args);
+        }
+        if (validResult !== undefined) {
+            result = validResult;
         }
         if (isFunction(after)) {
-            after.apply(this, args);
+            validResult = after.apply(this, args);
         } else if (Array.isArray(after)) {
-            applyFunctions.call(this, after, args);
+            validResult = applyFunctions.call(this, after, args);
         }
+        if (validResult !== undefined) {
+            result = validResult;
+        }
+        return result;
     }
 }
