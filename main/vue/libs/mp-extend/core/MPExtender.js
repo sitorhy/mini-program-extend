@@ -71,8 +71,8 @@ export default class MPExtender {
         this.use(new EventBusInstaller(), 150);
         this.use(new RelationsInstaller(), 200);
         this.use(new HookInstaller(), 250);
-        this.use(new UpdateInstaller(), 300);
-        this.use(new ContextInstaller(), 350);
+        this.use(new ContextInstaller(), 300);
+        this.use(new UpdateInstaller(), 350);
     }
 
     /**
