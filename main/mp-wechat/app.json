@@ -13,7 +13,8 @@
     "pages/query/index",
     "pages/context/index",
     "pages/context/runtime",
-    "pages/relations/index"
+    "pages/relations/index",
+    "pages/context/components"
   ],
   "window": {
     "backgroundTextStyle": "light",

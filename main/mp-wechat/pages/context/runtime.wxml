@@ -26,4 +26,7 @@
         <text>p3RefreshTime={{ p3RefreshTime }}</text>
     </view>
     <button bind:tap="test">测试</button>
+    <navigator url="/pages/context/components">
+        <button>组件嵌套测试</button>
+    </navigator>
 </view>
