@@ -1,8 +1,7 @@
 import OptionInstaller from "./OptionInstaller";
 import {isFunction, isPlainObject} from "../utils/common";
 import {Collectors, Stream} from "../libs/Stream";
-import clone from "../libs/rfdc/default";
-import {getData, selectPathRoot, setData} from "../utils/object";
+import {getData, setData, selectPathRoot} from "../utils/object";
 
 const CMPCLockSign = Symbol("__wxCMPCLock__");
 const CMPCRTCLockSign = Symbol("__wxCMPCRTCLock__");
@@ -44,7 +43,7 @@ const PropertyMonitor = {
 };
 
 const RuntimeContextMonitor = {
-    lock: function (thisArg, prop) {
+    lock: function (thisArg) {
         Object.defineProperty(thisArg, CMPCRTCLockSign, {
             configurable: true,
             value: true,
@@ -53,11 +52,11 @@ const RuntimeContextMonitor = {
         });
     },
 
-    unlock: function (thisArg, prop) {
+    unlock: function (thisArg) {
         Reflect.deleteProperty(thisArg, CMPCRTCLockSign);
     },
 
-    isLocked: function (thisArg, prop) {
+    isLocked: function (thisArg) {
         return Reflect.has(thisArg, CMPCRTCLockSign);
     }
 }
@@ -96,36 +95,6 @@ export default class ComputedInstaller extends OptionInstaller {
         defFields.behaviors = [LockInstallBehavior].concat(defFields.behaviors || []);
     }
 
-    /**
-     * 在独立容器中计算依赖关系
-     * @param extender
-     * @param context
-     * @param options
-     * @returns {*}
-     */
-    attemptToInstantiateCalculated(extender, context, options) {
-        const state = {};
-        const methods = context.get("methods");
-        const $options = extender.createConstantsContext(options);
-        const computed = context.get("computed");
-
-        extender.createPropertiesCompatibleContext(state, context.get("properties") || {}, $options);
-
-        const properties = Stream.of(Object.entries(context.get("properties") || {})).map(([prop, constructor]) => {
-            const normalize = {
-                type: constructor.type,
-                optionalTypes: constructor.optionalTypes,
-                observer: constructor.observer,
-                value: state[prop]
-            };
-            return [prop, normalize];
-        }).collect(Collectors.toMap())
-
-        extender.createDataCompatibleContext(state, properties, context.get("data") || {}, null, methods, $options);
-
-        return extender.getComputedDependencies(state, properties, computed, methods, $options);
-    }
-
     lifetimes(extender, context, options) {
         return {
             created() {
@@ -140,6 +109,30 @@ export default class ComputedInstaller extends OptionInstaller {
                 }
 
                 // 初始化计算属性
+
+                const linkAge = new Map();
+                const dependencies = [];
+                context.set("linkAge", linkAge);
+                const unwatch = extender.getRuntimeContextSingleton(this).watch(
+                    (path, value, level) => {
+                        if (!dependencies.includes(path) && level === 0) {
+                            dependencies.push(path);
+                        }
+                    },
+                    (path) => {
+                        const src = selectPathRoot(path);
+                        dependencies.splice(0).map(i => selectPathRoot(i)).filter(i => i !== src).forEach(p => {
+                            if (!linkAge.has(p)) {
+                                linkAge.set(p, []);
+                            }
+                            const targets = linkAge.get(p);
+                            if (!targets.includes(src)) {
+                                targets.push(src);
+                            }
+                        });
+                    }
+                );
+
                 const computed = context.get("computed");
                 const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
                 getters.forEach(p => {
@@ -150,6 +143,7 @@ export default class ComputedInstaller extends OptionInstaller {
                     }
                 });
                 // 解锁计算属性关联
+                unwatch();
                 RuntimeContextMonitor.unlock(this);
             }
         }
@@ -161,8 +155,8 @@ export default class ComputedInstaller extends OptionInstaller {
             return;
         }
 
-        const computed = context.get("computed");
         const linkAge = context.get("linkAge");
+        const computed = context.get("computed");
         const runtimeContext = extender.getRuntimeContextSingleton(instance).get();
         const collectionDepth = PropertiesCollection.size(instance);
 
@@ -229,14 +223,14 @@ export default class ComputedInstaller extends OptionInstaller {
     }
 
     observers(extender, context, options) {
-        const linkAge = context.get("linkAge");
         const properties = context.get("properties");
         const computed = context.get("computed");
 
         const observers = {};
-        for (const p of linkAge.keys()) {
-            if (Reflect.has(properties, p)) {
-                observers[p] = function () {
+        for (const p in properties) {
+            observers[p] = function () {
+                const linkAge = context.get("linkAge");
+                if (linkAge) {
                     const targets = linkAge.get(p);
                     if (targets) {
                         for (const t of targets) {
@@ -248,8 +242,8 @@ export default class ComputedInstaller extends OptionInstaller {
                             }
                         }
                     }
-                };
-            }
+                }
+            };
         }
         return observers;
     }
@@ -292,18 +286,18 @@ export default class ComputedInstaller extends OptionInstaller {
             }).collect(Collectors.toMap())
         );
 
-        const linkAge = this.attemptToInstantiateCalculated(extender, context, options);
         if (isFunction(beforeCreate)) {
             // 移除 beforeCreate 临时上下文
             // beforeCreate 回调中不可访问任何属性
             if (extender._initializationCompatibleContextEnabled === true) {
                 const stateContext = extender.createInitializationContextSingleton();
+                const linkAge = extender.getComputedDependencies(state, properties, context.get("computed"), methods, $options);
+                context.set("linkAge", linkAge);
                 beforeCreate.call(stateContext.get(state, linkAge, properties, context.get("computed"), methods, $options));
                 stateContext.release();
             } else {
                 beforeCreate.call(undefined);
             }
         }
-        context.set("linkAge", linkAge);
     }
 }

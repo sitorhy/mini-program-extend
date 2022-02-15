@@ -49,6 +49,58 @@ class InstallersSingleton extends Singleton {
     }
 }
 
+class RuntimeContextSingleton extends Singleton {
+    __listeners = [];
+
+    get() {
+        const [options, thisArg, properties, computed, fnSetData, onStateGetting, onStateSetting] = arguments;
+        this.watch(onStateGetting, onStateSetting);
+        return super.get(options, thisArg, properties, computed, fnSetData,
+            (path, value, level) => {
+                if (this.__listeners.length) {
+                    this.__onStateGetting(path, value, level);
+                }
+            },
+            (path, value, level) => {
+                if (this.__listeners.length) {
+                    this.__onStateSetting(path, value, level);
+                }
+            });
+    }
+
+    __onStateGetting(path, value, level) {
+        for (const {get} of this.__listeners) {
+            get(path, value, level);
+        }
+    }
+
+    __onStateSetting(path, value, level) {
+        for (const {set} of this.__listeners) {
+            set(path, value, level);
+        }
+    }
+
+    watch(onStateGetting, onStateSetting) {
+        if (!onStateGetting || !onStateGetting) {
+            return null;
+        }
+        if (this.__listeners.findIndex(i => i.get === onStateGetting || i.set === onStateSetting) >= 0) {
+            return null;
+        }
+        this.__listeners.push({get: onStateGetting, set: onStateSetting});
+        return () => {
+            this.unwatch(onStateGetting, onStateSetting);
+        };
+    }
+
+    unwatch(onStateGetting, onStateSetting) {
+        const index = this.__listeners.findIndex(i => i.get === onStateGetting || i.set === onStateSetting);
+        if (index >= 0) {
+            this.__listeners.splice(index, 1);
+        }
+    }
+}
+
 export default class MPExtender {
     _installers = new InstallersSingleton();
     _context = new Map();
@@ -93,9 +145,11 @@ export default class MPExtender {
      * @param {object} properties - 属性配置
      * @param {object} computed - 计算属性配置
      * @param {Function} fnSetData - 自定义setData函数，可传入原生setData函数，提高效率
+     * @param {Function} fnStateGetting
+     * @param {Function} fnStateSetting
      * @returns {*}
      */
-    createRuntimeCompatibleContext(options, instance, properties, computed, fnSetData) {
+    createRuntimeCompatibleContext(options, instance, properties, computed, fnSetData, fnStateGetting = null, fnStateSetting = null) {
         let runtimeContext;
 
         const beforeUpdateChain = (options, instance, data) => {
@@ -117,7 +171,7 @@ export default class MPExtender {
                 fnSetData(data, function () {
                     updatedChain(options, instance, data);
                 });
-            });
+            }, "", fnStateGetting, fnStateSetting);
 
         const propsSingleton = new Singleton((receiver) => {
             const $props = {};
@@ -217,8 +271,8 @@ export default class MPExtender {
      * @returns {Singleton}
      */
     createRuntimeContextSingleton() {
-        return new Singleton((options, thisArg, properties, computed, fnSetData) => {
-            return this.createRuntimeCompatibleContext(options, thisArg, properties, computed, fnSetData);
+        return new RuntimeContextSingleton((options, thisArg, properties, computed, fnSetData, onStateGetting, onStateSetting) => {
+            return this.createRuntimeCompatibleContext(options, thisArg, properties, computed, fnSetData, onStateGetting, onStateSetting);
         });
     }
 
@@ -478,10 +532,8 @@ export default class MPExtender {
      * @param computed - 规格化计算属性配置
      * @param methods
      * @param constants
-     * @param {(path:string,value:any,level:number)=>void} onStateGet
-     * @param {(path:string,value:any,level:number)=>void} onStateSet
      */
-    getComputedDependencies(state, properties, computed, methods, constants = {}, onStateGet = null, onStateSet = null) {
+    getComputedDependencies(state, properties, computed, methods, constants = {}) {
         const plainState = clone(state);
         const linkAge = new Map();
         const dependencies = [];
@@ -493,9 +545,6 @@ export default class MPExtender {
             (path, value, level) => {
                 if (!dependencies.includes(path) && level === 0) {
                     dependencies.push(path);
-                }
-                if (isFunction(onStateGet)) {
-                    onStateGet(path, value, level);
                 }
             },
             (path, value, level) => {
@@ -509,9 +558,6 @@ export default class MPExtender {
                         targets.push(src);
                     }
                 });
-                if (isFunction(onStateSet)) {
-                    onStateSet(path, value, level);
-                }
             }
         );
 
