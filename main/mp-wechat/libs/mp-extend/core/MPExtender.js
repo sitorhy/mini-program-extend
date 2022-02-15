@@ -301,6 +301,10 @@ export default class MPExtender {
     }
 
     deleteRuntimeContextSingleton(context) {
+        const singleton = this.getRuntimeContextSingleton();
+        if (singleton) {
+            singleton.release();
+        }
         if (Reflect.has(context, RTCSign)) {
             Reflect.deleteProperty(context, RTCSign);
         }
