@@ -300,7 +300,7 @@ export default class MPExtender {
         return Reflect.get(context, RTCSign);
     }
 
-    deleteRuntimeContext(context) {
+    deleteRuntimeContextSingleton(context) {
         if (Reflect.has(context, RTCSign)) {
             Reflect.deleteProperty(context, RTCSign);
         }
