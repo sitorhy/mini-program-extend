@@ -1,8 +1,5 @@
 import OptionInstaller from "./OptionInstaller";
 import {isFunction} from "../utils/common";
-import {Collectors, Stream} from "../libs/Stream";
-import RESERVED_OPTIONS_WORDS from "../utils/options";
-import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
 
 export default class InstanceInstaller extends OptionInstaller {
     lifetimes(extender, context, options) {
@@ -64,9 +61,7 @@ export default class InstanceInstaller extends OptionInstaller {
                 }
 
                 if (!Object.hasOwnProperty.call(this, "$options")) {
-                    const $options = Stream.of(Object.entries(options))
-                        .filter(([p]) => !RESERVED_OPTIONS_WORDS.has(p) && !RESERVED_LIFECYCLES_WORDS.has(p))
-                        .collect(Collectors.toMap());
+                    const $options = context.has("constants") ? context.get("constants") : extender.createConstantsContext(options);
                     Object.defineProperty(this, "$options", {
                         configurable: false,
                         enumerable: false,

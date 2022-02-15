@@ -1,50 +1,90 @@
 import OptionInstaller from "./OptionInstaller";
 import {isFunction, isPlainObject} from "../utils/common";
 import {Collectors, Stream} from "../libs/Stream";
-import {Singleton} from "../libs/Singleton";
-import equal from "../libs/fast-deep-equal/index";
+import clone from "../libs/rfdc/default";
+import {getData, selectPathRoot, setData} from "../utils/object";
 
-const RTCSign = Symbol("__wxRTC__");
-const CMPCSign = Symbol("__wxCMPC__");
+const CMPCLockSign = Symbol("__wxCMPCLock__");
+const CMPCRTCLockSign = Symbol("__wxCMPCRTCLock__");
+const CMPCSubmitSign = Symbol("__wxCMPCSubmit__");
 
-class ComputedSourceSingleton extends Singleton {
-    _source = undefined;
-
-    get source() {
-        return this._source;
+const LockInstallBehavior = Behavior(
+    {
+        lifetimes: {
+            created() {
+                Object.defineProperty(this, CMPCLockSign, {
+                    value: new Set(),
+                    writable: false,
+                    enumerable: false,
+                    configurable: true
+                });
+                Object.defineProperty(this, CMPCSubmitSign, {
+                    value: new Set(),
+                    writable: false,
+                    enumerable: false,
+                    configurable: true
+                });
+            }
+        }
     }
+);
 
-    set source(value) {
-        this._source = value;
+const PropertyMonitor = {
+    lock: function (thisArg, prop) {
+        Reflect.get(thisArg, CMPCLockSign).add(prop);
+    },
+
+    unlock: function (thisArg, prop) {
+        Reflect.get(thisArg, CMPCLockSign).delete(prop);
+    },
+
+    isLocked: function (thisArg, prop) {
+        return Reflect.get(thisArg, CMPCLockSign).has(prop);
     }
+};
 
-    constructor() {
-        super((runtimeContext) => {
-            const self = this;
-            return new Proxy(runtimeContext, {
-                get(target, p, receiver) {
-                    // 拦截 data 属性访问
-                    if (isPlainObject(self.source) && Reflect.has(self.source, p)) {
-                        return Reflect.get(self.source, p);
-                    }
-                    return Reflect.get(target, p);
-                },
-                set(target, p, value, receiver) {
-                    return Reflect.set(target, p, value);
-                }
-            });
+const RuntimeContextMonitor = {
+    lock: function (thisArg, prop) {
+        Object.defineProperty(thisArg, CMPCRTCLockSign, {
+            configurable: true,
+            value: true,
+            writable: false,
+            enumerable: false
         });
-    }
+    },
 
-    /**
-     *
-     * @param runtimeContext - 上下文
-     * @param source - 重定向取值对象
-     * @returns {*}
-     */
-    get(runtimeContext, source) {
-        this.source = source;
-        return super.get(runtimeContext);
+    unlock: function (thisArg, prop) {
+        Reflect.deleteProperty(thisArg, CMPCRTCLockSign);
+    },
+
+    isLocked: function (thisArg, prop) {
+        return Reflect.has(thisArg, CMPCRTCLockSign);
+    }
+}
+
+const PropertiesCollection = {
+    add(thisArg, prop) {
+        Reflect.get(thisArg, CMPCSubmitSign).add(prop);
+    },
+
+    delete(thisArg, prop) {
+        Reflect.get(thisArg, CMPCSubmitSign).delete(prop);
+    },
+
+    clear(thisArg) {
+        Reflect.get(thisArg, CMPCSubmitSign).clear();
+    },
+
+    size(thisArg) {
+        return Reflect.get(thisArg, CMPCSubmitSign).size;
+    },
+
+    all(thisArg) {
+        return [...Reflect.get(thisArg, CMPCSubmitSign)];
+    },
+
+    slice(thisArg, start) {
+        return this.all(thisArg).slice(start);
     }
 }
 
@@ -52,218 +92,155 @@ class ComputedSourceSingleton extends Singleton {
  * 为防止闭环，计算属性初始化在data,props初始化之后
  */
 export default class ComputedInstaller extends OptionInstaller {
-    getRuntimeContext(thisArg, context, fnSetData) {
-        if (Reflect.has(thisArg, RTCSign)) {
-            return Reflect.get(thisArg, RTCSign).get(thisArg, context.get("properties"), context.get("computed"), fnSetData);
-        }
-        return thisArg;
+    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
+        defFields.behaviors = [LockInstallBehavior].concat(defFields.behaviors || []);
     }
 
-    releaseRuntimeContext(thisArg) {
-        if (Reflect.has(thisArg, RTCSign)) {
-            Reflect.get(thisArg, RTCSign).release();
-            Reflect.deleteProperty(this, RTCSign);
-        }
-    }
-
-    getComputedContext(thisArg, context, fnSetData, source) {
-        return Reflect.get(thisArg, CMPCSign).get(this.getRuntimeContext(thisArg, context, fnSetData), source);
-    }
-
-    releaseComputedContext(thisArg) {
-        if (Reflect.has(thisArg, CMPCSign)) {
-            Reflect.get(thisArg, CMPCSign).release();
-            Reflect.deleteProperty(this, CMPCSign);
-        }
-    }
-
-    attemptToInstantiateCalculated(extender, context, options, defFields, definitionFilterArr) {
+    attemptToInstantiateCalculated(extender, context, options) {
         const computed = context.get("computed");
+        const $options = context.has("constants") ? context.get("constants") : extender.createConstantsContext(options);
         const methods = context.get("methods");
-        const state = Object.assign({}, context.get("state")); // 复制结果集，避免修改原值
-        const computedContext = new Proxy(
-            {
-                data: state
-            },
-            {
-                get(target, p, receiver) {
-                    // 兼容小程序格式
-                    if (p === "data") {
-                        return Reflect.get(target, p);
-                    }
-                    if (Reflect.has(state, p)) {
-                        return Reflect.get(state, p);
-                    }
-                    if (Reflect.has(computed, p)) {
-                        const calc = Reflect.get(computed, p);
-                        if (isFunction(calc.get)) {
-                            return (calc.get).call(receiver);
-                        }
-                    } else if (Reflect.has(methods, p)) {
-                        const method = Reflect.get(methods, p);
-                        if (isFunction(method)) {
-                            return method.bind(receiver);
-                        }
-                    }
-                    return undefined;
-                }
-            }
-        );
+        const properties = context.get("properties");
+        const state = context.get("state");
+        return extender.getComputedDependencies(state, properties, computed, methods, $options);
+    }
 
-        return Stream.of(Object.entries(computed)).map(([name, calc]) => {
-            if (isFunction(calc.get)) {
-                return [name, calc.get.call(computedContext)];
+    lifetimes(extender, context, options) {
+        return {
+            created() {
+                // 锁定关联
+                RuntimeContextMonitor.lock(this);
+            },
+            attached() {
+                if (extender._initializationCompatibleContextEnabled === true) {
+                    // 启用临时容器测试结果
+                    RuntimeContextMonitor.unlock(this);
+                    return;
+                }
+
+                // 初始化计算属性
+                const computed = context.get("computed");
+                const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
+                getters.forEach(p => {
+                    const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
+                    if (isFunction(getter)) {
+                        // 初始值直接提交
+                        this[p] = getter.call(this);
+                    }
+                });
+                // 解锁计算属性关联
+                RuntimeContextMonitor.unlock(this);
             }
-            return undefined;
-        }).filter(i => !!i).collect(Collectors.toMap());
+        }
     }
 
     beforeUpdate(extender, context, options, instance, data) {
-        const computed = context.get("computed");
-        const setterIncludes = Object.keys(data).filter(i => Reflect.has(computed, i) && isFunction(computed[i].set));
-        // 是否安装 UpdateInstaller
-        const originalSetData = context.has("originalSetData") ? context.get("originalSetData").bind(instance) : instance.setData.bind(instance);
-
-        // setData数据是否包含计算属性，调用对应的setter触发器
-        if (setterIncludes.length) {
-            // this.setData(..) 形式 , 前置更新 state
-            setterIncludes.forEach((i) => {
-                (computed[i].set).call(
-                    this.getRuntimeContext(instance, context, originalSetData),
-                    data[i]
-                );
-            });
+        // 锁定关联 提交计算结果到组件 提交过程中的读写操作与框架无关
+        if (RuntimeContextMonitor.isLocked(instance)) {
+            return;
         }
 
-        // 刷新计算属性的值
-        const nextCalculated = {};
-        Object.keys(computed).forEach((p) => {
-            const getter = computed[p].get;
-            // 获取当前值
-            const curVal = Reflect.get(this.getRuntimeContext(instance, context, originalSetData), p);
+        const computed = context.get("computed");
+        const linkAge = context.get("linkAge");
+        const runtimeContext = extender.getRuntimeContextSingleton(instance).get();
+        const collectionDepth = PropertiesCollection.size(instance);
 
-            if (isFunction(getter)) {
-                // 计算下一个值
-                const pValue = getter.call(
-                    this.getComputedContext(
-                        instance,
-                        context,
-                        originalSetData,
-                        data
-                    )
-                );
+        for (const path in data) {
+            const value = data[path];
+            const src = selectPathRoot(path);
+            // 依赖聚集
+            PropertiesCollection.add(instance, src);
+            // 移除已处理值
+            delete data[path];
 
-                // 深度比较，必须，否则会死循环
-                if (!equal(curVal, pValue)) {
-                    nextCalculated[p] = pValue;
+            if (PropertyMonitor.isLocked(instance, src)) {
+                continue;
+            }
+            PropertyMonitor.lock(instance, src);
+            if (src !== path) {
+                if (getData(instance.data, path) !== value) {
+                    setData(instance.data, {[path]: value});
                 }
             } else {
-                throw new Error(`Getter is missing for computed property "${p}"`);
-            }
-        });
-
-        // 合并新的计算属性值到data中
-        Object.assign(data, nextCalculated);
-    }
-
-    definitionFilter(extender, context, options, defFields, definitionFilterArr) {
-        const state = context.get("state");
-
-        // 检查是否安装StateInstaller
-        if (isPlainObject(state)) {
-            const calculated = this.attemptToInstantiateCalculated(extender, context, options, defFields, definitionFilterArr);
-
-            const createContext = () => {
-                return extender.createRuntimeContextSingleton();
-            };
-
-            const releaseContext = (thisArg) => {
-                this.releaseRuntimeContext(thisArg);
-            };
-
-            const createCMPC = () => {
-                return new ComputedSourceSingleton();
-            };
-
-            const releaseCMPC = (thisArg) => {
-                this.releaseComputedContext(thisArg);
-            };
-
-            // 主动触发一次 setData，初始化计算属性，防止组件没有任何赋值操作
-            const checkCalculated = (extender, context, options, instance) => {
-                const calculated = {};
-                this.beforeUpdate(extender, context, options, instance, calculated);
-                const currentCalculated = Stream.of(Object.keys(calculated)).map(i => {
-                    return [i, Reflect.get(instance, "data")[i]];
-                }).collect(Collectors.toMap());
-                if (!equal(calculated, currentCalculated)) {
-                    const originalSetData = context.has("originalSetData") ? context.get("originalSetData").bind(instance) : instance.setData.bind(instance);
-                    originalSetData(calculated);
+                const setter = computed[src] && isFunction(computed[src].set) ? computed[src].set : null;
+                if (value !== instance.data[src]) {
+                    if (isFunction(setter)) {
+                        setter.call(runtimeContext, value);
+                        const getter = computed[src] && isFunction(computed[src].get) ? computed[src].get : computed[src];
+                        if (isFunction(getter)) {
+                            instance.data[src] = getter.call(runtimeContext);
+                        } else {
+                            throw new Error(`Getter is missing for computed property "${src}".`);
+                        }
+                    } else {
+                        setData(instance.data, {[path]: value});
+                    }
                 }
-            };
-
-            defFields.behaviors = [
-                Behavior({
-                    data: calculated,
-                    lifetimes: {
-                        created() {
-                            Object.defineProperty(this, RTCSign, {
-                                configurable: false,
-                                enumerable: false,
-                                value: createContext(),
-                                writable: false
-                            });
-                            Object.defineProperty(this, CMPCSign, {
-                                configurable: false,
-                                enumerable: false,
-                                value: createCMPC(),
-                                writable: false
-                            });
-                        },
-                        attached() {
-                            checkCalculated(extender, context, options, this);
+            }
+            const targets = linkAge.get(src);
+            if (targets) {
+                targets.forEach(p => {
+                    if (!PropertyMonitor.isLocked(instance, p)) {
+                        const getter = computed[p] && isFunction(computed[p].get) ? computed[p].get : computed[p];
+                        if (isFunction(getter)) {
+                            runtimeContext[p] = getter.call(runtimeContext);
+                        } else {
+                            runtimeContext[p] = instance.data[p];
                         }
                     }
-                })
-            ].concat(
-                (defFields.behaviors || []),
-                Behavior({
-                    lifetimes: {
-                        detached() {
-                            releaseContext(this);
-                            releaseCMPC(this);
-                        }
-                    }
-                })
-            );
+                });
+            }
+            PropertyMonitor.unlock(instance, src);
         }
+
+        RuntimeContextMonitor.lock(instance);
+        const payload = {};
+        const props = PropertiesCollection.slice(instance, collectionDepth);
+        for (const i of props) {
+            payload[i] = instance.data[i];
+            PropertiesCollection.delete(instance, i);
+        }
+        const originalSetData = context.get("originalSetData") || this.setData;
+        if (isFunction(originalSetData)) {
+            originalSetData(payload);
+        }
+        RuntimeContextMonitor.unlock(instance);
     }
 
     observers(extender, context, options) {
-        const beforeUpdate = (instance, data) => {
-            const copy = Object.assign({}, data);
-            this.beforeUpdate(extender, context, options, instance, copy);
-            const computed = context.get("computed");
-            const nextCalculated = {};
-            Object.keys(computed).forEach((key) => {
-                if (!equal(copy[key], data[key])) {
-                    nextCalculated[key] = copy[key];
-                }
-            });
-            if (Object.keys(nextCalculated).length) {
-                const originalSetData = context.has("originalSetData") ? context.get("originalSetData").bind(instance) : instance.setData.bind(instance);
-                originalSetData(nextCalculated);
+        const linkAge = context.get("linkAge");
+        const properties = context.get("properties");
+        const computed = context.get("computed");
+
+        const observers = {};
+        for (const p of linkAge.keys()) {
+            if (Reflect.has(properties, p)) {
+                observers[p] = function () {
+                    const targets = linkAge.get(p);
+                    if (targets) {
+                        for (const t of targets) {
+                            const getter = computed[t] && isFunction(computed[t].get) ? computed[t].get : computed[t];
+                            if (isFunction(getter)) {
+                                this[t] = getter.call(this);
+                            } else {
+                                throw new Error(`Getter is missing for computed property "${t}".`);
+                            }
+                        }
+                    }
+                };
             }
-        };
-        const props = context.get("properties");
-        return Stream.of(Object.keys(props)).map(name => {
-            return [name, function (val) {
-                beforeUpdate(this, {[name]: val});
-            }];
-        }).collect(Collectors.toMap());
+        }
+        return observers;
     }
 
     install(extender, context, options) {
+        const properties = context.get("properties");
+        const methods = context.get("methods");
+        const state = context.get("state");
+        const $options = context.has("constants") ? context.get("constants") : extender.createConstantsContext(options);
+        const beforeCreate = context.get("beforeCreate");
+        const originalState = clone(state);
+
         const {computed = null} = options;
         context.set("computed", Stream.of(
                 Object.entries(
@@ -294,5 +271,25 @@ export default class ComputedInstaller extends OptionInstaller {
                 return [prop, normalize];
             }).collect(Collectors.toMap())
         );
+
+        const linkAge = this.attemptToInstantiateCalculated(extender, context, options);
+        if (isFunction(beforeCreate)) {
+            // 移除 beforeCreate 临时上下文
+            // beforeCreate 回调中不可访问任何属性
+            if (extender._initializationCompatibleContextEnabled === true) {
+                const stateContext = extender.createInitializationContextSingleton();
+                beforeCreate.call(stateContext.get(state, linkAge, properties, computed, methods, $options));
+                stateContext.release();
+            } else {
+                beforeCreate.call(undefined);
+            }
+        }
+        context.set("linkAge", linkAge);
+        context.set("state", originalState);
+
+        // 直接注入测试容器结果，options 配置中仅可配置 beforeCreate 回调
+        if (extender._initializationCompatibleContextEnabled === true) {
+            context.set("state", state);
+        }
     }
 }

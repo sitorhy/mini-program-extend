@@ -9,7 +9,8 @@ import Provide from '../views/Provide.vue';
 import Mixins from '../views/Mixins.vue';
 import Options from '../views/Options.vue';
 import Snake from '../views/Snake.vue';
-import Store from '../views/Store.vue';
+import Query from "../views/Query";
+import Context from "../views/Context";
 
 Vue.use(VueRouter);
 
@@ -75,14 +76,30 @@ const routes = [
         component: Mixins
     },
     {
+        path: '/context',
+        name: 'Context',
+        component: Context
+    },
+    {
         path: '/snake',
         name: 'Snake',
         component: Snake
     },
     {
-        path: '/store',
-        name: 'Store',
-        component: Store
+        path: '/query',
+        name: 'Query',
+        component: Vue.extend({
+            components: {
+                Query
+            },
+            data() {
+                return {
+                    p1: 100,
+                    p2: "字符串"
+                }
+            },
+            template: "<Query :p1='p1' :p2='p2'/>"
+        })
     }
 ]
 

@@ -100,7 +100,7 @@ declare namespace extend {
     }
 
     class MPExtender {
-        use<T extends OptionInstaller>(installer: T): void;
+        use<T extends OptionInstaller>(installer: T, priority?: number): void;
 
         extends(options: object): object;
     }
@@ -132,13 +132,13 @@ declare namespace extend {
 
         options(): object;
 
-        lifetimes(extender, context, options): Lifetimes;
+        lifetimes(extender: MPExtender, context: Map<any, any>, options: object): Lifetimes;
 
-        pageLifetimes(extender, context, options): PageLifetimes;
+        pageLifetimes(extender: MPExtender, context: Map<any, any>, options: object): PageLifetimes;
 
         externalClasses(): string[];
 
-        relations(): ComponentRelation;
+        relations(extender: MPExtender, context: Map<any, any>, options: object): ComponentRelation;
     }
 
     class OptionInstaller extends BehaviorInstaller {
@@ -165,6 +165,12 @@ declare namespace extend {
         provide(): object;
 
         inject(): object;
+
+        $data: object;
+
+        $props: object;
+
+        $options: object;
 
         $nextTick: (callback: () => void) => void;
 

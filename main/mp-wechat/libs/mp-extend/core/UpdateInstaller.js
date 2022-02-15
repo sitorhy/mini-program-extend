@@ -21,11 +21,11 @@ export default class UpdateInstaller extends OptionInstaller {
                                 return originalSetData;
                             },
                             enumerable: false,
-                            configurable: false
+                            configurable: true
                         });
                         this.setData = (data, callback) => {
                             beforeUpdate(extender, context, options, this, data);
-                            return originalSetData.call(this, data, function () {
+                            return Reflect.get(this, SetDataSign).call(this, data, function () {
                                 updated(extender, context, options, this, data);
                                 if (isFunction(callback)) {
                                     callback.call(this);

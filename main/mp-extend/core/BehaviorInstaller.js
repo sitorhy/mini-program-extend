@@ -24,15 +24,15 @@ export default class BehaviorInstaller extends FrameworkInstaller {
     }
 
     observers(extender, context, options) {
-        return {};
+        return null;
     }
 
     data() {
-        return {};
+        return null;
     }
 
     methods() {
-        return {};
+        return null;
     }
 
     ready() {
@@ -44,22 +44,30 @@ export default class BehaviorInstaller extends FrameworkInstaller {
     }
 
     options() {
-        return {};
+        return null;
     }
 
+    /**
+     * 重载该方法创建的回调函数，使用的this对象为代理对象
+     *
+     * @param extender
+     * @param context
+     * @param options
+     * @returns {{}}
+     */
     lifetimes(extender, context, options) {
-        return {};
+        return null;
     }
 
     pageLifetimes(extender, context, options) {
-        return {};
+        return null;
     }
 
     externalClasses() {
         return [];
     }
 
-    relations() {
-        return {};
+    relations(extender, context, options) {
+        return null;
     }
 }

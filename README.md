@@ -1,8 +1,9 @@
 # wechat-mini-program-extend
 
-小程序扩展框架，依赖开发者工具的 npm 构建。具体详情可查阅[官方 npm 文档](https://developers.weixin.qq.com/miniprogram/dev/devtools/npm.html)。
-
+小程序扩展框架，依赖开发者工具的 npm 构建。<br>具体详情可查阅[官方 npm 文档](https://developers.weixin.qq.com/miniprogram/dev/devtools/npm.html)。
 基础库版本 >= 2.9.5，建议最新。
+
+<img src="https://github.com/sitorhy/wechat-mini-program-extend/blob/main/main/mp-wechat/pages/index/logo.svg" width="100" height="100" />
 
 <br>
 
@@ -15,9 +16,9 @@
 ### 引入
 
 > import { PageEx, ComponentEx } from "wechat-mini-program-extend";
-> 
+>
 > 或者
-> 
+>
 > import { PageEx, ComponentEx } from "wechat-mini-program-extend/index";
 
 * 页面扩展接口，替换 `Page`
@@ -473,36 +474,36 @@ const ChildBehavior = Behavior({});
 
 // 子组件
 ComponentEx({
-    behaviors: [ChildBehavior],
-    relations: {
-        'getParent': {
-            type: 'parent',
-            target: ParentBehavior,
-            linked: function (target, key) {
-                console.log(key); // getParent
-            },
-            unlinked: function (target, key) {
+  behaviors: [ChildBehavior],
+  relations: {
+    'getParent': {
+      type: 'parent',
+      target: ParentBehavior,
+      linked: function (target, key) {
+        console.log(key); // getParent
+      },
+      unlinked: function (target, key) {
 
-            }
-        }
+      }
     }
+  }
 });
 
 // 父组件
 ComponentEx({
-    behaviors: [ParentBehavior],
-    relations: {
-        'getChild': {
-            type: 'child',
-            target: ChildBehavior,
-            linked: function (target, key) {
-                console.log(key); // getChild
-            },
-            unlinked: function (target, key) {
+  behaviors: [ParentBehavior],
+  relations: {
+    'getChild': {
+      type: 'child',
+      target: ChildBehavior,
+      linked: function (target, key) {
+        console.log(key); // getChild
+      },
+      unlinked: function (target, key) {
 
-            }
-        }
+      }
     }
+  }
 });
 ```
 
@@ -514,36 +515,36 @@ ComponentEx({
 
 ```javascript
   const Mixin = {
-      data: {
-          b: 200
-      },
-      methods: {
-          test() {
-              console.log('test');
-          }
-      },
-      mounted() {
-          console.log('mounted 1');
-      }
-  };
-  
-  PageEx({
-      mixins: [Mixin],
-      data: {
-          a: 100
-      },
-      methods: {
-          test() {
-              console.log(this.a + this.b);
-          }
-      },
-      mounted() {
-          this.test();
-      }
-  });
+  data: {
+    b: 200
+  },
+  methods: {
+    test() {
+      console.log('test');
+    }
+  },
+  mounted() {
+    console.log('mounted 1');
+  }
+};
+
+PageEx({
+  mixins: [Mixin],
+  data: {
+    a: 100
+  },
+  methods: {
+    test() {
+      console.log(this.a + this.b);
+    }
+  },
+  mounted() {
+    this.test();
+  }
+});
 ```
 
-  输出
+输出
 
   ```
   mounted 1
@@ -557,17 +558,17 @@ ComponentEx({
 import {Extension} from "wechat-mini-program-extend";
 
 Extension.mixin({
-    methods: {
-        getUserInfo() {
-            console.log('114514')
-        }
+  methods: {
+    getUserInfo() {
+      console.log('114514')
     }
+  }
 });
 
 App({
-    onLaunch(options) {
-        // ...
-    }
+  onLaunch(options) {
+    // ...
+  }
 });
 ```
 

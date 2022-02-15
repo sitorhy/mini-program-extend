@@ -156,9 +156,9 @@ export default class MixinInstaller extends OptionInstaller {
     }
 
     build(extender, context, options) {
-        const pageStaticData = Stream.of(Object.entries(options)).filter(([name, data]) => {
-            return !isFunction(data) && !RESERVED_OPTIONS_WORDS.has(name) && !RESERVED_LIFECYCLES_WORDS.has(name);
-        }).collect(Collectors.toMap());
+        const pageStaticData = Stream.of(
+            Object.keys(options).filter(p => !isFunction(options[p]) && !RESERVED_OPTIONS_WORDS.has(p) && !RESERVED_LIFECYCLES_WORDS.has(p))
+        ).map(p => [p, options[p]]).collect(Collectors.toMap());
         const {
             externalClasses,
             options: mpOptions,

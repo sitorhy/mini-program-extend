@@ -1,0 +1,6 @@
+{
+  "component": true,
+  "usingComponents": {
+    "h-box": "./h-box/index"
+  }
+}

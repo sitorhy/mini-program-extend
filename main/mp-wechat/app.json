@@ -10,7 +10,11 @@
     "pages/provide/index",
     "pages/snake/index",
     "pages/mixins/index",
-    "pages/store/index"
+    "pages/query/index",
+    "pages/context/index",
+    "pages/context/runtime",
+    "pages/relations/index",
+    "pages/context/components"
   ],
   "window": {
     "backgroundTextStyle": "light",

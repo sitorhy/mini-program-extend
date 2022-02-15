@@ -5,7 +5,7 @@
 </view>
 
 <view class="container">
-    <navigator url="/pages/mp-checked/index?word=hello">
+    <navigator url="/pages/mp-checked/index?word=hello&rand={{rand}}">
         <button type="primary">环境自检</button>
     </navigator>
     <navigator url="/pages/props/index?name=田所浩二">
@@ -29,8 +29,17 @@
     <navigator url="/pages/mixins/index">
         <button type="primary">Mixins</button>
     </navigator>
-    <navigator url="/pages/store/index">
-        <button type="primary">Store</button>
+    <navigator url="/pages/query/index?p1=100&p2=字符串">
+        <button type="primary">Query</button>
+    </navigator>
+    <navigator url="/pages/context/index">
+        <button type="primary">临时上下文</button>
+    </navigator>
+    <navigator url="/pages/context/runtime">
+        <button type="primary">运行时上下文</button>
+    </navigator>
+    <navigator url="/pages/relations/index">
+        <button type="primary">Relations</button>
     </navigator>
     <navigator url="/pages/snake/index">
         <button type="primary">综合测试-贪吃蛇</button>

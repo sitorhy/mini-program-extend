@@ -5,8 +5,8 @@ import {isFunction, isPrimitive, isSymbol} from "./common";
  * @param path
  * @returns {string|null}
  */
-function selectPathRoot(path) {
-    const v = /^[\w]+/.exec(path);
+export function selectPathRoot(path) {
+    const v = /^\$?[\w]+/.exec(path);
     if (v) {
         return v[0];
     }
@@ -26,7 +26,7 @@ function selectPathRoot(path) {
  * @param path
  * @returns {*[]}
  */
-function splitPath(path) {
+export function splitPath(path) {
     const paths = [];
 
     let pathRight = path;
@@ -85,46 +85,40 @@ export function traceObject(obj, path, clone, override, value) {
 /**
  * 创建反应式对象
  *
- * @param root 根对象
- * @param target 目标对象
- * @param onChanged 拦截对象修改行为，只读可以不实现
- * @param path 目标对象相对根对象路径
+ * @param root - 根对象
+ * @param target - 目标对象
+ * @param onChanged - 实现对象修改行为，只读可以不实现
+ * @param path - 目标对象相对根对象路径
+ * @param {(path:string,value:any,level:number)=>void} onGet - 解析对象回调，用于获取计算依赖
+ * @param {(path:string,value:any,level:number)=>void} onSet - 设置对象回调，用于获取赋值依赖
+ * @param level - 层级
  * @returns {boolean|any}
  */
-export function createReactiveObject(root, target, onChanged = "", path = "") {
+export function createReactiveObject(root, target, onChanged = "", path = "", onGet = null, onSet = null, level = 0) {
     return new Proxy(
         target,
         {
             get(target, p, receiver) {
                 const value = Reflect.get(target, p, receiver);
-                if (isPrimitive(value) || !value || isSymbol(p)) {
+                if (isFunction(value) || isPrimitive(value) || !value || isSymbol(p)) {
+                    if (isFunction(onGet)) {
+                        onGet(`${path ? path + '.' : ''}${p}`, value, level);
+                    }
                     // 不可枚举的值，直接返回
                     return value;
-                } else if (isFunction(value)) {
-                    if (value === target.constructor) {
-                        return value;
-                    } else {
-                        if (Array.isArray(target)) {
-                            // 数组 splice / push 执行后会自动 触发 set
-                            // 例如 data = {a:[1,2,3]} a.push(4) , 会触发 data.a = [1,2,3,4]
-                            return value;
-                        } else {
-                            return new Proxy(value, {
-                                apply(func, thisArg, argumentsList) {
-                                    const result = Reflect.apply(func, thisArg, argumentsList);
-                                    if (isFunction(onChanged)) {
-                                        onChanged(path, target);
-                                    }
-                                    return result;
-                                }
-                            });
-                        }
-                    }
                 } else {
                     if (Number.isSafeInteger(Number.parseInt(p))) {
-                        return createReactiveObject(root, value, onChanged, `${path}[${p}]`);
+                        const nextPath = `${path}[${p}]`;
+                        if (isFunction(onGet)) {
+                            onGet(nextPath, value, level);
+                        }
+                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, level + 1);
                     } else {
-                        return createReactiveObject(root, value, onChanged, `${path ? path + '.' : ''}${p}`);
+                        const nextPath = `${path ? path + '.' : ''}${p}`;
+                        if (isFunction(onGet)) {
+                            onGet(nextPath, value, level);
+                        }
+                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, level + 1);
                     }
                 }
             },
@@ -139,7 +133,11 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
                                 const success = Reflect.set(target, p, value, receiver);
                                 if (success) {
                                     const field = selectPathRoot(path);
-                                    onChanged(field, Reflect.get(root, field));
+                                    const v = Reflect.get(root, field);
+                                    if (isFunction(onSet)) {
+                                        onSet(field, v, level);
+                                    }
+                                    onChanged(field, v);
                                 }
                                 return success;
                             } else {
@@ -147,7 +145,11 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
                             }
                         } else {
                             if (isFunction(onChanged)) {
-                                onChanged(`${path}[${p}]`, value);
+                                const nextPath = `${path}[${p}]`;
+                                if (isFunction(onSet)) {
+                                    onSet(nextPath, value, level);
+                                }
+                                onChanged(nextPath, value);
                             } else {
                                 return Reflect.set(target, p, value, receiver);
                             }
@@ -157,7 +159,11 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
                             return Reflect.set(target, p, value, receiver);
                         } else {
                             if (isFunction(onChanged)) {
-                                onChanged(`${path ? path + '.' : ''}${p}`, value);
+                                const nextPath = `${path ? path + '.' : ''}${p}`;
+                                if (isFunction(onSet)) {
+                                    onSet(nextPath, value, level);
+                                }
+                                onChanged(nextPath, value);
                             } else {
                                 return Reflect.set(target, p, value, receiver);
                             }
@@ -172,14 +178,22 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
                     if (Number.isSafeInteger(tryNum)) {
                         Array.prototype.splice.call(target, tryNum, 1);
                         if (isFunction(onChanged)) {
-                            onChanged(`${path}`, target);
+                            const lastPath = `${path}`;
+                            if (isFunction(onSet)) {
+                                onSet(lastPath, target, level);
+                            }
+                            onChanged(lastPath, target);
                         }
                         return true;
                     }
                 }
                 if (Reflect.deleteProperty(target, p)) {
                     if (isFunction(onChanged)) {
-                        onChanged(`${path}`, target);
+                        const lastPath = `${path}`;
+                        if (isFunction(onSet)) {
+                            onSet(lastPath, target, level);
+                        }
+                        onChanged(lastPath, target);
                     }
                     return true;
                 }
@@ -187,4 +201,56 @@ export function createReactiveObject(root, target, onChanged = "", path = "") {
             }
         }
     );
+}
+
+export function getData(target, path) {
+    const paths = splitPath(path);
+    let parent = target;
+    let v = undefined;
+    paths.forEach(function (p) {
+        if (/\d+/.test(p)) {
+            if (Array.isArray(parent)) {
+                const index = parseInt(p);
+                if (Number.isSafeInteger(index)) {
+                    v = parent[index];
+                } else {
+                    throw new Error(`Unexpected range index "${index}".`);
+                }
+            } else {
+                v = parent[p];
+            }
+        } else {
+            v = parent[p];
+        }
+        parent = v;
+    });
+    return v;
+}
+
+export function setData(target, payload) {
+    Object.keys(payload).forEach(function (path) {
+        const paths = splitPath(path);
+        const v = payload[path];
+        let o = target;
+        paths.forEach(function (p, pi) {
+            if (pi === paths.length - 1) {
+                o[p] = v;
+            } else {
+                if (/\d+/.test(p)) {
+                    if (Array.isArray(o)) {
+                        const index = parseInt(p);
+                        if (Number.isSafeInteger(index)) {
+                            o = o[index];
+                        } else {
+                            throw new Error(`Unexpected range index "${index}".`);
+                        }
+                    } else {
+                        o = o[p];
+                    }
+                } else {
+                    o = o[p];
+                }
+            }
+        });
+    });
 }

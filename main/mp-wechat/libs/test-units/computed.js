@@ -23,15 +23,23 @@ export default {
                     strPlus: ""
                 };
             },
+            watch: {
+                plusSelf(v, ov) {
+                    console.log(`plusSelf ${ov} => ${v}`);
+                }
+            },
             computed: {
                 plusSelf: {
                     get() {
-                        return this.plus;
+                        return this.$data.plus;
                     },
                     set(v) {
                         console.log(`plus Self setter : ${this.plusSelf} <= △${v}`);
                         this.plus = this.plusSelf + v;
                     }
+                },
+                doublePlusSelf() {
+                    return this.plusSelf * 2;
                 },
                 strPlusSelf: {
                     set(v) {
@@ -92,7 +100,14 @@ export default {
                 console.log(this.cPlus);
 
                 this.timer = setInterval(() => {
-                    this.timestamp = Date.now();
+                    if (this.setData) {
+                        this.setData({
+                            timestamp: Date.now()
+                        });
+                    } else {
+                        // Vue
+                        this.timestamp = Date.now();
+                    }
                 }, 1000);
             },
             destroyed() {
@@ -106,7 +121,14 @@ export default {
                     this.squarePropThroughNum = 144;
                 },
                 testPlusSelf() {
-                    this.plusSelf = this.plusSelf + 1;
+                    if (this.setData) {
+                        this.setData({
+                            plusSelf: this.plusSelf + 1
+                        });
+                    } else {
+                        // Vue
+                        this.plusSelf = this.plusSelf + 1;
+                    }
                     this.strPlusSelf = "114514";
                 }
             }

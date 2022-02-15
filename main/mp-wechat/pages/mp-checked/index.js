@@ -44,6 +44,15 @@ PageEx({
 
         console.log('Page onLoad');
 
+        const exitState = this.exitState;
+        this.loadTime = exitState ? exitState.loadTime : new Date().toLocaleString();
+        console.log(`loadTime = ${this.loadTime}`);
+        this.setData({
+            rand: options.rand,
+            timeStr: this.loadTime,
+            exitStateLoaded: !!exitState,
+        });
+
         this.someMethod();
     },
 
@@ -157,5 +166,14 @@ PageEx({
         }, () => {
             console.log(this.data.foods.join(','));
         });
+    },
+
+    onSaveExitState() {
+        return {
+            data: {
+                loadTime: this.loadTime
+            },
+            expireTimeStamp: Date.now() + 60 * 1000 // 超时时刻 1分钟
+        }
     }
 });

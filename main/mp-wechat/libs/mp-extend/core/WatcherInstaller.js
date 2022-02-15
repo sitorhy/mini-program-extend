@@ -154,7 +154,7 @@ export default class WatcherInstaller extends OptionInstaller {
     /**
      * g.h.i : g deep / g.h deep
      *
-     * 数据是否谁触发深层比对路径
+     * 数据是否触发深层比对
      * @param data - { "a.b":{ c:100 }  } path = "a.b.c" 时 小程序不会触发 a 侦听器，但会触发 a.** 侦听器
      * @param path - Vue 格式，任何 watch 配置的相关的侦听器都是为了兼容Vue格式存在
      * @param cur
@@ -358,20 +358,26 @@ export default class WatcherInstaller extends OptionInstaller {
                         value: new Map(),
                         writable: false
                     });
-
-                    for (const observerPath of staticWatchers.keys()) {
-                        const watcher = getStaticWatcher(this, observerPath);
-                        if (watcher) {
-                            const curValue = selectRuntimeState(this.data, watcher.path);
-
-                            // 设置侦听器初始值，并触发 immediate 侦听器
-                            watcher.once(this, [curValue]);
-                        }
-                    }
                 },
                 detached() {
                     Reflect.deleteProperty(this, SWATSign);
                     Reflect.deleteProperty(this, DWATSign);
+                }
+            }
+        };
+
+        defFields.behaviors = [Behavior(behavior)].concat((defFields.behaviors || []));
+        defFields.behaviors.push(Behavior({
+            created() {
+                const staticWatchers = Reflect.get(this, SWATSign);
+                for (const observerPath of staticWatchers.keys()) {
+                    const watcher = getStaticWatcher(this, observerPath);
+                    if (watcher) {
+                        const curValue = selectRuntimeState(this.data, watcher.path);
+
+                        // 设置侦听器初始值，并触发 immediate 侦听器
+                        watcher.once(this, [curValue]);
+                    }
                 }
             },
             observers: Stream.of(
@@ -408,18 +414,17 @@ export default class WatcherInstaller extends OptionInstaller {
                     ];
                 })
             ).collect(Collectors.toMap())
-        };
-
-        defFields.behaviors = [Behavior(behavior)].concat((defFields.behaviors || []));
+        }));
     }
 
     updateDeepWatcherRef(runtimeContext, watchers, data) {
         for (const [, watcher] of watchers) {
             if (watcher.deep) {
-                if (watcher.path) { // 是否函数式侦听器，函数式侦听器由 "**" 侦听器负责
+                if (watcher.path) {
+                    // 是否函数式侦听器，函数式侦听器由 "**" 侦听器负责
                     const depth = this.matchDeepWatcherPath(data, watcher.path);
                     if (depth) {
-                        const trace = traceObject(runtimeContext.data, depth, true, false);
+                        const trace = traceObject(runtimeContext.data, depth, true, false, undefined);
                         watcher.oldValue = [this.selectData(trace, watcher.path)];
                     }
                 }
@@ -528,7 +533,7 @@ export default class WatcherInstaller extends OptionInstaller {
         Object.assign(observers, {
             "**": Invocation(observers["**"], null, function () {
                 const watchers = getDynamicWatchers(this);
-                if (watchers.size) {
+                if (watchers && watchers.size) {
                     for (const [, watcher] of watchers) {
                         if (!watcher.path) {
                             watcher.update(this);
