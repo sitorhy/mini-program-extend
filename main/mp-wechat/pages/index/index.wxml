@@ -41,6 +41,9 @@
     <navigator url="/pages/relations/index">
         <button type="primary">Relations</button>
     </navigator>
+    <navigator url="/pages/store/index">
+        <button type="primary">Store</button>
+    </navigator>
     <navigator url="/pages/snake/index">
         <button type="primary">综合测试-贪吃蛇</button>
     </navigator>

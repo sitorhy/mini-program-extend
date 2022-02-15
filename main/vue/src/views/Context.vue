@@ -18,7 +18,6 @@
     <p>
       <span>p3RefreshTime={{ p3RefreshTime }}</span>
     </p>
-    <button @click="test">测试</button>
   </div>
 </template>
 

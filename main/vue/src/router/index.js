@@ -11,6 +11,7 @@ import Options from '../views/Options.vue';
 import Snake from '../views/Snake.vue';
 import Query from "../views/Query";
 import Context from "../views/Context";
+import Store from "../views/Store";
 
 Vue.use(VueRouter);
 
@@ -100,6 +101,10 @@ const routes = [
             },
             template: "<Query :p1='p1' :p2='p2'/>"
         })
+    },
+    {
+        path: "/store",
+        component: Store
     }
 ]
 
