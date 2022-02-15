@@ -1,2 +1,5 @@
-<!--pages/store/index.wxml-->
-<text>pages/store/index.wxml</text>
+<view>
+    <view>
+        <counter/>
+    </view>
+</view>

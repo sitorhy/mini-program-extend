@@ -1,0 +1,9 @@
+<view>
+    <text>{{ count }}</text>
+    <view>
+        <button bind:tap="increment">increment</button>
+    </view>
+    <view>
+        <button bind:tap="increment2">increment2</button>
+    </view>
+</view>

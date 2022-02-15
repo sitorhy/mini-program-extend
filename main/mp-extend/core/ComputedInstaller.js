@@ -291,5 +291,7 @@ export default class ComputedInstaller extends OptionInstaller {
         if (extender._initializationCompatibleContextEnabled === true) {
             context.set("state", state);
         }
+
+        console.log(linkAge)
     }
 }
