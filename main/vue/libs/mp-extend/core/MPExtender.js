@@ -478,8 +478,10 @@ export default class MPExtender {
      * @param computed - 规格化计算属性配置
      * @param methods
      * @param constants
+     * @param {(path:string,value:any,level:number)=>void} onStateGet
+     * @param {(path:string,value:any,level:number)=>void} onStateSet
      */
-    getComputedDependencies(state, properties, computed, methods, constants = {}) {
+    getComputedDependencies(state, properties, computed, methods, constants = {}, onStateGet = null, onStateSet = null) {
         const plainState = clone(state);
         const linkAge = new Map();
         const dependencies = [];
@@ -491,6 +493,9 @@ export default class MPExtender {
             (path, value, level) => {
                 if (!dependencies.includes(path) && level === 0) {
                     dependencies.push(path);
+                }
+                if (isFunction(onStateGet)) {
+                    onStateGet(path, value, level);
                 }
             },
             (path, value, level) => {
@@ -504,6 +509,9 @@ export default class MPExtender {
                         targets.push(src);
                     }
                 });
+                if (isFunction(onStateSet)) {
+                    onStateSet(path, value, level);
+                }
             }
         );
 

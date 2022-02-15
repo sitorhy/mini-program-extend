@@ -96,12 +96,33 @@ export default class ComputedInstaller extends OptionInstaller {
         defFields.behaviors = [LockInstallBehavior].concat(defFields.behaviors || []);
     }
 
+    /**
+     * 在独立容器中计算依赖关系
+     * @param extender
+     * @param context
+     * @param options
+     * @returns {*}
+     */
     attemptToInstantiateCalculated(extender, context, options) {
-        const computed = context.get("computed");
-        const $options = context.has("constants") ? context.get("constants") : extender.createConstantsContext(options);
+        const state = {};
         const methods = context.get("methods");
-        const properties = context.get("properties");
-        const state = context.get("state");
+        const $options = extender.createConstantsContext(options);
+        const computed = context.get("computed");
+
+        extender.createPropertiesCompatibleContext(state, context.get("properties") || {}, $options);
+
+        const properties = Stream.of(Object.entries(context.get("properties") || {})).map(([prop, constructor]) => {
+            const normalize = {
+                type: constructor.type,
+                optionalTypes: constructor.optionalTypes,
+                observer: constructor.observer,
+                value: state[prop]
+            };
+            return [prop, normalize];
+        }).collect(Collectors.toMap())
+
+        extender.createDataCompatibleContext(state, properties, context.get("data") || {}, null, methods, $options);
+
         return extender.getComputedDependencies(state, properties, computed, methods, $options);
     }
 
@@ -239,7 +260,6 @@ export default class ComputedInstaller extends OptionInstaller {
         const state = context.get("state");
         const $options = context.has("constants") ? context.get("constants") : extender.createConstantsContext(options);
         const beforeCreate = context.get("beforeCreate");
-        const originalState = clone(state);
 
         const {computed = null} = options;
         context.set("computed", Stream.of(
@@ -278,20 +298,12 @@ export default class ComputedInstaller extends OptionInstaller {
             // beforeCreate 回调中不可访问任何属性
             if (extender._initializationCompatibleContextEnabled === true) {
                 const stateContext = extender.createInitializationContextSingleton();
-                beforeCreate.call(stateContext.get(state, linkAge, properties, computed, methods, $options));
+                beforeCreate.call(stateContext.get(state, linkAge, properties, context.get("computed"), methods, $options));
                 stateContext.release();
             } else {
                 beforeCreate.call(undefined);
             }
         }
         context.set("linkAge", linkAge);
-        context.set("state", originalState);
-
-        // 直接注入测试容器结果，options 配置中仅可配置 beforeCreate 回调
-        if (extender._initializationCompatibleContextEnabled === true) {
-            context.set("state", state);
-        }
-
-        console.log(linkAge)
     }
 }
