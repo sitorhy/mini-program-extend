@@ -1,6 +1,12 @@
 import {ComponentEx} from "../../../libs/mp-extend/index";
 import store from "../store";
 
+store.watch((state) => {
+    return state.count;
+}, (val, oldVal) => {
+    console.log(`${oldVal} => ${val}`);
+});
+
 ComponentEx({
     computed: {
         count() {

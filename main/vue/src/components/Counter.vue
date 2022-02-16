@@ -13,8 +13,17 @@
 <script>
 import store from "../store";
 
+store.watch((state) => {
+  return state.count;
+}, (val, oldVal) => {
+  console.log(`${oldVal} => ${val}`);
+}, {
+  immediate: false
+});
+
 export default {
   name: "Counter",
+  store: store,
   computed: {
     count() {
       return store.state.count;

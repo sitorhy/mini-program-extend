@@ -15,6 +15,7 @@ import RelationsInstaller from "./RelationsInstaller";
 import EventBusInstaller from "./EventBusInstaller";
 import UpdateInstaller from "./UpdateInstaller";
 import ContextInstaller from "./ContextInstaller";
+import StoreInstaller from "./StoreInstaller";
 
 import {Singleton} from "../libs/Singleton";
 import {isFunction, isPlainObject} from "../utils/common";
@@ -50,53 +51,53 @@ class InstallersSingleton extends Singleton {
 }
 
 class RuntimeContextSingleton extends Singleton {
-    __listeners = [];
+    __interceptors = [];
 
     get() {
         const [options, thisArg, properties, computed, fnSetData, onStateGetting, onStateSetting] = arguments;
-        this.watch(onStateGetting, onStateSetting);
+        this.intercept(onStateGetting, onStateSetting);
         return super.get(options, thisArg, properties, computed, fnSetData,
             (path, value, level) => {
-                if (this.__listeners.length) {
+                if (this.__interceptors.length) {
                     this.__onStateGetting(path, value, level);
                 }
             },
             (path, value, level) => {
-                if (this.__listeners.length) {
+                if (this.__interceptors.length) {
                     this.__onStateSetting(path, value, level);
                 }
             });
     }
 
     __onStateGetting(path, value, level) {
-        for (const {get} of this.__listeners) {
+        for (const {get} of this.__interceptors) {
             get(path, value, level);
         }
     }
 
     __onStateSetting(path, value, level) {
-        for (const {set} of this.__listeners) {
+        for (const {set} of this.__interceptors) {
             set(path, value, level);
         }
     }
 
-    watch(onStateGetting, onStateSetting) {
+    intercept(onStateGetting, onStateSetting) {
         if (!onStateGetting || !onStateGetting) {
             return null;
         }
-        if (this.__listeners.findIndex(i => i.get === onStateGetting || i.set === onStateSetting) >= 0) {
+        if (this.__interceptors.findIndex(i => i.get === onStateGetting || i.set === onStateSetting) >= 0) {
             return null;
         }
-        this.__listeners.push({get: onStateGetting, set: onStateSetting});
+        this.__interceptors.push({get: onStateGetting, set: onStateSetting});
         return () => {
-            this.unwatch(onStateGetting, onStateSetting);
+            this.cancelIntercept(onStateGetting, onStateSetting);
         };
     }
 
-    unwatch(onStateGetting, onStateSetting) {
-        const index = this.__listeners.findIndex(i => i.get === onStateGetting || i.set === onStateSetting);
+    cancelIntercept(onStateGetting, onStateSetting) {
+        const index = this.__interceptors.findIndex(i => i.get === onStateGetting || i.set === onStateSetting);
         if (index >= 0) {
-            this.__listeners.splice(index, 1);
+            this.__interceptors.splice(index, 1);
         }
     }
 }
@@ -116,9 +117,10 @@ export default class MPExtender {
         this.use(new PropertiesInstaller(), 25);
         this.use(new DataInstaller(), 30);
         this.use(new StateInstaller(), 35);
-        this.use(new ComputedInstaller(), 40);
-        this.use(new ProviderInstaller(), 45);
-        this.use(new WatcherInstaller(), 50);
+        this.use(new StoreInstaller(), 40);
+        this.use(new ComputedInstaller(), 45);
+        this.use(new ProviderInstaller(), 50);
+        this.use(new WatcherInstaller(), 55);
         this.use(new InstanceInstaller(), 95);
         this.use(new EventBusInstaller(), 150);
         this.use(new RelationsInstaller(), 200);

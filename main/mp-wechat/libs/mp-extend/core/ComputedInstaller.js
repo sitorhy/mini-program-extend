@@ -113,7 +113,7 @@ export default class ComputedInstaller extends OptionInstaller {
                 const linkAge = new Map();
                 const dependencies = [];
                 context.set("linkAge", linkAge);
-                const unwatch = extender.getRuntimeContextSingleton(this).watch(
+                const cancel = extender.getRuntimeContextSingleton(this).intercept(
                     (path, value, level) => {
                         if (!dependencies.includes(path) && level === 0) {
                             dependencies.push(path);
@@ -143,7 +143,7 @@ export default class ComputedInstaller extends OptionInstaller {
                     }
                 });
                 // 解锁计算属性关联
-                unwatch();
+                cancel();
                 RuntimeContextMonitor.unlock(this);
             }
         }
