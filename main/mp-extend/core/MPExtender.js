@@ -71,21 +71,25 @@ class RuntimeContextSingleton extends Singleton {
 
     __onStateGetting(path, value, level) {
         for (const {get} of this.__interceptors) {
-            get(path, value, level);
+            if (get) {
+                get(path, value, level);
+            }
         }
     }
 
     __onStateSetting(path, value, level) {
         for (const {set} of this.__interceptors) {
-            set(path, value, level);
+            if (set) {
+                set(path, value, level);
+            }
         }
     }
 
     intercept(onStateGetting, onStateSetting) {
-        if (!onStateGetting || !onStateGetting) {
+        if (!onStateGetting && !onStateSetting) {
             return null;
         }
-        if (this.__interceptors.findIndex(i => i.get === onStateGetting || i.set === onStateSetting) >= 0) {
+        if (this.__interceptors.findIndex(i => i.get === onStateGetting && i.set === onStateSetting) >= 0) {
             return null;
         }
         this.__interceptors.push({get: onStateGetting, set: onStateSetting});
@@ -95,7 +99,7 @@ class RuntimeContextSingleton extends Singleton {
     }
 
     cancelIntercept(onStateGetting, onStateSetting) {
-        const index = this.__interceptors.findIndex(i => i.get === onStateGetting || i.set === onStateSetting);
+        const index = this.__interceptors.findIndex(i => i.get === onStateGetting && i.set === onStateSetting);
         if (index >= 0) {
             this.__interceptors.splice(index, 1);
         }
@@ -117,8 +121,8 @@ export default class MPExtender {
         this.use(new PropertiesInstaller(), 25);
         this.use(new DataInstaller(), 30);
         this.use(new StateInstaller(), 35);
-        this.use(new StoreInstaller(), 40);
-        this.use(new ComputedInstaller(), 45);
+        this.use(new ComputedInstaller(), 40);
+        this.use(new StoreInstaller(), 45);
         this.use(new ProviderInstaller(), 50);
         this.use(new WatcherInstaller(), 55);
         this.use(new InstanceInstaller(), 95);
