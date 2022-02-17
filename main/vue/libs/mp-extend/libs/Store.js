@@ -1,5 +1,5 @@
-import {createReactiveObject, selectPathRoot, setData} from "../utils/object";
-import {isPlainObject, isString} from "../utils/common";
+import {createReactiveObject, selectPathRoot, setData, traceObject} from "../utils/object";
+import {isPlainObject, isPrimitive, isString} from "../utils/common";
 import CompatibleWatcher from "./CompatibleWatcher";
 import equal from "./fast-deep-equal/index";
 
@@ -130,6 +130,11 @@ export default class Store {
             config.state,
             (path, value) => {
                 const watchers = Configuration.getWatchers(this);
+                for (const watcher of watchers) {
+                    if (watcher.deep) {
+
+                    }
+                }
                 setData(config.state, {[path]: value});
                 for (const watcher of watchers) {
                     watcher.update(undefined, Configuration.getState(this));

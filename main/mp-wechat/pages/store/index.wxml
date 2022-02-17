@@ -2,4 +2,7 @@
     <view>
         <counter/>
     </view>
+    <view>
+        <obj/>
+    </view>
 </view>

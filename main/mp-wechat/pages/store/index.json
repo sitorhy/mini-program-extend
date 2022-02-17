@@ -1,5 +1,6 @@
 {
   "usingComponents": {
-    "counter": "./counter/index"
+    "counter": "./counter/index",
+    "obj": "./obj/index"
   }
 }
