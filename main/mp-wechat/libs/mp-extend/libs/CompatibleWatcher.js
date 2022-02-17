@@ -42,9 +42,9 @@ export default class CompatibleWatcher {
         }
     }
 
-    update(thisArg) {
+    update(thisArg, ...args) {
         if (this._getter) {
-            this.call(thisArg, [this._getter.call(thisArg)]);
+            this.call(thisArg, [this._getter.call(thisArg, ...args)]);
         }
     }
 

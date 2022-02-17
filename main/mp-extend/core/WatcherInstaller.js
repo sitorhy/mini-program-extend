@@ -61,40 +61,6 @@ export default class WatcherInstaller extends OptionInstaller {
         });
     }
 
-    /**
-     * g.h.i : g deep / g.h deep
-     *
-     * 数据是否触发深层比对
-     * @param data - { "a.b":{ c:100 }  } path = "a.b.c" 时 小程序不会触发 a 侦听器，但会触发 a.** 侦听器
-     * @param path - Vue 格式，任何 watch 配置的相关的侦听器都是为了兼容Vue格式存在
-     * @param cur
-     */
-    matchDeepWatcherPath(data, path, cur = "") {
-        if (!path) {
-            return data;
-        }
-        const keys = Object.keys(data);
-        let match = null;
-        for (const k of keys) {
-            const full = `${cur ? cur + "." : ""}${k}`;
-            if (full.startsWith(path) || path.startsWith(full)) {
-                const prop = data[k];
-                if (!prop || isPrimitive(prop)) {
-                    if (!match) { // 同层级选择其中一条路径
-                        match = full;
-                    }
-                } else {
-                    // 检查是否存在下一级
-                    const nextMatch = this.matchDeepWatcherPath(prop, path, full);
-                    if (nextMatch) {
-                        match = nextMatch;
-                    }
-                }
-            }
-        }
-        return match;
-    }
-
     getStaticWatcher(thisArg, path) {
         return Reflect.get(thisArg, SWATSign).get(path);
     }
@@ -327,16 +293,12 @@ export default class WatcherInstaller extends OptionInstaller {
         }));
     }
 
-    updateDeepWatcherRef(runtimeContext, watchers, data) {
+    updateDeepWatcherRef(instance, watchers) {
         for (const [, watcher] of watchers) {
             if (watcher.deep) {
                 if (watcher.path) {
-                    // 是否函数式侦听器，函数式侦听器由 "**" 侦听器负责
-                    const depth = this.matchDeepWatcherPath(data, watcher.path);
-                    if (depth) {
-                        const trace = traceObject(runtimeContext.data, depth, true, false, undefined);
-                        watcher.oldValue = [this.selectData(trace, watcher.path)];
-                    }
+                    const trace = traceObject(instance.data, watcher.path, true, false, undefined);
+                    watcher.oldValue = [this.selectData(trace, watcher.path)];
                 }
             }
         }

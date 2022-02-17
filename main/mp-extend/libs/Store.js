@@ -1,9 +1,12 @@
 import {createReactiveObject, selectPathRoot, setData} from "../utils/object";
 import {isPlainObject, isString} from "../utils/common";
+import CompatibleWatcher from "./CompatibleWatcher";
+import equal from "./fast-deep-equal/index";
 
 const StateSign = Symbol("__state__");
 const ConfigSign = Symbol("__config__");
 const InterceptorsSign = Symbol("__interceptors__");
+const WATSign = Symbol("__WAT__");
 
 const Configuration = {
     __stores: [],
@@ -51,6 +54,53 @@ const Configuration = {
         if (index >= 0) {
             interceptors.splice(index, 1);
         }
+    },
+
+    getWatchers(observer) {
+        return Reflect.get(observer, WATSign);
+    },
+
+    watch(observer, fn, callback, options = null) {
+        const watchers = this.getWatchers(observer);
+        const watcher = new CompatibleWatcher(
+            undefined,
+            function (newValue, oldValue) {
+                if (watcher.deep) {
+                    if (!equal(newValue, oldValue)) {
+                        callback.call(this, newValue, oldValue);
+                    }
+                } else {
+                    if (newValue !== oldValue) {
+                        callback.call(this, newValue, oldValue);
+                    }
+                }
+
+            },
+            (newValue, oldValue) => {
+                if (watcher.immediate) {
+                    callback.call(this, newValue, oldValue);
+                }
+            },
+            options && options.immediate === true,
+            options && options.deep === true,
+            undefined,
+            () => {
+                return fn.call(undefined, this.getState(observer));
+            }
+        );
+        watchers.push(watcher);
+        watcher.once(observer, [fn.call(undefined, this.getState(observer))]);
+        return () => {
+            this.unwatch(observer, watcher);
+        };
+    },
+
+    unwatch(observer, watcher) {
+        const watchers = this.getWatchers(observer);
+        const index = watchers.findIndex(i => i === watcher);
+        if (index >= 0) {
+            watchers.splice(index, 1);
+        }
     }
 };
 
@@ -67,6 +117,7 @@ export default class Store {
     [StateSign] = null;
     [ConfigSign] = null;
     [InterceptorsSign] = [];
+    [WATSign] = [];
 
     /**
      * @param { StoreDefinition } config
@@ -78,8 +129,11 @@ export default class Store {
             config.state,
             config.state,
             (path, value) => {
-                console.log(`${path} => ${JSON.stringify(value)}`);
+                const watchers = Configuration.getWatchers(this);
                 setData(config.state, {[path]: value});
+                for (const watcher of watchers) {
+                    watcher.update(undefined, Configuration.getState(this));
+                }
             },
             "",
             (path, value, level) => {
@@ -127,7 +181,7 @@ export default class Store {
     }
 
     watch(fn, callback, options = null) {
-
+        return Configuration.watch(this, fn, callback, options);
     }
 
     intercept(onStateGetting, onStateSetting) {

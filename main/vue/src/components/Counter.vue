@@ -7,6 +7,9 @@
     <div>
       <button @click="increment2">increment2</button>
     </div>
+    <div>
+      <button @click="reset">reset</button>
+    </div>
   </div>
 </template>
 
@@ -18,15 +21,21 @@ store.watch((state) => {
 }, (val, oldVal) => {
   console.log(`${oldVal} => ${val}`);
 }, {
-  immediate: false
+  immediate: false,
+  deep: false
 });
 
 export default {
   name: "Counter",
   store: store,
   computed: {
-    count() {
-      return store.state.count;
+    count: {
+      get() {
+        return store.state.count;
+      },
+      set(v) {
+        store.state.count = v;
+      }
     }
   },
   methods: {
@@ -35,6 +44,9 @@ export default {
     },
     increment2() {
       store.commit("increment");
+    },
+    reset() {
+      this.count = 0;
     }
   },
   mounted() {
