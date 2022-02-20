@@ -89,12 +89,23 @@ export function traceObject(obj, path, clone, override, value) {
  * @param target - 目标对象
  * @param onChanged - 实现对象修改行为，只读可以不实现
  * @param path - 目标对象相对根对象路径
- * @param {(path:string,value:any,level:number)=>void} onGet - 解析对象回调，用于获取计算依赖
- * @param {(path:string,value:any,level:number)=>void} onSet - 设置对象回调，用于获取赋值依赖
+ * @param {(path:string,value:any,level:number,parent:any)=>void} onGet - 解析对象回调，用于获取计算依赖
+ * @param {(path:string,value:any,level:number,parent:any)=>void} onSet - 设置对象回调，用于获取赋值依赖
+ * @param {(path:string,fn:()=>any,thisArg:any,args:any,level:number,parent:any)=>void} before - 设置函数回调，对象函数即将调用
+ * @param {(path:string,result:any,level:number,parent:any)=>void} after - 设置函数回调，对象函数调用完毕
  * @param level - 层级
  * @returns {boolean|any}
  */
-export function createReactiveObject(root, target, onChanged = "", path = "", onGet = null, onSet = null, level = 0) {
+export function createReactiveObject(
+    root,
+    target,
+    onChanged = null,
+    path = "",
+    onGet = null,
+    onSet = null,
+    before = null,
+    after = null,
+    level = 0) {
     return new Proxy(
         target,
         {
@@ -102,7 +113,21 @@ export function createReactiveObject(root, target, onChanged = "", path = "", on
                 const value = Reflect.get(target, p, receiver);
                 if (isFunction(value) || isPrimitive(value) || !value || isSymbol(p)) {
                     if (isFunction(onGet)) {
-                        onGet(`${path ? path + '.' : ''}${p}`, value, level);
+                        onGet(`${path ? path + '.' : ''}${p}`, value, level, target);
+                        if (p !== 'constructor' && Array.isArray(target) && isFunction(value)) {
+                            return new Proxy(value, {
+                                apply(fn, thisArg, argArray) {
+                                    if (isFunction(before)) {
+                                        before(path, fn, thisArg, argArray, level, target);
+                                    }
+                                    const result = fn.apply(thisArg, argArray);
+                                    if (isFunction(after)) {
+                                        after(path, result, level, target);
+                                    }
+                                    return result;
+                                }
+                            });
+                        }
                     }
                     // 不可枚举的值，直接返回
                     return value;
@@ -110,15 +135,15 @@ export function createReactiveObject(root, target, onChanged = "", path = "", on
                     if (Number.isSafeInteger(Number.parseInt(p))) {
                         const nextPath = `${path}[${p}]`;
                         if (isFunction(onGet)) {
-                            onGet(nextPath, value, level);
+                            onGet(nextPath, value, level, target);
                         }
-                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, level + 1);
+                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, before, after, level + 1);
                     } else {
                         const nextPath = `${path ? path + '.' : ''}${p}`;
                         if (isFunction(onGet)) {
-                            onGet(nextPath, value, level);
+                            onGet(nextPath, value, level, target);
                         }
-                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, level + 1);
+                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, before, after, level + 1);
                     }
                 }
             },
@@ -135,7 +160,7 @@ export function createReactiveObject(root, target, onChanged = "", path = "", on
                                     const field = selectPathRoot(path);
                                     const v = Reflect.get(root, field);
                                     if (isFunction(onSet)) {
-                                        onSet(field, v, level);
+                                        onSet(field, v, level, target);
                                     }
                                     onChanged(field, v);
                                 }
@@ -147,7 +172,7 @@ export function createReactiveObject(root, target, onChanged = "", path = "", on
                             if (isFunction(onChanged)) {
                                 const nextPath = `${path}[${p}]`;
                                 if (isFunction(onSet)) {
-                                    onSet(nextPath, value, level);
+                                    onSet(nextPath, value, level, target);
                                 }
                                 onChanged(nextPath, value);
                             } else {
@@ -161,7 +186,7 @@ export function createReactiveObject(root, target, onChanged = "", path = "", on
                             if (isFunction(onChanged)) {
                                 const nextPath = `${path ? path + '.' : ''}${p}`;
                                 if (isFunction(onSet)) {
-                                    onSet(nextPath, value, level);
+                                    onSet(nextPath, value, level, target);
                                 }
                                 onChanged(nextPath, value);
                             } else {
@@ -180,7 +205,7 @@ export function createReactiveObject(root, target, onChanged = "", path = "", on
                         if (isFunction(onChanged)) {
                             const lastPath = `${path}`;
                             if (isFunction(onSet)) {
-                                onSet(lastPath, target, level);
+                                onSet(lastPath, target, level, target);
                             }
                             onChanged(lastPath, target);
                         }
@@ -191,7 +216,7 @@ export function createReactiveObject(root, target, onChanged = "", path = "", on
                     if (isFunction(onChanged)) {
                         const lastPath = `${path}`;
                         if (isFunction(onSet)) {
-                            onSet(lastPath, target, level);
+                            onSet(lastPath, target, level, target);
                         }
                         onChanged(lastPath, target);
                     }

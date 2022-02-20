@@ -1,7 +1,8 @@
-import {createReactiveObject, selectPathRoot, setData, traceObject} from "../utils/object";
-import {isPlainObject, isPrimitive, isString} from "../utils/common";
+import {createReactiveObject, getData, setData, traceObject} from "../utils/object";
+import {isFunction, isPlainObject, isString} from "../utils/common";
 import CompatibleWatcher from "./CompatibleWatcher";
 import equal from "./fast-deep-equal/index";
+import clone from "./rfdc/default";
 
 const StateSign = Symbol("__state__");
 const ConfigSign = Symbol("__config__");
@@ -60,21 +61,33 @@ const Configuration = {
         return Reflect.get(observer, WATSign);
     },
 
-    watch(observer, fn, callback, options = null) {
+    /**
+     * @param observer
+     * @param fnOrPath 提高效率，对比Vuex增加路径支持
+     * @param callback
+     * @param options
+     * @returns {(function(): void)|*}
+     */
+    watch(observer, fnOrPath, callback, options = null) {
         const watchers = this.getWatchers(observer);
         const watcher = new CompatibleWatcher(
-            undefined,
+            isString(fnOrPath) ? fnOrPath : undefined,
             function (newValue, oldValue) {
                 if (watcher.deep) {
-                    if (!equal(newValue, oldValue)) {
-                        callback.call(this, newValue, oldValue);
+                    if (watcher.path) {
+                        if (newValue !== oldValue || !equal(newValue, oldValue)) {
+                            callback.call(this, newValue, oldValue);
+                        }
+                    } else {
+                        if (!equal(newValue, oldValue)) {
+                            callback.call(this, newValue, oldValue);
+                        }
                     }
                 } else {
                     if (newValue !== oldValue) {
                         callback.call(this, newValue, oldValue);
                     }
                 }
-
             },
             (newValue, oldValue) => {
                 if (watcher.immediate) {
@@ -84,12 +97,16 @@ const Configuration = {
             options && options.immediate === true,
             options && options.deep === true,
             undefined,
-            () => {
-                return fn.call(undefined, this.getState(observer));
+            isString(fnOrPath) ? null : (state) => {
+                return fnOrPath.call(undefined, state);
             }
         );
         watchers.push(watcher);
-        watcher.once(observer, [fn.call(undefined, this.getState(observer))]);
+        if (isFunction(fnOrPath)) {
+            watcher.once(observer, [fnOrPath.call(undefined, this.getState(observer))]);
+        } else {
+            watcher.once(observer, [getData(this.getState(observer), fnOrPath)]);
+        }
         return () => {
             this.unwatch(observer, watcher);
         };
@@ -124,20 +141,23 @@ export default class Store {
      */
     constructor(config) {
         Configuration.__stores.push(this);
+        const pending = [];
+        const calling = [];
+        const state = clone(config.state);
         Reflect.set(this, ConfigSign, config);
         Reflect.set(this, StateSign, createReactiveObject(
-            config.state,
-            config.state,
+            state,
+            state,
             (path, value) => {
+                setData(state, {[path]: value});
+                pending.splice(0).forEach(w => {
+                    w.call(undefined, [getData(state, w.path)]);
+                });
                 const watchers = Configuration.getWatchers(this);
                 for (const watcher of watchers) {
-                    if (watcher.deep) {
-
+                    if (isFunction(watcher.getter)) {
+                        watcher.update(undefined, [state]);
                     }
-                }
-                setData(config.state, {[path]: value});
-                for (const watcher of watchers) {
-                    watcher.update(undefined, Configuration.getState(this));
                 }
             },
             "",
@@ -156,6 +176,46 @@ export default class Store {
                         set(path, value, level);
                     }
                 }
+                const watchers = Configuration.getWatchers(this);
+                for (const watcher of watchers) {
+                    if (!calling.includes(watcher)) {
+                        if (watcher.deep) {
+                            if (watcher.path && path.startsWith(watcher.path)) {
+                                const traceObj = traceObject(state, path, true, false, undefined);
+                                watcher.oldValue = [getData(traceObj, watcher.path)];
+                                pending.push(watcher);
+                            } else if (isFunction(watcher.getter)) {
+                                watcher.oldValue = [clone(watcher.getter.call(undefined, state))];
+                            }
+                        }
+                    }
+                }
+            },
+            (path, fn, thisArg, args, level, parent) => {
+                // 仅支持数组 不要定义奇怪的类型
+                if (Array.isArray(parent)) {
+                    const watchers = Configuration.getWatchers(this);
+                    for (const watcher of watchers) {
+                        if (watcher.deep) {
+                            if (watcher.path && path.startsWith(watcher.path)) {
+                                const traceObj = traceObject(state, path, true, false, undefined);
+                                watcher.oldValue = [clone(getData(traceObj, watcher.path))];
+                                calling.push(watcher);
+                            } else if (isFunction(watcher.getter)) {
+                                const traceObj = traceObject(state, path, true, false, undefined);
+                                watcher.oldValue = [watcher.getter.call(undefined, traceObj)];
+                                calling.push(watcher);
+                            }
+                        }
+                    }
+                }
+            },
+            (path, result, level, parent) => {
+                calling.splice(0).forEach(watcher => {
+                    if (watcher.path) {
+                        watcher.call(undefined, [getData(state, watcher.path)]);
+                    }
+                });
             }
         ));
     }

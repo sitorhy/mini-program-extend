@@ -4,7 +4,7 @@ import store from "../store";
 store.watch((state) => {
     return state.obj;
 }, (val, oldVal) => {
-    console.log(`${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
+    console.log(`watch ${JSON.stringify(oldVal)} => ${JSON.stringify(val)}`);
 }, {
     immediate: false,
     deep: true

@@ -1,6 +1,6 @@
 import OptionInstaller from "./OptionInstaller";
 import Store from "../libs/Store";
-import {getData, selectPathRoot} from "../utils/object";
+import {selectPathRoot} from "../utils/object";
 import {isFunction} from "../utils/common";
 
 const UnwatchSign = ("__wxUnWAT__");
@@ -34,9 +34,7 @@ const LinkAge = {
         if (sl.has(runtimeContext.is)) {
             for (const [path, targets] of sl.get(runtimeContext.is)) {
                 const unwatch = store.watch(
-                    (state) => {
-                        return getData(state, path);
-                    },
+                    path,
                     () => {
                         if (targets && targets.length) {
                             for (const p of targets) {
@@ -48,6 +46,10 @@ const LinkAge = {
                                 }
                             }
                         }
+                    },
+                    {
+                        immediate: false,
+                        deep: true
                     }
                 );
                 if (unwatch) {

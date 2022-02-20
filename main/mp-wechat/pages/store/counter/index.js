@@ -4,7 +4,7 @@ import store from "../store";
 store.watch((state) => {
         return state.count;
     }, (val, oldVal) => {
-        console.log(`${oldVal} => ${val}`);
+        console.log(`watch ${oldVal} => ${val}`);
     },
     {
         immediate: false,
