@@ -9,11 +9,21 @@ export default {
                 },
                 d: 666
             }
-        }
+        },
+        todos: [
+            {id: 1, text: 'Eat', done: true},
+            {id: 2, text: 'Sleep', done: false},
+            {id: 3, text: 'Game', done: false}
+        ]
     },
     mutations: {
         increment(state) {
             state.count++;
+        }
+    },
+    getters: {
+        doneTodos: (state) => {
+            return state.todos.filter(todo => todo.done);
         }
     },
     actions: {},
