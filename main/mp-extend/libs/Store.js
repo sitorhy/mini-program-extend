@@ -1,5 +1,5 @@
 import {createReactiveObject, getData, setData, traceObject} from "../utils/object";
-import {isFunction, isPlainObject, isString} from "../utils/common";
+import {isFunction, isString, isPlainObject} from "../utils/common";
 import CompatibleWatcher from "./CompatibleWatcher";
 import equal from "./fast-deep-equal/index";
 import clone from "./rfdc/default";
@@ -8,6 +8,7 @@ const StateSign = Symbol("__state__");
 const ConfigSign = Symbol("__config__");
 const InterceptorsSign = Symbol("__interceptors__");
 const WATSign = Symbol("__WAT__");
+const FiltersSign = Symbol("__getters__");
 
 const Configuration = {
     __stores: [],
@@ -18,6 +19,25 @@ const Configuration = {
 
     getState(observer) {
         return Reflect.get(observer, StateSign);
+    },
+
+    getFilters(observer) {
+        return Reflect.get(observer, FiltersSign);
+    },
+
+    defineFilter(observer, p, fn) {
+        Object.defineProperty(this.getFilters(observer), p, {
+            enumerable: true,
+            configurable: false,
+            get() {
+                if (isFunction(fn)) {
+                    return fn.call(undefined);
+                }
+            },
+            set(v) {
+                throw new Error(`Cannot set property ${p} of #<${Object.prototype.toString.call(v)}> which has only a getter"`);
+            }
+        })
     },
 
     getMutation(observer, name) {
@@ -71,17 +91,11 @@ const Configuration = {
     watch(observer, fnOrPath, callback, options = null) {
         const watchers = this.getWatchers(observer);
         const watcher = new CompatibleWatcher(
-            isString(fnOrPath) ? fnOrPath : undefined,
+            isFunction(fnOrPath) ? undefined : fnOrPath,
             function (newValue, oldValue) {
                 if (watcher.deep) {
-                    if (watcher.path) {
-                        if (newValue !== oldValue || !equal(newValue, oldValue)) {
-                            callback.call(this, newValue, oldValue);
-                        }
-                    } else {
-                        if (!equal(newValue, oldValue)) {
-                            callback.call(this, newValue, oldValue);
-                        }
+                    if (!equal(newValue, oldValue)) {
+                        callback.call(this, newValue, oldValue);
                     }
                 } else {
                     if (newValue !== oldValue) {
@@ -97,9 +111,9 @@ const Configuration = {
             options && options.immediate === true,
             options && options.deep === true,
             undefined,
-            isString(fnOrPath) ? null : (state) => {
+            isFunction(fnOrPath) ? (state) => {
                 return fnOrPath.call(undefined, state);
-            }
+            } : null
         );
         watchers.push(watcher);
         if (isFunction(fnOrPath)) {
@@ -135,6 +149,7 @@ export default class Store {
     [ConfigSign] = null;
     [InterceptorsSign] = [];
     [WATSign] = [];
+    [FiltersSign] = {};
 
     /**
      * @param { StoreDefinition } config
@@ -150,8 +165,8 @@ export default class Store {
             state,
             (path, value) => {
                 setData(state, {[path]: value});
-                pending.splice(0).forEach(w => {
-                    w.call(undefined, [getData(state, w.path)]);
+                pending.splice(0).forEach(watcher => {
+                    watcher.call(undefined, [getData(state, watcher.path)]);
                 });
                 const watchers = Configuration.getWatchers(this);
                 for (const watcher of watchers) {
@@ -218,6 +233,16 @@ export default class Store {
                 });
             }
         ));
+
+        if (config.getters) {
+            for (const getter in config.getters) {
+                Configuration.defineFilter(this, getter, function () {
+                    if (isFunction(config.getters[getter])) {
+                        return config.getters[getter].call(this, state);
+                    }
+                });
+            }
+        }
     }
 
     static instances() {
@@ -259,5 +284,9 @@ export default class Store {
 
     get state() {
         return Configuration.getState(this);
+    }
+
+    get getters() {
+        return Configuration.getFilters(this);
     }
 }

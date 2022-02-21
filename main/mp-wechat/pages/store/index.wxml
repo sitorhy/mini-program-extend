@@ -5,4 +5,7 @@
     <view>
         <obj/>
     </view>
+    <view>
+        <todos/>
+    </view>
 </view>
