@@ -10,7 +10,7 @@ const InterceptorsSign = Symbol("__interceptors__");
 const WATSign = Symbol("__WAT__");
 const FiltersSign = Symbol("__getters__");
 
-const Configuration = {
+const PrivateConfiguration = {
     __stores: [],
 
     getConfig(observer) {
@@ -94,8 +94,14 @@ const Configuration = {
             isFunction(fnOrPath) ? undefined : fnOrPath,
             function (newValue, oldValue) {
                 if (watcher.deep) {
-                    if (!equal(newValue, oldValue)) {
-                        callback.call(this, newValue, oldValue);
+                    if (watcher.path) {
+                        if (newValue !== oldValue || !equal(newValue, oldValue)) {
+                            callback.call(this, newValue, oldValue);
+                        }
+                    } else {
+                        if (!equal(newValue, oldValue)) {
+                            callback.call(this, newValue, oldValue);
+                        }
                     }
                 } else {
                     if (newValue !== oldValue) {
@@ -135,6 +141,20 @@ const Configuration = {
     }
 };
 
+export const Configuration = {
+    instances() {
+        return PrivateConfiguration.__stores;
+    },
+
+    intercept(observer, onStateGetting, onStateSetting) {
+        return PrivateConfiguration.intercept(observer, onStateGetting, onStateSetting);
+    },
+
+    cancelIntercept(observer, onStateGetting, onStateSetting) {
+        return PrivateConfiguration.cancelIntercept(observer, onStateGetting, onStateSetting);
+    }
+};
+
 /**
  * @typedef { {
  * state:object,
@@ -155,29 +175,32 @@ export default class Store {
      * @param { StoreDefinition } config
      */
     constructor(config) {
-        Configuration.__stores.push(this);
+        PrivateConfiguration.__stores.push(this);
         const pending = [];
         const calling = [];
-        const state = clone(config.state);
+        const state = isFunction(config.state) ? config.state() : config.state;
         Reflect.set(this, ConfigSign, config);
         Reflect.set(this, StateSign, createReactiveObject(
             state,
             state,
             (path, value) => {
                 setData(state, {[path]: value});
+                // 待执行路径观察器 组件计算属性依赖
                 pending.splice(0).forEach(watcher => {
                     watcher.call(undefined, [getData(state, watcher.path)]);
                 });
-                const watchers = Configuration.getWatchers(this);
+
+                // 自定义观察器
+                const watchers = PrivateConfiguration.getWatchers(this);
                 for (const watcher of watchers) {
                     if (isFunction(watcher.getter)) {
-                        watcher.update(undefined, [state]);
+                        watcher.update(undefined, [this.state]);
                     }
                 }
             },
             "",
             (path, value, level) => {
-                const interceptors = Configuration.getInterceptors(this);
+                const interceptors = PrivateConfiguration.getInterceptors(this);
                 for (const {get} of interceptors) {
                     if (get) {
                         get(path, value, level);
@@ -185,14 +208,15 @@ export default class Store {
                 }
             },
             (path, value, level) => {
-                const interceptors = Configuration.getInterceptors(this);
+                const interceptors = PrivateConfiguration.getInterceptors(this);
                 for (const {set} of interceptors) {
                     if (set) {
                         set(path, value, level);
                     }
                 }
-                const watchers = Configuration.getWatchers(this);
+                const watchers = PrivateConfiguration.getWatchers(this);
                 for (const watcher of watchers) {
+                    // 非数组字段修改
                     if (!calling.includes(watcher)) {
                         if (watcher.deep) {
                             if (watcher.path && path.startsWith(watcher.path)) {
@@ -200,7 +224,7 @@ export default class Store {
                                 watcher.oldValue = [getData(traceObj, watcher.path)];
                                 pending.push(watcher);
                             } else if (isFunction(watcher.getter)) {
-                                watcher.oldValue = [clone(watcher.getter.call(undefined, state))];
+                                watcher.oldValue = clone(watcher.oldValue);
                             }
                         }
                     }
@@ -209,16 +233,15 @@ export default class Store {
             (path, fn, thisArg, args, level, parent) => {
                 // 仅支持数组 不要定义奇怪的类型
                 if (Array.isArray(parent)) {
-                    const watchers = Configuration.getWatchers(this);
+                    const watchers = PrivateConfiguration.getWatchers(this);
                     for (const watcher of watchers) {
                         if (watcher.deep) {
                             if (watcher.path && path.startsWith(watcher.path)) {
                                 const traceObj = traceObject(state, path, true, false, undefined);
-                                watcher.oldValue = [clone(getData(traceObj, watcher.path))];
+                                watcher.oldValue = [getData(traceObj, watcher.path)];
                                 calling.push(watcher);
                             } else if (isFunction(watcher.getter)) {
-                                const traceObj = traceObject(state, path, true, false, undefined);
-                                watcher.oldValue = [watcher.getter.call(undefined, traceObj)];
+                                watcher.oldValue = clone(watcher.oldValue);
                                 calling.push(watcher);
                             }
                         }
@@ -236,17 +259,23 @@ export default class Store {
 
         if (config.getters) {
             for (const getter in config.getters) {
-                Configuration.defineFilter(this, getter, function () {
+                PrivateConfiguration.defineFilter(this, getter, function () {
                     if (isFunction(config.getters[getter])) {
                         return config.getters[getter].call(this, state);
                     }
                 });
             }
         }
+
+        if (config.modules) {
+            for (const module in config.modules) {
+                this.registerModule(module, config.modules[module]);
+            }
+        }
     }
 
-    static instances() {
-        return Configuration.__stores;
+    registerModule(path, module) {
+
     }
 
     commit(...args) {
@@ -255,7 +284,7 @@ export default class Store {
         if (!isString(type)) {
             if (isPlainObject(type)) {
                 const t = type.type;
-                const m = Configuration.getMutation(this, t);
+                const m = PrivateConfiguration.getMutation(this, t);
                 if (m) {
                     m.call(this, this.state, type);
                     return;
@@ -263,7 +292,7 @@ export default class Store {
             }
             throw new Error("expects string as the type, but found object");
         } else {
-            const m = Configuration.getMutation(this, type);
+            const m = PrivateConfiguration.getMutation(this, type);
             if (m) {
                 m.call(this, this.state, payload);
             }
@@ -271,22 +300,14 @@ export default class Store {
     }
 
     watch(fn, callback, options = null) {
-        return Configuration.watch(this, fn, callback, options);
-    }
-
-    intercept(onStateGetting, onStateSetting) {
-        return Configuration.intercept(this, onStateGetting, onStateSetting);
-    }
-
-    cancelIntercept(onStateGetting, onStateSetting) {
-        return Configuration.cancelIntercept(this, onStateGetting, onStateSetting);
+        return PrivateConfiguration.watch(this, fn, callback, options);
     }
 
     get state() {
-        return Configuration.getState(this);
+        return PrivateConfiguration.getState(this);
     }
 
     get getters() {
-        return Configuration.getFilters(this);
+        return PrivateConfiguration.getFilters(this);
     }
 }

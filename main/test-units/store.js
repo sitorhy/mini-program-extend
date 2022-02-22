@@ -1,3 +1,20 @@
+const auth = {
+    state: {
+        token: "",
+        username: ""
+    },
+    getters: {
+        isLogin(state) {
+            return !!state.token;
+        }
+    },
+    mutations: {
+        login(state, token) {
+            state.state = token;
+        }
+    }
+};
+
 export default {
     state: {
         count: 0,
@@ -27,5 +44,7 @@ export default {
         }
     },
     actions: {},
-    modules: {}
+    modules: {
+        auth
+    }
 }

@@ -1,5 +1,5 @@
 import OptionInstaller from "./OptionInstaller";
-import Store from "../libs/Store";
+import {Configuration} from "../libs/Store";
 import {selectPathRoot} from "../utils/object";
 import {isFunction} from "../utils/common";
 
@@ -96,13 +96,14 @@ export default class StoreInstaller extends OptionInstaller {
         const dependencies = [];
         return {
             created() {
-                const stores = Store.instances().filter(s => {
+                const stores = Configuration.instances().filter(s => {
                     const sl = LinkAge.getStoreLinkAge(s);
                     return !sl.has(this.is);
                 });
                 if (stores.length) {
                     for (const store of stores) {
-                        store.intercept(
+                        Configuration.intercept(
+                            store,
                             (path, value, level) => {
                                 if (!dependencies.findIndex(s => s.store === store && s.path === path) >= 0 && level === 0) {
                                     dependencies.push({
@@ -139,14 +140,10 @@ export default class StoreInstaller extends OptionInstaller {
                 if (cancel) {
                     cancel();
                 }
-                Store.instances().forEach(s => {
+                Configuration.instances().forEach(s => {
                     LinkAge.watchStore(s, this, computed);
                 });
             }
         };
-    }
-
-    install(extender, context, options) {
-
     }
 }
