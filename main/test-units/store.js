@@ -10,7 +10,7 @@ const auth = {
     },
     mutations: {
         login(state, token) {
-            state.state = token;
+            state.token = token;
         }
     }
 };

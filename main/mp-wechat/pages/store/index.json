@@ -2,6 +2,7 @@
   "usingComponents": {
     "counter": "./counter/index",
     "obj": "./obj/index",
-    "todos": "./todos/index"
+    "todos": "./todos/index",
+    "auth": "./auth/index"
   }
 }

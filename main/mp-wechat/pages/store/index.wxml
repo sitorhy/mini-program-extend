@@ -8,4 +8,7 @@
     <view>
         <todos/>
     </view>
+    <view>
+        <auth/>
+    </view>
 </view>

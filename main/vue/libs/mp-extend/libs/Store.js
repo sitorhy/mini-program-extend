@@ -1,24 +1,25 @@
-import {createReactiveObject, getData, setData, traceObject} from "../utils/object";
+import {createReactiveObject, getData, selectPathRoot, setData, splitPath, traceObject} from "../utils/object";
 import {isFunction, isString, isPlainObject} from "../utils/common";
 import CompatibleWatcher from "./CompatibleWatcher";
 import equal from "./fast-deep-equal/index";
 import clone from "./rfdc/default";
 
 const StateSign = Symbol("__state__");
-const ConfigSign = Symbol("__config__");
 const InterceptorsSign = Symbol("__interceptors__");
 const WATSign = Symbol("__WAT__");
 const FiltersSign = Symbol("__getters__");
+const ModulesSign = Symbol("__modules__");
+const RootModuleSign = Symbol("__root__");
 
 const PrivateConfiguration = {
     __stores: [],
 
-    getConfig(observer) {
-        return Reflect.get(observer, ConfigSign);
-    },
-
-    getState(observer) {
-        return Reflect.get(observer, StateSign);
+    getState(observer, path = null) {
+        const root = Reflect.get(observer, StateSign);
+        if (path === null || path === undefined || path === RootModuleSign) {
+            return root;
+        }
+        return getData(root, path);
     },
 
     getFilters(observer) {
@@ -40,15 +41,19 @@ const PrivateConfiguration = {
         })
     },
 
-    getMutation(observer, name) {
-        const config = this.getConfig(observer);
+    deleteFilter(observer, p) {
+        Reflect.deleteProperty(this.getFilters(observer), p);
+    },
+
+    getMutation(observer, path, name) {
+        const config = this.getModules(observer).get(path === null || path === undefined ? RootModuleSign : path);
         if (config) {
             const mutations = config.mutations;
             if (mutations && mutations[name]) {
                 return mutations[name];
             }
         }
-        throw new Error(`unknown mutation type: ${name}`);
+        return null;
     },
 
     getInterceptors(observer) {
@@ -83,7 +88,7 @@ const PrivateConfiguration = {
 
     /**
      * @param observer
-     * @param fnOrPath 提高效率，对比Vuex增加路径支持
+     * @param fnOrPath 提高效率，对比Vuex增加路径支持，仅对内部开放
      * @param callback
      * @param options
      * @returns {(function(): void)|*}
@@ -138,6 +143,18 @@ const PrivateConfiguration = {
         if (index >= 0) {
             watchers.splice(index, 1);
         }
+    },
+
+    getModules(observer) {
+        return Reflect.get(observer, ModulesSign);
+    },
+
+    registerModule(observer, path, module) {
+        this.getModules(observer).set(path, module);
+    },
+
+    unregisterModule(observer, path) {
+        this.getModules(observer).delete(path);
     }
 };
 
@@ -166,20 +183,18 @@ export const Configuration = {
  */
 export default class Store {
     [StateSign] = null;
-    [ConfigSign] = null;
     [InterceptorsSign] = [];
     [WATSign] = [];
     [FiltersSign] = {};
+    [ModulesSign] = new Map();
 
     /**
      * @param { StoreDefinition } config
      */
     constructor(config) {
-        PrivateConfiguration.__stores.push(this);
         const pending = [];
         const calling = [];
         const state = isFunction(config.state) ? config.state() : config.state;
-        Reflect.set(this, ConfigSign, config);
         Reflect.set(this, StateSign, createReactiveObject(
             state,
             state,
@@ -257,6 +272,9 @@ export default class Store {
             }
         ));
 
+        PrivateConfiguration.registerModule(this, RootModuleSign, config);
+        PrivateConfiguration.__stores.push(this);
+
         if (config.getters) {
             for (const getter in config.getters) {
                 PrivateConfiguration.defineFilter(this, getter, function () {
@@ -268,34 +286,87 @@ export default class Store {
         }
 
         if (config.modules) {
-            for (const module in config.modules) {
-                this.registerModule(module, config.modules[module]);
+            for (const path in config.modules) {
+                this.registerModule(path, config.modules[path]);
             }
         }
     }
 
     registerModule(path, module) {
+        const {state, getters} = module;
+        if (state) {
+            setData(this.state, {
+                [path]: isFunction(state) ? state() : state
+            });
+        }
+        if (getters) {
+            for (const getter in getters) {
+                PrivateConfiguration.defineFilter(this, getter, () => {
+                    if (isFunction(getters[getter])) {
+                        return getters[getter].call(this, PrivateConfiguration.getState(this, path));
+                    }
+                });
+            }
+        }
+        PrivateConfiguration.registerModule(this, path, module);
+    }
 
+    unregisterModule(path) {
+        const module = PrivateConfiguration.getModules(path);
+        if (module) {
+            const paths = splitPath(path);
+            if (paths.length > 1) {
+                let i = path.lastIndexOf('.');
+                if (i < 0) {
+                    i = path.lastIndexOf('[');
+                }
+                if (i > 0) {
+                    const parentPath = path.slice(0, i);
+                    if (parentPath) {
+                        Reflect.deleteProperty(getData(this.state, parentPath), paths[paths.length - 1]);
+                    }
+                }
+            } else {
+                Reflect.deleteProperty(this.state, path);
+            }
+            const {getters} = module;
+            if (getters) {
+                for (const getter in getters) {
+                    PrivateConfiguration.deleteFilter(this, getter);
+                }
+            }
+            PrivateConfiguration.unregisterModule(this, path);
+        }
     }
 
     commit(...args) {
         const type = args.length > 0 ? args[0] : undefined;
-        const payload = args.length > 1 ? args[1] : undefined;
+        const payload = args.length > 1 ? args[1] : type;
+        let mutationName = null;
+        let path = null;
+        let mutation = null;
         if (!isString(type)) {
             if (isPlainObject(type)) {
-                const t = type.type;
-                const m = PrivateConfiguration.getMutation(this, t);
-                if (m) {
-                    m.call(this, this.state, type);
-                    return;
-                }
+                mutationName = type.type;
+            } else {
+                throw new Error("expects string as the type, but found object");
             }
-            throw new Error("expects string as the type, but found object");
         } else {
-            const m = PrivateConfiguration.getMutation(this, type);
-            if (m) {
-                m.call(this, this.state, payload);
+            mutationName = type;
+        }
+
+        for (const p of PrivateConfiguration.getModules(this).keys()) {
+            mutation = PrivateConfiguration.getMutation(this, p, mutationName);
+            if (mutation) {
+                path = p;
+                break;
             }
+        }
+
+        if (isFunction(mutation)) {
+            mutation.call(this, PrivateConfiguration.getState(this, path), payload);
+        } else {
+            throw new Error(`unknown mutation type: ${mutationName}`);
         }
     }
 
