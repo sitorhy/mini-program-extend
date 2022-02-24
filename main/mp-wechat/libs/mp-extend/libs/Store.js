@@ -29,7 +29,7 @@ const PrivateConfiguration = {
     defineFilter(observer, p, fn) {
         Object.defineProperty(this.getFilters(observer), p, {
             enumerable: true,
-            configurable: false,
+            configurable: true,
             get() {
                 if (isFunction(fn)) {
                     return fn.call(undefined);
@@ -212,21 +212,27 @@ export default class Store {
                 PrivateConfiguration.registerModule(this, path, module);
             }
         }
+
+        // before -> set -> onChanged -> after
         Reflect.set(this, StateSign, createReactiveObject(
             state,
             state,
             (path, value) => {
-                console.log(`${path} => ${JSON.stringify(value)}`)
                 setData(state, {[path]: value});
-                // 待执行路径观察器 组件计算属性依赖
                 pending.splice(0).forEach(watcher => {
+                    // ③ not array deep with path
+                    // ⑧ not array shallow with path
+                    // 路径侦听器直接获取新值 不需要传 this.state 触发拦截器
                     watcher.call(undefined, [getData(state, watcher.path)]);
                 });
 
-                // 自定义观察器
                 const watchers = PrivateConfiguration.getWatchers(this);
                 for (const watcher of watchers) {
                     if (isFunction(watcher.getter)) {
+                        // ② array deep with getter
+                        // ④ not array deep with getter
+                        // ⑤ array shallow with getter
+                        // ⑥ not array shallow with getter
                         watcher.update(undefined, [this.state]);
                     }
                 }
@@ -249,14 +255,18 @@ export default class Store {
                 }
                 const watchers = PrivateConfiguration.getWatchers(this);
                 for (const watcher of watchers) {
-                    // 非数组字段修改
-                    if (!calling.includes(watcher)) {
+                    if (!calling.includes(watcher)) { // 4 排除深拷贝预处理
                         if (watcher.deep) {
+                            // ④ not array deep with getter
+                            watcher.oldValue = clone(watcher.oldValue);
                             if (watcher.path && path.startsWith(watcher.path)) {
-                                watcher.oldValue = clone(watcher.oldValue);
+                                // ③ not array deep with path
                                 pending.push(watcher);
-                            } else if (isFunction(watcher.getter)) {
-                                watcher.oldValue = clone(watcher.oldValue);
+                            }
+                        } else {
+                            // ⑧ not array shallow with path
+                            if (watcher.path) {
+                                pending.push(watcher);
                             }
                         }
                     }
@@ -266,28 +276,32 @@ export default class Store {
                 const watchers = PrivateConfiguration.getWatchers(this);
                 for (const watcher of watchers) {
                     if (watcher.deep) {
-                        if (watcher.path && path.startsWith(watcher.path)) {
-                            watcher.oldValue = clone(watcher.oldValue);
-                            watcher.call(undefined, [getData(state, watcher.path)]);
-                        } else if (isFunction(watcher.getter)) {
-                            watcher.oldValue = clone(watcher.oldValue);
-                            watcher.update(undefined, [this.state]);
-                        }
+                        watcher.oldValue = clone(watcher.oldValue);
+                    }
+                    if (watcher.path) {
+                        watcher.call(undefined, [getData(state, watcher.path)]);
+                    } else if (isFunction(watcher.getter)) {
+                        watcher.update(undefined, [this.state]);
                     }
                 }
             },
             (path, fn, thisArg, args, level, parent) => {
-                // 仅支持数组 不要定义奇怪的类型
                 if (Array.isArray(parent)) {
                     const watchers = PrivateConfiguration.getWatchers(this);
                     for (const watcher of watchers) {
+                        // 避免旧值引用一并被修改
                         if (watcher.deep) {
+                            watcher.oldValue = clone(watcher.oldValue);
                             if (watcher.path && path.startsWith(watcher.path)) {
-                                const traceObj = traceObject(state, path, true, false, undefined);
-                                watcher.oldValue = [getData(traceObj, watcher.path)];
+                                // ① array deep with path
                                 calling.push(watcher);
                             } else if (isFunction(watcher.getter)) {
-                                watcher.oldValue = clone(watcher.oldValue);
+                                // ② array deep with getter
+                                calling.push(watcher);
+                            }
+                        } else {
+                            if (watcher.path) {
+                                // ⑦ array shallow with path
                                 calling.push(watcher);
                             }
                         }
@@ -297,6 +311,8 @@ export default class Store {
             (path, result, level, parent) => {
                 calling.splice(0).forEach(watcher => {
                     if (watcher.path) {
+                        // ① array deep with path
+                        // ⑦ array shallow with path
                         watcher.call(undefined, [getData(state, watcher.path)]);
                     }
                 });
@@ -337,30 +353,36 @@ export default class Store {
     }
 
     unregisterModule(path) {
-        const module = PrivateConfiguration.getModules(this, path);
+        const module = PrivateConfiguration.getModules(this).get(path);
         if (module) {
             const paths = splitPath(path);
-            if (paths.length > 1) {
-                let i = path.lastIndexOf('.');
-                if (i < 0) {
-                    i = path.lastIndexOf('[');
+            try {
+                if (paths.length > 1) {
+                    let i = path.lastIndexOf('.');
+                    if (i < 0) {
+                        i = path.lastIndexOf('[');
+                    }
+                    if (i > 0) {
+                        const parentPath = path.slice(0, i);
+                        if (parentPath) {
+                            Reflect.deleteProperty(getData(this.state, parentPath), paths[paths.length - 1]);
+                        }
+                    }
+                } else {
+                    Reflect.deleteProperty(this.state, path);
                 }
-                if (i > 0) {
-                    const parentPath = path.slice(0, i);
-                    if (parentPath) {
-                        Reflect.deleteProperty(getData(this.state, parentPath), paths[paths.length - 1]);
+            } catch (e) {
+                // 删除后触发 computed 可能会出现空指针错误
+                throw e;
+            } finally {
+                const {getters} = module;
+                if (getters) {
+                    for (const getter in getters) {
+                        PrivateConfiguration.deleteFilter(this, getter);
                     }
                 }
-            } else {
-                Reflect.deleteProperty(this.state, path);
+                PrivateConfiguration.unregisterModule(this, path);
             }
-            const {getters} = module;
-            if (getters) {
-                for (const getter in getters) {
-                    PrivateConfiguration.deleteFilter(this, getter);
-                }
-            }
-            PrivateConfiguration.unregisterModule(this, path);
         }
     }
 

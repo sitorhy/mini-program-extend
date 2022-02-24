@@ -139,13 +139,13 @@ export function createReactiveObject(
                         if (isFunction(onGet)) {
                             onGet(nextPath, value, level, target);
                         }
-                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, before, after, level + 1);
+                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
                     } else {
                         const nextPath = `${path ? path + '.' : ''}${p}`;
                         if (isFunction(onGet)) {
                             onGet(nextPath, value, level, target);
                         }
-                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, before, after, level + 1);
+                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
                     }
                 }
             },
