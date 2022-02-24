@@ -29,7 +29,10 @@ export default {
   },
   watch: {
     token(val, oldVal) {
-      console.log(`${oldVal} => ${val}`);
+      console.log(`token ${oldVal} => ${val}`);
+    },
+    isLogin(val, oldVal) {
+      console.log(`isLogin ${oldVal} => ${val}`);
     }
   },
   methods: {

@@ -216,6 +216,7 @@ export default class Store {
             state,
             state,
             (path, value) => {
+                console.log(`${path} => ${JSON.stringify(value)}`)
                 setData(state, {[path]: value});
                 // 待执行路径观察器 组件计算属性依赖
                 pending.splice(0).forEach(watcher => {
@@ -252,12 +253,25 @@ export default class Store {
                     if (!calling.includes(watcher)) {
                         if (watcher.deep) {
                             if (watcher.path && path.startsWith(watcher.path)) {
-                                const traceObj = traceObject(state, path, true, false, undefined);
-                                watcher.oldValue = [getData(traceObj, watcher.path)];
+                                watcher.oldValue = clone(watcher.oldValue);
                                 pending.push(watcher);
                             } else if (isFunction(watcher.getter)) {
                                 watcher.oldValue = clone(watcher.oldValue);
                             }
+                        }
+                    }
+                }
+            },
+            (path, level, parent) => {
+                const watchers = PrivateConfiguration.getWatchers(this);
+                for (const watcher of watchers) {
+                    if (watcher.deep) {
+                        if (watcher.path && path.startsWith(watcher.path)) {
+                            watcher.oldValue = clone(watcher.oldValue);
+                            watcher.call(undefined, [getData(state, watcher.path)]);
+                        } else if (isFunction(watcher.getter)) {
+                            watcher.oldValue = clone(watcher.oldValue);
+                            watcher.update(undefined, [this.state]);
                         }
                     }
                 }
@@ -323,7 +337,7 @@ export default class Store {
     }
 
     unregisterModule(path) {
-        const module = PrivateConfiguration.getModules(path);
+        const module = PrivateConfiguration.getModules(this, path);
         if (module) {
             const paths = splitPath(path);
             if (paths.length > 1) {

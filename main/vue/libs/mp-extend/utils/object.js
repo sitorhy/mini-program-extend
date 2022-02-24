@@ -91,6 +91,7 @@ export function traceObject(obj, path, clone, override, value) {
  * @param path - 目标对象相对根对象路径
  * @param {(path:string,value:any,level:number,parent:any)=>void} onGet - 解析对象回调，用于获取计算依赖
  * @param {(path:string,value:any,level:number,parent:any)=>void} onSet - 设置对象回调，用于获取赋值依赖
+ * @param {(path:string,level:number,parent:any)=>void} onDelete - 删除回调
  * @param {(path:string,fn:()=>any,thisArg:any,args:any,level:number,parent:any)=>void} before - 设置函数回调，对象函数即将调用
  * @param {(path:string,result:any,level:number,parent:any)=>void} after - 设置函数回调，对象函数调用完毕
  * @param level - 层级
@@ -103,6 +104,7 @@ export function createReactiveObject(
     path = "",
     onGet = null,
     onSet = null,
+    onDelete = null,
     before = null,
     after = null,
     level = 0) {
@@ -200,25 +202,25 @@ export function createReactiveObject(
             deleteProperty(target, p) {
                 if (Array.isArray(target)) {
                     const tryNum = Number.parseInt(p);
-                    if (Number.isSafeInteger(tryNum)) {
-                        Array.prototype.splice.call(target, tryNum, 1);
-                        if (isFunction(onChanged)) {
-                            const lastPath = `${path}`;
-                            if (isFunction(onSet)) {
-                                onSet(lastPath, target, level, target);
+                    if (Reflect.deleteProperty(target, p)) {
+                        if (Number.isSafeInteger(tryNum)) {
+                            const path = `${path}[${p}]`;
+                            if (isFunction(onDelete)) {
+                                onDelete(path, level, target);
                             }
-                            onChanged(lastPath, target);
+                        } else {
+                            const path = `${path}.${p}`;
+                            if (isFunction(onDelete)) {
+                                onDelete(path, level, target);
+                            }
                         }
-                        return true;
                     }
+                    return false;
                 }
                 if (Reflect.deleteProperty(target, p)) {
-                    if (isFunction(onChanged)) {
-                        const lastPath = `${path}`;
-                        if (isFunction(onSet)) {
-                            onSet(lastPath, target, level, target);
-                        }
-                        onChanged(lastPath, target);
+                    const path = `${path ? path + '.' : ''}${p}`;
+                    if (isFunction(onDelete)) {
+                        onDelete(path, level, target);
                     }
                     return true;
                 }
