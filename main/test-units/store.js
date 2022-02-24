@@ -12,7 +12,8 @@ const auth = {
         login(state, token) {
             state.token = token;
         }
-    }
+    },
+    actions: {}
 };
 
 export default {
@@ -43,7 +44,11 @@ export default {
             return state.todos.filter(todo => todo.done);
         }
     },
-    actions: {},
+    actions: {
+        actionA() {
+
+        }
+    },
     modules: {
         auth
     }

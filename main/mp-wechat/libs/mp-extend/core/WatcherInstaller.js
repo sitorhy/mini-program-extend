@@ -157,6 +157,7 @@ export default class WatcherInstaller extends OptionInstaller {
     staticWatchersDefinition(extender, context, options, defFields) {
         const watch = context.get("watch");
         const observers = context.get("observers");
+        const computed = context.get("computed");
 
         const createStaticWatchers = () => {
             const staticWatchers = new Map();
@@ -168,7 +169,7 @@ export default class WatcherInstaller extends OptionInstaller {
                 const shallowWatchers = watchers.filter(w => w.deep !== true);
 
                 if (deepWatchers.length) {
-                    staticWatchers.set(`${observerPath}.**`, new CompatibleWatcher(
+                    const compatibleWatcher = new CompatibleWatcher(
                         path,
                         function (newValue, oldValue) {
                             if (!equal(newValue, oldValue)) {
@@ -183,11 +184,13 @@ export default class WatcherInstaller extends OptionInstaller {
                                     w.handler.call(this, newValue, oldValue);
                                 }
                             });
-                        }, true, true, undefined));
+                        }, true, true, undefined);
+                    compatibleWatcher.enabled = !Reflect.has(computed, compatibleWatcher.path);
+                    staticWatchers.set(`${observerPath}.**`, compatibleWatcher);
                 }
 
                 if (shallowWatchers.length) {
-                    staticWatchers.set(observerPath, new CompatibleWatcher(
+                    const compatibleWatcher = new CompatibleWatcher(
                         path,
                         function (newValue, oldValue) {
                             if (!equal(newValue, oldValue)) {
@@ -202,7 +205,9 @@ export default class WatcherInstaller extends OptionInstaller {
                                     w.handler.call(this, newValue, oldValue);
                                 }
                             });
-                        }, true, false, undefined));
+                        }, true, false, undefined);
+                    compatibleWatcher.enabled = !Reflect.has(computed, compatibleWatcher.path);
+                    staticWatchers.set(observerPath, compatibleWatcher);
                 }
             });
 
@@ -285,7 +290,10 @@ export default class WatcherInstaller extends OptionInstaller {
                         Invocation(observers[observerPath], null, function (newValue) {
                             const watcher = getStaticWatcher(this, observerPath);
                             if (watcher) {
-                                watcher.call(this, [newValue])
+                                watcher.call(this, [newValue]);
+                                if (!watcher.enabled) {
+                                    watcher.enabled = true; // 启用计算属性监听器
+                                }
                             }
                         })
                     ];

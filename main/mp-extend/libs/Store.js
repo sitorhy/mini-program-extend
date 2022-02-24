@@ -195,6 +195,23 @@ export default class Store {
         const pending = [];
         const calling = [];
         const state = isFunction(config.state) ? config.state() : config.state;
+        if (config.modules) {
+            for (const path in config.modules) {
+                const module = config.modules[path];
+                const mState = module.state;
+                setData(state, {[path]: isFunction(mState) ? mState() : mState});
+                if (module.getters) {
+                    for (const getter in module.getters) {
+                        PrivateConfiguration.defineFilter(this, getter, () => {
+                            if (isFunction(module.getters[getter])) {
+                                return module.getters[getter].call(undefined, PrivateConfiguration.getState(this, path));
+                            }
+                        });
+                    }
+                }
+                PrivateConfiguration.registerModule(this, path, module);
+            }
+        }
         Reflect.set(this, StateSign, createReactiveObject(
             state,
             state,
@@ -282,12 +299,6 @@ export default class Store {
                         return config.getters[getter].call(this, state);
                     }
                 });
-            }
-        }
-
-        if (config.modules) {
-            for (const path in config.modules) {
-                this.registerModule(path, config.modules[path]);
             }
         }
     }
