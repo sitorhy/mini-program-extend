@@ -181,11 +181,17 @@ export default class WatcherInstaller extends OptionInstaller {
                         function (newValue, oldValue) {
                             deepWatchers.forEach(w => {
                                 if (w.immediate === true) {
+                                    if (!w.enabled) {
+                                        w.enabled = true;
+                                    }
                                     w.handler.call(this, newValue, oldValue);
                                 }
                             });
                         }, true, true, undefined);
-                    compatibleWatcher.enabled = !Reflect.has(computed, compatibleWatcher.path);
+                    if (computed) {
+                        // 等待 ComputedInstaller 初始化
+                        compatibleWatcher.enabled = !Reflect.has(computed, compatibleWatcher.path);
+                    }
                     staticWatchers.set(`${observerPath}.**`, compatibleWatcher);
                 }
 
@@ -193,7 +199,7 @@ export default class WatcherInstaller extends OptionInstaller {
                     const compatibleWatcher = new CompatibleWatcher(
                         path,
                         function (newValue, oldValue) {
-                            if (!equal(newValue, oldValue)) {
+                            if (newValue !== oldValue) {
                                 shallowWatchers.forEach(w => {
                                     w.handler.call(this, newValue, oldValue);
                                 });
@@ -202,11 +208,16 @@ export default class WatcherInstaller extends OptionInstaller {
                         function (newValue, oldValue) {
                             shallowWatchers.forEach(w => {
                                 if (w.immediate === true) {
+                                    if (!w.enabled) {
+                                        w.enabled = true;
+                                    }
                                     w.handler.call(this, newValue, oldValue);
                                 }
                             });
                         }, true, false, undefined);
-                    compatibleWatcher.enabled = !Reflect.has(computed, compatibleWatcher.path);
+                    if (computed) {
+                        compatibleWatcher.enabled = !Reflect.has(computed, compatibleWatcher.path);
+                    }
                     staticWatchers.set(observerPath, compatibleWatcher);
                 }
             });
@@ -251,6 +262,7 @@ export default class WatcherInstaller extends OptionInstaller {
         defFields.behaviors = [Behavior(behavior)].concat((defFields.behaviors || []));
         defFields.behaviors.push(Behavior({
             created() {
+                /*
                 const staticWatchers = Reflect.get(this, SWATSign);
                 for (const observerPath of staticWatchers.keys()) {
                     const watcher = getStaticWatcher(this, observerPath);
@@ -260,7 +272,7 @@ export default class WatcherInstaller extends OptionInstaller {
                         // 设置侦听器初始值，并触发 immediate 侦听器
                         watcher.once(this, [curValue]);
                     }
-                }
+                }*/
             },
             observers: Stream.of(
                 [...new Set(
@@ -290,9 +302,11 @@ export default class WatcherInstaller extends OptionInstaller {
                         Invocation(observers[observerPath], null, function (newValue) {
                             const watcher = getStaticWatcher(this, observerPath);
                             if (watcher) {
+                                console.log('触发 ' + this.is + ' ' + observerPath)
+                                watcher.once(this, [newValue]);
                                 watcher.call(this, [newValue]);
                                 if (!watcher.enabled) {
-                                    watcher.enabled = true; // 启用计算属性监听器
+                                    watcher.enabled = true; // 启用计算属性监听器 跳过第一次 undefined -> any
                                 }
                             }
                         })
