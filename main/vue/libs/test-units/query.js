@@ -54,7 +54,8 @@ export default {
             handler(v, ov) {
                 console.log(`immediate test p6 ${JSON.stringify(ov)} => ${JSON.stringify(v)}`);
             },
-            immediate: true
+            immediate: true,
+            deep: true
         },
         p1: {
             handler: function (v, ov) {

@@ -186,6 +186,7 @@ export default class WatcherInstaller extends OptionInstaller {
                                     w.handler.call(this, newValue, oldValue);
                                 }
                             });
+                            compatibleWatcher.enabled = true;
                         }, true, true, undefined);
                     compatibleWatcher.enabled = !Reflect.has(computed, compatibleWatcher.path);
                     staticWatchers.set(`${observerPath}.**`, compatibleWatcher);
@@ -209,6 +210,7 @@ export default class WatcherInstaller extends OptionInstaller {
                                     w.handler.call(this, newValue, oldValue);
                                 }
                             });
+                            compatibleWatcher.enabled = true;
                         }, true, false, undefined);
                     compatibleWatcher.enabled = !Reflect.has(computed, compatibleWatcher.path);
                     staticWatchers.set(observerPath, compatibleWatcher);
@@ -314,12 +316,7 @@ export default class WatcherInstaller extends OptionInstaller {
     updateDeepWatcherRef(instance, watchers) {
         for (const [, watcher] of watchers) {
             if (watcher.deep) {
-                if (watcher.path) {
-                    const trace = traceObject(instance.data, watcher.path, true, false, undefined);
-                    watcher.oldValue = [this.selectData(trace, watcher.path)];
-                } else {
-                    watcher.oldValue = clone(watcher.oldValue);
-                }
+                watcher.oldValue = clone(watcher.oldValue);
             }
         }
     }
