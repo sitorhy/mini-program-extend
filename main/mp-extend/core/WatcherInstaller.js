@@ -4,7 +4,6 @@ import {Collectors, Stream} from "../libs/Stream";
 import CompatibleWatcher from "../libs/CompatibleWatcher";
 import equal from "../libs/fast-deep-equal/index";
 import {Invocation} from "../libs/Invocation";
-import {traceObject} from "../utils/object";
 import clone from "../libs/rfdc/default";
 
 const SWATSign = Symbol("__wxSWAT__");
