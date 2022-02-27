@@ -119,7 +119,7 @@ export default class MixinInstaller extends OptionInstaller {
             Object.assign(config, {
                 watch: Stream.of(keys).map(k => {
                     const handlers = watchers.map(i => i[k]);
-                    return [k, handlers.length > 1 ? Invocation(Stream.of(handlers).flat()) : handlers[0]];
+                    return [k, handlers];
                 }).collect(Collectors.toMap())
             })
         });

@@ -180,18 +180,14 @@ export default class WatcherInstaller extends OptionInstaller {
                         },
                         function (newValue, oldValue) {
                             deepWatchers.forEach(w => {
-                                if (w.immediate === true) {
-                                    if (!w.enabled) {
-                                        w.enabled = true;
-                                    }
+                                if (!w.enabled) {
+                                    w.enabled = true;
+                                } else if (w.immediate === true) {
                                     w.handler.call(this, newValue, oldValue);
                                 }
                             });
                         }, true, true, undefined);
-                    if (computed) {
-                        // 等待 ComputedInstaller 初始化
-                        compatibleWatcher.enabled = !Reflect.has(computed, compatibleWatcher.path);
-                    }
+                    compatibleWatcher.enabled = !Reflect.has(computed, compatibleWatcher.path);
                     staticWatchers.set(`${observerPath}.**`, compatibleWatcher);
                 }
 
@@ -207,17 +203,14 @@ export default class WatcherInstaller extends OptionInstaller {
                         },
                         function (newValue, oldValue) {
                             shallowWatchers.forEach(w => {
-                                if (w.immediate === true) {
-                                    if (!w.enabled) {
-                                        w.enabled = true;
-                                    }
+                                if (!w.enabled) {
+                                    w.enabled = true;
+                                } else if (w.immediate === true) {
                                     w.handler.call(this, newValue, oldValue);
                                 }
                             });
                         }, true, false, undefined);
-                    if (computed) {
-                        compatibleWatcher.enabled = !Reflect.has(computed, compatibleWatcher.path);
-                    }
+                    compatibleWatcher.enabled = !Reflect.has(computed, compatibleWatcher.path);
                     staticWatchers.set(observerPath, compatibleWatcher);
                 }
             });
@@ -262,17 +255,18 @@ export default class WatcherInstaller extends OptionInstaller {
         defFields.behaviors = [Behavior(behavior)].concat((defFields.behaviors || []));
         defFields.behaviors.push(Behavior({
             created() {
-                /*
                 const staticWatchers = Reflect.get(this, SWATSign);
                 for (const observerPath of staticWatchers.keys()) {
                     const watcher = getStaticWatcher(this, observerPath);
                     if (watcher) {
-                        const curValue = selectRuntimeState(this.data, watcher.path);
-
                         // 设置侦听器初始值，并触发 immediate 侦听器
-                        watcher.once(this, [curValue]);
+                        // 计算属性还没有计算初始值，排除掉
+                        if (watcher.enabled) {
+                            const curValue = selectRuntimeState(this.data, watcher.path);
+                            watcher.once(this, [curValue]);
+                        }
                     }
-                }*/
+                }
             },
             observers: Stream.of(
                 [...new Set(
@@ -302,11 +296,12 @@ export default class WatcherInstaller extends OptionInstaller {
                         Invocation(observers[observerPath], null, function (newValue) {
                             const watcher = getStaticWatcher(this, observerPath);
                             if (watcher) {
-                                console.log('触发 ' + this.is + ' ' + observerPath)
-                                watcher.once(this, [newValue]);
-                                watcher.call(this, [newValue]);
                                 if (!watcher.enabled) {
-                                    watcher.enabled = true; // 启用计算属性监听器 跳过第一次 undefined -> any
+                                    // 初始化计算属性监听器 启用计算属性监听器 跳过第一次 undefined -> any
+                                    // once 中启动监听器
+                                    watcher.once(this, [newValue]);
+                                } else {
+                                    watcher.call(this, [newValue]);
                                 }
                             }
                         })
@@ -365,6 +360,8 @@ export default class WatcherInstaller extends OptionInstaller {
      * @param options
      */
     install(extender, context, options) {
+        const computed = context.get("computed");
+
         const getDynamicWatchers = (thisArg) => {
             return this.getDynamicWatchers(thisArg);
         };
@@ -373,25 +370,28 @@ export default class WatcherInstaller extends OptionInstaller {
             return this.selectData(data, path);
         };
 
-        const watch = Stream.of(
-            Object.entries(
-                Object.assign.apply(
-                    undefined,
-                    [
-                        {},
-                        ...extender.installers.map(i => i.watch()),
-                        options.watch
-                    ]
-                )
-            )
-        ).map(([path, watcher]) => {
+        const combineWatch = {...options.watch};
+
+        for (const i of extender.installers.map(i => i.watch())) {
+            if (i) {
+                for (const k in i) {
+                    const w = i[k];
+                    if (w) {
+                        combineWatch[k] = [w].concat(combineWatch[k] || []);
+                    }
+                }
+            }
+        }
+
+        const watch = Stream.of(Object.entries(combineWatch)).map(([path, watcher]) => {
             return [
                 path,
                 [].concat(watcher).map(w => {
                     const normalize = {
                         handler: null,
                         deep: false,
-                        immediate: false
+                        immediate: false,
+                        enabled: !computed || (computed && !Reflect.has(computed, path)) || w.immediate === true
                     };
                     if (isString(w)) {
                         normalize.handler = function () {

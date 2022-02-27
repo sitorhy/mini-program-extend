@@ -145,7 +145,6 @@ export default class ComputedInstaller extends OptionInstaller {
                 // 解锁计算属性关联
                 cancel();
                 RuntimeContextMonitor.unlock(this);
-                console.log('初始化完毕 ' + this.is);
             }
         }
     }
