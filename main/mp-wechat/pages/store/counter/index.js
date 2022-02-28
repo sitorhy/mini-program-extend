@@ -29,6 +29,9 @@ ComponentEx({
     increment2() {
         store.commit("increment");
     },
+    increment3() {
+        store.dispatch("increment");
+    },
     reset() {
         this.count = 0;
     }

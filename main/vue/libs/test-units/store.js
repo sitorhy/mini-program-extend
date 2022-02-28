@@ -45,8 +45,8 @@ export default {
         }
     },
     actions: {
-        actionA() {
-
+        increment(context) {
+            context.commit('increment');
         }
     },
     modules: {

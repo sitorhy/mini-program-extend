@@ -1,4 +1,4 @@
-import {createReactiveObject, getData, selectPathRoot, setData, splitPath, traceObject} from "../utils/object";
+import {createReactiveObject, getData, setData, splitPath} from "../utils/object";
 import {isFunction, isString, isPlainObject} from "../utils/common";
 import CompatibleWatcher from "./CompatibleWatcher";
 import equal from "./fast-deep-equal/index";
@@ -22,12 +22,21 @@ const PrivateConfiguration = {
         return getData(root, path);
     },
 
-    getFilters(observer) {
-        return Reflect.get(observer, FiltersSign);
+    getFilters(observer, path = null) {
+        const filters = Reflect.get(observer, FiltersSign);
+        if (path === null || path === undefined || path === RootModuleSign) {
+            return filters.get(RootModuleSign);
+        }
+        return filters.get(path);
     },
 
-    defineFilter(observer, p, fn) {
-        Object.defineProperty(this.getFilters(observer), p, {
+    defineFilter(observer, path, p, fn) {
+        const filters = Reflect.get(observer, FiltersSign);
+        if (!filters.has(RootModuleSign)) {
+            filters.set(RootModuleSign, {});
+        }
+        const rootFilters = filters.get(RootModuleSign);
+        const filter = {
             enumerable: true,
             configurable: true,
             get() {
@@ -38,11 +47,31 @@ const PrivateConfiguration = {
             set(v) {
                 throw new Error(`Cannot set property ${p} of #<${Object.prototype.toString.call(v)}> which has only a getter"`);
             }
-        })
+        };
+        Object.defineProperty(rootFilters, p, filter);
+        if (path !== RootModuleSign) {
+            if (!filters.has(path)) {
+                filters.set(path, {});
+            }
+            const moduleFilters = filters.get(path);
+            Object.defineProperty(moduleFilters, p, filter);
+        }
     },
 
-    deleteFilter(observer, p) {
-        Reflect.deleteProperty(this.getFilters(observer), p);
+    deleteFilter(observer, path, p) {
+        const filters = this.getFilters(observer, path);
+        if (filters) {
+            filters.delete(p);
+            if (!filters.size) {
+                Reflect.get(observer, FiltersSign).delete(path);
+            }
+        }
+        if (path !== RootModuleSign) {
+            const rootFilters = this.getFilters(observer, RootModuleSign);
+            if (rootFilters) {
+                rootFilters.delete(p);
+            }
+        }
     },
 
     getMutation(observer, path, name) {
@@ -51,6 +80,17 @@ const PrivateConfiguration = {
             const mutations = config.mutations;
             if (mutations && mutations[name]) {
                 return mutations[name];
+            }
+        }
+        return null;
+    },
+
+    getAction(observer, path, name) {
+        const config = this.getModules(observer).get(path === null || path === undefined ? RootModuleSign : path);
+        if (config) {
+            const actions = config.actions;
+            if (actions && actions[name]) {
+                return actions[name];
             }
         }
         return null;
@@ -185,7 +225,7 @@ export default class Store {
     [StateSign] = null;
     [InterceptorsSign] = [];
     [WATSign] = [];
-    [FiltersSign] = {};
+    [FiltersSign] = new Map();
     [ModulesSign] = new Map();
 
     /**
@@ -202,7 +242,7 @@ export default class Store {
                 setData(state, {[path]: isFunction(mState) ? mState() : mState});
                 if (module.getters) {
                     for (const getter in module.getters) {
-                        PrivateConfiguration.defineFilter(this, getter, () => {
+                        PrivateConfiguration.defineFilter(this, path, getter, () => {
                             if (isFunction(module.getters[getter])) {
                                 return module.getters[getter].call(undefined, PrivateConfiguration.getState(this, path));
                             }
@@ -324,7 +364,7 @@ export default class Store {
 
         if (config.getters) {
             for (const getter in config.getters) {
-                PrivateConfiguration.defineFilter(this, getter, function () {
+                PrivateConfiguration.defineFilter(this, RootModuleSign, getter, function () {
                     if (isFunction(config.getters[getter])) {
                         return config.getters[getter].call(this, state);
                     }
@@ -342,7 +382,7 @@ export default class Store {
         }
         if (getters) {
             for (const getter in getters) {
-                PrivateConfiguration.defineFilter(this, getter, () => {
+                PrivateConfiguration.defineFilter(this, path, getter, () => {
                     if (isFunction(getters[getter])) {
                         return getters[getter].call(this, PrivateConfiguration.getState(this, path));
                     }
@@ -378,7 +418,7 @@ export default class Store {
                 const {getters} = module;
                 if (getters) {
                     for (const getter in getters) {
-                        PrivateConfiguration.deleteFilter(this, getter);
+                        PrivateConfiguration.deleteFilter(this, path, getter);
                     }
                 }
                 PrivateConfiguration.unregisterModule(this, path);
@@ -419,6 +459,45 @@ export default class Store {
 
     watch(fn, callback, options = null) {
         return PrivateConfiguration.watch(this, fn, callback, options);
+    }
+
+    dispatch(...args) {
+        const type = args.length > 0 ? args[0] : undefined;
+        const payload = args.length > 1 ? args[1] : type;
+        let actionName = null;
+        let path = null;
+        let action = null;
+        if (!isString(type)) {
+            if (isPlainObject(type)) {
+                actionName = type.type;
+            } else {
+                throw new Error("expects string as the type, but found object");
+            }
+        } else {
+            actionName = type;
+        }
+
+        for (const p of PrivateConfiguration.getModules(this).keys()) {
+            action = PrivateConfiguration.getAction(this, p, actionName);
+            if (action) {
+                path = p;
+                break;
+            }
+        }
+
+        if (isFunction(action)) {
+            const context = {
+                commit: this.commit.bind(this),
+                dispatch: this.dispatch.bind(this),
+                getters: PrivateConfiguration.getFilters(this, path),
+                rootGetters: this.getters,
+                rootState: PrivateConfiguration.getFilters(this, path),
+                state: PrivateConfiguration.getState(this, path)
+            };
+            action.call(this, context, payload);
+        } else {
+            throw new Error(`unknown action type: ${actionName}`);
+        }
     }
 
     get state() {
