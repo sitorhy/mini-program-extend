@@ -191,10 +191,26 @@ const PrivateConfiguration = {
 
     registerModule(observer, path, module) {
         this.getModules(observer).set(path, module);
+        if (module.modules) {
+            for (const m in module.modules) {
+                this.registerModule(observer, `${!path || path === RootModuleSign ? '' : path + '.'}${m}`, module.modules[m]);
+            }
+        }
     },
 
     unregisterModule(observer, path) {
         this.getModules(observer).delete(path);
+    },
+
+    mergeModuleState(state, config, path = '') {
+        if (config.modules) {
+            for (const subPath in config.modules) {
+                const module = config.modules[subPath];
+                const mState = module.state;
+                const nextPath = `${!path ? '' : path + '.'}${subPath}`;
+                setData(state, {[nextPath]: isFunction(mState) ? mState() : mState});
+            }
+        }
     }
 };
 
@@ -235,23 +251,8 @@ export default class Store {
         const pending = [];
         const calling = [];
         const state = isFunction(config.state) ? config.state() : config.state;
-        if (config.modules) {
-            for (const path in config.modules) {
-                const module = config.modules[path];
-                const mState = module.state;
-                setData(state, {[path]: isFunction(mState) ? mState() : mState});
-                if (module.getters) {
-                    for (const getter in module.getters) {
-                        PrivateConfiguration.defineFilter(this, path, getter, () => {
-                            if (isFunction(module.getters[getter])) {
-                                return module.getters[getter].call(undefined, PrivateConfiguration.getState(this, path));
-                            }
-                        });
-                    }
-                }
-                PrivateConfiguration.registerModule(this, path, module);
-            }
-        }
+
+        PrivateConfiguration.mergeModuleState(state, config, '');
 
         // before -> set -> onChanged -> after
         Reflect.set(this, StateSign, createReactiveObject(
@@ -362,6 +363,7 @@ export default class Store {
         PrivateConfiguration.registerModule(this, RootModuleSign, config);
         PrivateConfiguration.__stores.push(this);
 
+        /*
         if (config.getters) {
             for (const getter in config.getters) {
                 PrivateConfiguration.defineFilter(this, RootModuleSign, getter, function () {
@@ -370,7 +372,7 @@ export default class Store {
                     }
                 });
             }
-        }
+        }*/
     }
 
     registerModule(path, module) {

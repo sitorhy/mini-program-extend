@@ -1,0 +1,10 @@
+<view>
+    <view>role = {{ role }}</view>
+    <view>name = {{ name }}</view>
+    <view>isAdmin = {{ isAdmin }}</view>
+    <view>
+        <button
+                bind:tap="login">login
+        </button>
+    </view>
+</view>

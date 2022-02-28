@@ -56,7 +56,8 @@ export default {
     }
   },
   mounted() {
-    console.log(store)
+    console.log(store);
+    console.log(JSON.stringify(store.state));
   }
 }
 </script>
