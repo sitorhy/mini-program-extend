@@ -30,46 +30,52 @@ const PrivateConfiguration = {
         return filters.get(path);
     },
 
-    defineFilter(observer, path, p, fn) {
-        const filters = Reflect.get(observer, FiltersSign);
-        if (!filters.has(RootModuleSign)) {
-            filters.set(RootModuleSign, {});
+    defineFilters(observer, config, path = null) {
+        if (config.getters) {
+            const mPath = path === null || path === undefined || path === RootModuleSign ? RootModuleSign : path;
+            const filters = Reflect.get(observer, FiltersSign);
+            if (!filters.has(mPath)) {
+                filters.set(mPath, {});
+            }
+            const mFilters = filters.get(mPath);
+            if (!filters.has(RootModuleSign)) {
+                filters.set(RootModuleSign, {});
+            }
+            const rootFilters = filters.get(RootModuleSign);
+            for (const getter in config.getters) {
+                const attrs = {
+                    enumerable: true,
+                    configurable: true,
+                    get: () => {
+                        const fn = config.getters[getter];
+                        if (isFunction(fn)) {
+                            return fn.call(undefined, this.getState(observer, mPath), this.getFilters(observer, mPath));
+                        }
+                    },
+                    set: (v) => {
+                        throw new Error(`Cannot set property ${getter} of #<${Object.prototype.toString.call(v)}> which has only a getter"`);
+                    }
+                };
+                Object.defineProperty(mFilters, getter, attrs);
+                Object.defineProperty(rootFilters, getter, attrs);
+            }
         }
-        const rootFilters = filters.get(RootModuleSign);
-        const filter = {
-            enumerable: true,
-            configurable: true,
-            get() {
-                if (isFunction(fn)) {
-                    return fn.call(undefined);
-                }
-            },
-            set(v) {
-                throw new Error(`Cannot set property ${p} of #<${Object.prototype.toString.call(v)}> which has only a getter"`);
+        if (config.modules) {
+            for (const subPath in config.modules) {
+                const nextPath = `${!path ? '' : path + '.'}${subPath}`;
+                this.defineFilters(observer, config.modules[subPath], nextPath);
             }
-        };
-        Object.defineProperty(rootFilters, p, filter);
-        if (path !== RootModuleSign) {
-            if (!filters.has(path)) {
-                filters.set(path, {});
-            }
-            const moduleFilters = filters.get(path);
-            Object.defineProperty(moduleFilters, p, filter);
         }
     },
 
-    deleteFilter(observer, path, p) {
+    deleteFilters(observer, path) {
         const filters = this.getFilters(observer, path);
-        if (filters) {
-            filters.delete(p);
-            if (!filters.size) {
-                Reflect.get(observer, FiltersSign).delete(path);
-            }
-        }
-        if (path !== RootModuleSign) {
-            const rootFilters = this.getFilters(observer, RootModuleSign);
-            if (rootFilters) {
-                rootFilters.delete(p);
+        const mFilters = filters.get(path);
+        const rootFilters = filters.get(RootModuleSign);
+        filters.delete(path);
+        if (mFilters) {
+            for (const getter of mFilters.keys()) {
+                rootFilters.delete(getter);
             }
         }
     },
@@ -202,15 +208,17 @@ const PrivateConfiguration = {
         this.getModules(observer).delete(path);
     },
 
-    mergeModuleState(state, config, path = '') {
+    mergeState(state, config, path = null) {
         if (config.modules) {
             for (const subPath in config.modules) {
                 const module = config.modules[subPath];
                 const mState = module.state;
                 const nextPath = `${!path ? '' : path + '.'}${subPath}`;
                 setData(state, {[nextPath]: isFunction(mState) ? mState() : mState});
+                this.mergeState(state, module, nextPath);
             }
         }
+        return state;
     }
 };
 
@@ -250,9 +258,8 @@ export default class Store {
     constructor(config) {
         const pending = [];
         const calling = [];
-        const state = isFunction(config.state) ? config.state() : config.state;
-
-        PrivateConfiguration.mergeModuleState(state, config, '');
+        const state = PrivateConfiguration.mergeState(isFunction(config.state) ? config.state() : config.state, config);
+        PrivateConfiguration.defineFilters(this, config);
 
         // before -> set -> onChanged -> after
         Reflect.set(this, StateSign, createReactiveObject(
@@ -362,35 +369,9 @@ export default class Store {
 
         PrivateConfiguration.registerModule(this, RootModuleSign, config);
         PrivateConfiguration.__stores.push(this);
-
-        /*
-        if (config.getters) {
-            for (const getter in config.getters) {
-                PrivateConfiguration.defineFilter(this, RootModuleSign, getter, function () {
-                    if (isFunction(config.getters[getter])) {
-                        return config.getters[getter].call(this, state);
-                    }
-                });
-            }
-        }*/
     }
 
     registerModule(path, module) {
-        const {state, getters} = module;
-        if (state) {
-            setData(this.state, {
-                [path]: isFunction(state) ? state() : state
-            });
-        }
-        if (getters) {
-            for (const getter in getters) {
-                PrivateConfiguration.defineFilter(this, path, getter, () => {
-                    if (isFunction(getters[getter])) {
-                        return getters[getter].call(this, PrivateConfiguration.getState(this, path));
-                    }
-                });
-            }
-        }
         PrivateConfiguration.registerModule(this, path, module);
     }
 
@@ -417,12 +398,7 @@ export default class Store {
                 // 删除后触发 computed 可能会出现空指针错误
                 throw e;
             } finally {
-                const {getters} = module;
-                if (getters) {
-                    for (const getter in getters) {
-                        PrivateConfiguration.deleteFilter(this, path, getter);
-                    }
-                }
+                PrivateConfiguration.deleteFilters(this, path);
                 PrivateConfiguration.unregisterModule(this, path);
             }
         }
