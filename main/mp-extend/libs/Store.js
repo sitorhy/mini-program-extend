@@ -1,5 +1,5 @@
 import {createReactiveObject, getData, setData, splitPath} from "../utils/object";
-import {isFunction, isString, isPlainObject} from "../utils/common";
+import {isFunction, isString} from "../utils/common";
 import CompatibleWatcher from "./CompatibleWatcher";
 import equal from "./fast-deep-equal/index";
 import clone from "./rfdc/default";
