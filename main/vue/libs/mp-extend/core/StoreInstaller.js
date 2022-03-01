@@ -1,8 +1,7 @@
 import OptionInstaller from "./OptionInstaller";
-import {Configuration} from "../libs/Store";
+import {Connector} from "../libs/Store";
 import {selectPathRoot} from "../utils/object";
-import {isFunction, uuid} from "../utils/common";
-import clone from '../libs/rfdc/default';
+import {isFunction} from "../utils/common";
 
 const UnwatchSign = ("__wxUnWAT__");
 
@@ -98,13 +97,13 @@ export default class StoreInstaller extends OptionInstaller {
         const dependencies = [];
         return {
             created() {
-                const stores = Configuration.instances().filter(s => {
+                const stores = Connector.instances().filter(s => {
                     const sl = LinkAge.getStoreLinkAge(s);
                     return !sl.has(this.is);
                 });
                 if (stores.length) {
                     for (const store of stores) {
-                        unwatchStore = Configuration.intercept(
+                        unwatchStore = Connector.intercept(
                             store,
                             (path, value, level) => {
                                 if (!dependencies.findIndex(s => s.store === store && s.path === path) >= 0 && level === 0) {
@@ -140,13 +139,14 @@ export default class StoreInstaller extends OptionInstaller {
             },
             attached() {
                 const computed = context.get("computed");
-                Configuration.instances().forEach(s => {
+                Connector.instances().forEach(s => {
                     LinkAge.watchStore(s, this, computed);
                 });
 
                 if (unwatchStore) {
                     unwatchStore();
                 }
+
                 if (unwatchState) {
                     unwatchState();
                 }

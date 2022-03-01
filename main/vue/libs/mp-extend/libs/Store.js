@@ -4,15 +4,18 @@ import CompatibleWatcher from "./CompatibleWatcher";
 import equal from "./fast-deep-equal/index";
 import clone from "./rfdc/default";
 
+const OriginalState = Symbol("__originalState__");
 const StateSign = Symbol("__state__");
 const InterceptorsSign = Symbol("__interceptors__");
 const WATSign = Symbol("__WAT__");
-const FiltersSign = Symbol("__getters__");
+const GetterSign = Symbol("__getters__");
+const ActionSign = Symbol("__actions__");
+const MutationSign = Symbol("__mutations__");
 const ModulesSign = Symbol("__modules__");
 const RootModuleSign = Symbol("__root__");
 
-const PrivateConfiguration = {
-    __stores: [],
+const Configuration = {
+    stores: [],
 
     getState(observer, path = null) {
         const root = Reflect.get(observer, StateSign);
@@ -22,84 +25,163 @@ const PrivateConfiguration = {
         return getData(root, path);
     },
 
-    getFilters(observer, path = null) {
-        const filters = Reflect.get(observer, FiltersSign);
-        if (path === null || path === undefined || path === RootModuleSign) {
-            return filters.get(RootModuleSign);
-        }
-        return filters.get(path);
+    getOriginalState(observer) {
+        return Reflect.get(observer, OriginalState);
     },
 
-    defineFilters(observer, config, path = null, namespace = null) {
-        if (config.getters) {
-            const mPath = path === null || path === undefined || path === RootModuleSign ? RootModuleSign : path;
-            const filters = Reflect.get(observer, FiltersSign);
-            if (!filters.has(mPath)) {
-                filters.set(mPath, {});
+    setOriginalState(observer, state) {
+        Reflect.set(observer, OriginalState, state);
+    },
+
+    getSpace(observer, scopeSign, path = null) {
+        const scope = Reflect.get(observer, scopeSign);
+        if (path === null || path === undefined || path === RootModuleSign) {
+            return scope.get(RootModuleSign);
+        }
+        return scope.get(path);
+    },
+
+    defineSpace(observer, config, scopeName, scopeSign, defineProperty, path = null, namespace = null) {
+        if (config[scopeName]) {
+            const spacePath = path === null || path === undefined || path === RootModuleSign ? RootModuleSign : path;
+            const scope = Reflect.get(observer, scopeSign);
+            if (!scope.has(spacePath)) {
+                scope.set(spacePath, {});
             }
-            const mFilters = filters.get(mPath);
-            if (!filters.has(RootModuleSign)) {
-                filters.set(RootModuleSign, {});
+            const space = scope.get(spacePath);
+            if (!scope.has(RootModuleSign)) {
+                scope.set(RootModuleSign, {});
             }
-            const rootFilters = filters.get(RootModuleSign);
-            for (const getter in config.getters) {
-                const attrs = {
-                    enumerable: true,
-                    configurable: true,
-                    get: () => {
-                        const fn = config.getters[getter];
-                        if (isFunction(fn)) {
-                            return fn.call(undefined, this.getState(observer, mPath), this.getFilters(observer, mPath));
-                        }
-                    },
-                    set: (v) => {
-                        throw new Error(`Cannot set property ${getter} of #<${Object.prototype.toString.call(v)}> which has only a getter"`);
-                    }
-                };
-                Object.defineProperty(mFilters, getter, attrs);
-                Object.defineProperty(rootFilters, `${namespace ? namespace + '/' : ''}${getter}`, attrs);
+            const rootSpace = scope.get(RootModuleSign);
+            for (const definition in config[scopeName]) {
+                const attrs = defineProperty(config, spacePath, definition);
+                Object.defineProperty(space, definition, attrs);
+                Object.defineProperty(rootSpace, `${namespace ? namespace + '/' : ''}${definition}`, attrs);
             }
         }
         if (config.modules) {
             for (const subPath in config.modules) {
                 const nextPath = `${!path ? '' : path + '.'}${subPath}`;
-                this.defineFilters(observer, config.modules[subPath], nextPath, [namespace || "", config.modules[subPath].namespaced ? subPath : ""].filter(i => !!i).join("/"));
+                this.defineSpace(observer, config.modules[subPath], scopeName, scopeSign, defineProperty, nextPath, [namespace || "", config.modules[subPath].namespaced ? subPath : ""].filter(i => !!i).join("/"));
             }
         }
     },
 
-    deleteFilters(observer, path) {
-        const filters = this.getFilters(observer, path);
-        const mFilters = filters.get(path);
-        const rootFilters = filters.get(RootModuleSign);
-        filters.delete(path);
-        if (mFilters) {
-            for (const getter of mFilters.keys()) {
-                rootFilters.delete(getter);
+    deleteSpace(observer, scopeSign, path) {
+        const scope = this.getSpace(observer, scopeSign, path);
+        const space = scope.get(path);
+        const rootSpace = scope.get(RootModuleSign);
+        if (path && path !== RootModuleSign) {
+            scope.delete(path);
+        }
+        if (space !== rootSpace) {
+            for (const definition of space.keys()) {
+                rootSpace.delete(definition);
             }
         }
     },
 
-    getMutation(observer, path, name) {
-        const config = this.getModules(observer).get(path === null || path === undefined ? RootModuleSign : path);
-        if (config) {
-            const mutations = config.mutations;
-            if (mutations && mutations[name]) {
-                return mutations[name];
-            }
-        }
-        return null;
+    defineGetters(observer, config) {
+        this.defineSpace(observer, config, "getters", GetterSign, (moduleConfig, spacePath, definition) => {
+            return {
+                enumerable: true,
+                configurable: true,
+                get: () => {
+                    const fn = moduleConfig.getters[definition];
+                    if (isFunction(fn)) {
+                        return fn.call(
+                            observer,
+                            this.getState(observer, spacePath),
+                            this.getSpace(observer, GetterSign, spacePath)
+                        );
+                    }
+                },
+                set: (v) => {
+                    throw new Error(`Cannot set property ${definition} of #<${Object.prototype.toString.call(v)}> which has only a getter"`);
+                }
+            };
+        });
     },
 
-    getAction(observer, path, name) {
-        const config = this.getModules(observer).get(path === null || path === undefined || path === RootModuleSign ? RootModuleSign : path);
-        if (config) {
-            const actions = config.actions;
-            if (actions && actions[name]) {
-                return actions[name];
-            }
+    defineMutations(observer, config) {
+        this.defineSpace(observer, config, "mutations", MutationSign, (moduleConfig, spacePath, definition) => {
+            return {
+                enumerable: true,
+                configurable: true,
+                writable: false,
+                value: (payload) => {
+                    const fn = moduleConfig.mutations[definition];
+                    if (isFunction(fn)) {
+                        fn.call(
+                            observer,
+                            this.getState(observer, spacePath),
+                            payload
+                        );
+                    }
+                }
+            };
+        });
+    },
+
+    defineActions(observer, config) {
+        this.defineSpace(observer, config, "actions", ActionSign, (moduleConfig, spacePath, definition) => {
+            return {
+                enumerable: true,
+                configurable: true,
+                writable: false,
+                value: (payload) => {
+                    const fn = moduleConfig.actions[definition];
+                    if (isFunction(fn)) {
+                        fn.call(
+                            observer,
+                            {
+                                commit: (...args) => {
+                                    this.commit(observer, spacePath, ...args);
+                                },
+                                dispatch: (...args) => {
+                                    return this.dispatch(observer, spacePath, ...args);
+                                },
+                                getters: this.getSpace(observer, GetterSign, spacePath),
+                                state: this.getState(observer, spacePath),
+                                rootGetters: this.getSpace(observer, GetterSign),
+                                rootState: this.getState(observer)
+                            },
+                            payload
+                        );
+                    }
+                }
+            };
+        });
+    },
+
+    commit(observer, spacePath, ...args) {
+        if ((!isString(args[0]) && !args[0].type) || !args[0]) {
+            throw new Error(`expects string as the type, but found ${Object.prototype.toString.call(args[0])}`);
         }
-        return null;
+        const type = isString(args[0]) ? args[0] : args[0].type;
+        const payload = isString(args[0]) ? args[1] : args[0];
+        const rootSpace = this.getSpace(observer, MutationSign, spacePath);
+        const mutation = rootSpace[type];
+        if (isFunction(mutation)) {
+            mutation(payload);
+        } else {
+            throw new Error(`unknown mutation type: ${type}`);
+        }
+    },
+
+    dispatch(observer, spacePath, ...args) {
+        if ((!isString(args[0]) && !args[0].type) || !args[0]) {
+            throw new Error(`expects string as the type, but found ${Object.prototype.toString.call(args[0])}`);
+        }
+        const type = isString(args[0]) ? args[0] : args[0].type;
+        const payload = isString(args[0]) ? args[1] : args[0];
+        const rootSpace = this.getSpace(observer, ActionSign, spacePath);
+        const action = rootSpace[type];
+        if (isFunction(action)) {
+            return action(payload);
+        } else {
+            throw new Error(`unknown action type: ${type}`);
+        }
     },
 
     getInterceptors(observer) {
@@ -208,6 +290,19 @@ const PrivateConfiguration = {
         this.getModules(observer).delete(path);
     },
 
+    registerInstance(observer) {
+        if (!this.stores.includes(observer)) {
+            this.stores.push(observer);
+        }
+    },
+
+    unregisterInstance(observer) {
+        const index = this.stores.findIndex(i => i === observer);
+        if (index >= 0) {
+            this.stores.splice(index, 1);
+        }
+    },
+
     mergeState(state, config, path = null) {
         if (config.modules) {
             for (const subPath in config.modules) {
@@ -222,9 +317,9 @@ const PrivateConfiguration = {
     }
 };
 
-export const Configuration = {
+export const Connector = {
     instances() {
-        return PrivateConfiguration.__stores;
+        return Configuration.stores;
     },
 
     /**
@@ -235,7 +330,7 @@ export const Configuration = {
      * @returns {function(): void}
      */
     intercept(observer, onStateGetting, onStateSetting) {
-        return PrivateConfiguration.intercept(observer, onStateGetting, onStateSetting);
+        return Configuration.intercept(observer, onStateGetting, onStateSetting);
     },
 
     /**
@@ -245,7 +340,7 @@ export const Configuration = {
      * @param onStateSetting
      */
     cancelIntercept(observer, onStateGetting, onStateSetting) {
-        return PrivateConfiguration.cancelIntercept(observer, onStateGetting, onStateSetting);
+        return Configuration.cancelIntercept(observer, onStateGetting, onStateSetting);
     }
 };
 
@@ -259,11 +354,14 @@ export const Configuration = {
  * } } StoreDefinition
  */
 export default class Store {
+    [OriginalState] = null;
     [StateSign] = null;
     [InterceptorsSign] = [];
     [WATSign] = [];
-    [FiltersSign] = new Map();
+    [GetterSign] = new Map();
     [ModulesSign] = new Map();
+    [ActionSign] = new Map();
+    [MutationSign] = new Map();
 
     /**
      * @param { StoreDefinition } config
@@ -271,8 +369,11 @@ export default class Store {
     constructor(config) {
         const pending = [];
         const calling = [];
-        const state = PrivateConfiguration.mergeState(isFunction(config.state) ? config.state() : config.state, config);
-        PrivateConfiguration.defineFilters(this, config);
+        const state = Configuration.mergeState(isFunction(config.state) ? config.state() : config.state, config);
+        Configuration.setOriginalState(this, state);
+        Configuration.defineGetters(this, config);
+        Configuration.defineMutations(this, config);
+        Configuration.defineActions(this, config);
 
         // before -> set -> onChanged -> after
         Reflect.set(this, StateSign, createReactiveObject(
@@ -287,7 +388,7 @@ export default class Store {
                     watcher.call(undefined, [getData(state, watcher.path)]);
                 });
 
-                const watchers = PrivateConfiguration.getWatchers(this);
+                const watchers = Configuration.getWatchers(this);
                 for (const watcher of watchers) {
                     if (isFunction(watcher.getter)) {
                         // ② array deep with getter
@@ -300,7 +401,7 @@ export default class Store {
             },
             "",
             (path, value, level) => {
-                const interceptors = PrivateConfiguration.getInterceptors(this);
+                const interceptors = Configuration.getInterceptors(this);
                 for (const {get} of interceptors) {
                     if (get) {
                         if (get(path, value, level) === true) {
@@ -310,7 +411,7 @@ export default class Store {
                 }
             },
             (path, value, level) => {
-                const interceptors = PrivateConfiguration.getInterceptors(this);
+                const interceptors = Configuration.getInterceptors(this);
                 for (const {set} of interceptors) {
                     if (set) {
                         if (set(path, value, level) === true) {
@@ -318,7 +419,7 @@ export default class Store {
                         }
                     }
                 }
-                const watchers = PrivateConfiguration.getWatchers(this);
+                const watchers = Configuration.getWatchers(this);
                 for (const watcher of watchers) {
                     if (!calling.includes(watcher)) { // 4 排除深拷贝预处理
                         if (watcher.deep) {
@@ -338,7 +439,7 @@ export default class Store {
                 }
             },
             (path, level, parent) => {
-                const watchers = PrivateConfiguration.getWatchers(this);
+                const watchers = Configuration.getWatchers(this);
                 for (const watcher of watchers) {
                     if (watcher.deep) {
                         watcher.oldValue = clone(watcher.oldValue);
@@ -352,7 +453,7 @@ export default class Store {
             },
             (path, p, fn, thisArg, args, level, parent) => {
                 if (Array.isArray(parent) && ["push", "splice", "shift", "pop", "fill", "unshift", "reverse", "copyWithin"].includes(p)) {
-                    const watchers = PrivateConfiguration.getWatchers(this);
+                    const watchers = Configuration.getWatchers(this);
                     for (const watcher of watchers) {
                         // 避免旧值引用一并被修改
                         if (watcher.deep) {
@@ -384,16 +485,21 @@ export default class Store {
             }
         ));
 
-        PrivateConfiguration.registerModule(this, RootModuleSign, config);
-        PrivateConfiguration.__stores.push(this);
+        Configuration.registerModule(this, RootModuleSign, config);
+        Configuration.registerInstance(this);
     }
 
     registerModule(path, module) {
-        PrivateConfiguration.registerModule(this, path, module);
+        const spacePath = Array.isArray(path) ? path.join('.') : path;
+        Configuration.mergeState(Configuration.getOriginalState(this), module, spacePath);
+        Configuration.defineGetters(this, module);
+        Configuration.defineMutations(this, module);
+        Configuration.defineActions(this, module);
+        Configuration.registerModule(this, path, module);
     }
 
     unregisterModule(path) {
-        const module = PrivateConfiguration.getModules(this).get(path);
+        const module = Configuration.getModules(this).get(path);
         if (module) {
             const paths = splitPath(path);
             try {
@@ -415,102 +521,31 @@ export default class Store {
                 // 删除后触发 computed 可能会出现空指针错误
                 throw e;
             } finally {
-                PrivateConfiguration.deleteFilters(this, path);
-                PrivateConfiguration.unregisterModule(this, path);
+                Configuration.deleteSpace(this, GetterSign, path);
+                Configuration.deleteSpace(this, MutationSign, path);
+                Configuration.deleteSpace(this, ActionSign, path);
+                Configuration.unregisterModule(this, path);
             }
-        }
-    }
-
-    commit(...args) {
-        const type = args.length > 0 ? args[0] : undefined;
-        const payload = args.length > 1 ? args[1] : type;
-        let mutationName = null;
-        let path = null;
-        let mutation = null;
-        if (!isString(type)) {
-            if (isPlainObject(type)) {
-                mutationName = type.type;
-            } else {
-                throw new Error("expects string as the type, but found object");
-            }
-        } else {
-            mutationName = type;
-        }
-
-        for (const p of PrivateConfiguration.getModules(this).keys()) {
-            mutation = PrivateConfiguration.getMutation(this, p, mutationName);
-            if (mutation) {
-                path = p;
-                break;
-            }
-        }
-
-        if (isFunction(mutation)) {
-            mutation.call(this, PrivateConfiguration.getState(this, path), payload);
-        } else {
-            throw new Error(`unknown mutation type: ${mutationName}`);
         }
     }
 
     watch(fn, callback, options = null) {
-        return PrivateConfiguration.watch(this, fn, callback, options);
+        return Configuration.watch(this, fn, callback, options);
+    }
+
+    commit(...args) {
+        Configuration.commit(this, RootModuleSign, ...args);
     }
 
     dispatch(...args) {
-        const type = args.length > 0 ? args[0] : undefined;
-        const payload = args.length > 1 ? args[1] : type;
-        let actionName = null;
-        let path = null;
-        let action = null;
-        if (!isString(type)) {
-            if (isPlainObject(type)) {
-                actionName = type.type;
-            } else {
-                throw new Error("expects string as the type, but found object");
-            }
-        } else {
-            actionName = type;
-        }
-
-        if (actionName) {
-            const iSp = actionName.lastIndexOf("/");
-            if (iSp > 0) {
-                const actionPath = actionName.substring(iSp + 1);
-                path = actionName.substring(0, iSp).replaceAll("/", ".");
-                action = PrivateConfiguration.getAction(this, path, actionPath);
-            } else {
-                for (const p of PrivateConfiguration.getModules(this).keys()) {
-                    action = PrivateConfiguration.getAction(this, p, actionName);
-                    if (action) {
-                        path = p;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (isFunction(action)) {
-            const moduleContext = {
-                commit: null,
-                dispatch: null,
-                getters: null,
-                state: null
-            };
-            const context = {
-                rootGetters: this.getters,
-                rootState: PrivateConfiguration.getFilters(this, path)
-            };
-            action.call(this, context, payload);
-        } else {
-            throw new Error(`unknown action type: ${actionName}`);
-        }
+        return Configuration.dispatch(this, RootModuleSign, ...args);
     }
 
     get state() {
-        return PrivateConfiguration.getState(this);
+        return Configuration.getState(this);
     }
 
     get getters() {
-        return PrivateConfiguration.getFilters(this);
+        return Configuration.getSpace(this, GetterSign);
     }
 }
