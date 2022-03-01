@@ -227,10 +227,23 @@ export const Configuration = {
         return PrivateConfiguration.__stores;
     },
 
+    /**
+     * 拦截Store读取操作/写入操作，并返回注销拦截的函数，触发顺序为输入优先，返回 true 取消后续拦截器操作
+     * @param observer
+     * @param onStateGetting
+     * @param onStateSetting
+     * @returns {function(): void}
+     */
     intercept(observer, onStateGetting, onStateSetting) {
         return PrivateConfiguration.intercept(observer, onStateGetting, onStateSetting);
     },
 
+    /**
+     * 注销拦截操作
+     * @param observer
+     * @param onStateGetting
+     * @param onStateSetting
+     */
     cancelIntercept(observer, onStateGetting, onStateSetting) {
         return PrivateConfiguration.cancelIntercept(observer, onStateGetting, onStateSetting);
     }
@@ -290,7 +303,9 @@ export default class Store {
                 const interceptors = PrivateConfiguration.getInterceptors(this);
                 for (const {get} of interceptors) {
                     if (get) {
-                        get(path, value, level);
+                        if (get(path, value, level) === true) {
+                            break;
+                        }
                     }
                 }
             },
@@ -298,7 +313,9 @@ export default class Store {
                 const interceptors = PrivateConfiguration.getInterceptors(this);
                 for (const {set} of interceptors) {
                     if (set) {
-                        set(path, value, level);
+                        if (set(path, value, level) === true) {
+                            break;
+                        }
                     }
                 }
                 const watchers = PrivateConfiguration.getWatchers(this);

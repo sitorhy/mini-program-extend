@@ -1,20 +1,6 @@
 {
   "pages": [
-    "pages/index/index",
-    "pages/props/index",
-    "pages/computed/index",
-    "pages/watch/index",
-    "pages/mp-checked/index",
-    "pages/options/index",
-    "pages/event/index",
-    "pages/provide/index",
-    "pages/snake/index",
-    "pages/mixins/index",
-    "pages/query/index",
-    "pages/context/index",
-    "pages/context/runtime",
-    "pages/relations/index",
-    "pages/context/components",
+
     "pages/store/index"
   ],
   "window": {

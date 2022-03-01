@@ -1,7 +1,8 @@
 import OptionInstaller from "./OptionInstaller";
 import {Configuration} from "../libs/Store";
 import {selectPathRoot} from "../utils/object";
-import {isFunction} from "../utils/common";
+import {isFunction, uuid} from "../utils/common";
+import clone from '../libs/rfdc/default';
 
 const UnwatchSign = ("__wxUnWAT__");
 
@@ -92,7 +93,8 @@ export default class StoreInstaller extends OptionInstaller {
     }
 
     lifetimes(extender, context, options) {
-        let cancel;
+        let unwatchState;
+        let unwatchStore;
         const dependencies = [];
         return {
             created() {
@@ -102,7 +104,7 @@ export default class StoreInstaller extends OptionInstaller {
                 });
                 if (stores.length) {
                     for (const store of stores) {
-                        Configuration.intercept(
+                        unwatchStore = Configuration.intercept(
                             store,
                             (path, value, level) => {
                                 if (!dependencies.findIndex(s => s.store === store && s.path === path) >= 0 && level === 0) {
@@ -111,11 +113,12 @@ export default class StoreInstaller extends OptionInstaller {
                                         path
                                     });
                                 }
+                                return true;
                             },
                             null
                         );
                     }
-                    cancel = extender.getRuntimeContextSingleton(this).intercept(
+                    unwatchState = extender.getRuntimeContextSingleton(this).intercept(
                         null,
                         (path) => {
                             const src = selectPathRoot(path);
@@ -137,12 +140,16 @@ export default class StoreInstaller extends OptionInstaller {
             },
             attached() {
                 const computed = context.get("computed");
-                if (cancel) {
-                    cancel();
-                }
                 Configuration.instances().forEach(s => {
                     LinkAge.watchStore(s, this, computed);
                 });
+
+                if (unwatchStore) {
+                    unwatchStore();
+                }
+                if (unwatchState) {
+                    unwatchState();
+                }
             }
         };
     }

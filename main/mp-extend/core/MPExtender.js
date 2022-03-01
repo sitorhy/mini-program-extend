@@ -72,7 +72,9 @@ class RuntimeContextSingleton extends Singleton {
     __onStateGetting(path, value, level) {
         for (const {get} of this.__interceptors) {
             if (get) {
-                get(path, value, level);
+                if (get(path, value, level) === true) {
+                    break;
+                }
             }
         }
     }
@@ -80,7 +82,9 @@ class RuntimeContextSingleton extends Singleton {
     __onStateSetting(path, value, level) {
         for (const {set} of this.__interceptors) {
             if (set) {
-                set(path, value, level);
+                if (set(path, value, level) === true) {
+                    break;
+                }
             }
         }
     }
