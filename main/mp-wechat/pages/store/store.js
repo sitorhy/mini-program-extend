@@ -1,4 +1,6 @@
 import Store from "../../libs/mp-extend/libs/Store";
 import config from "../../libs/test-units/store";
 
-export default new Store(config);
+const store = new Store(config);
+console.log(store);
+export default store;

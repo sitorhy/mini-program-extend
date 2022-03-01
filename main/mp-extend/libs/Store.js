@@ -30,7 +30,7 @@ const PrivateConfiguration = {
         return filters.get(path);
     },
 
-    defineFilters(observer, config, path = null) {
+    defineFilters(observer, config, path = null, namespace = null) {
         if (config.getters) {
             const mPath = path === null || path === undefined || path === RootModuleSign ? RootModuleSign : path;
             const filters = Reflect.get(observer, FiltersSign);
@@ -57,13 +57,13 @@ const PrivateConfiguration = {
                     }
                 };
                 Object.defineProperty(mFilters, getter, attrs);
-                Object.defineProperty(rootFilters, getter, attrs);
+                Object.defineProperty(rootFilters, `${namespace ? namespace + '/' : ''}${getter}`, attrs);
             }
         }
         if (config.modules) {
             for (const subPath in config.modules) {
                 const nextPath = `${!path ? '' : path + '.'}${subPath}`;
-                this.defineFilters(observer, config.modules[subPath], nextPath);
+                this.defineFilters(observer, config.modules[subPath], nextPath, [namespace || "", config.modules[subPath].namespaced ? subPath : ""].filter(i => !!i).join("/"));
             }
         }
     },
@@ -92,7 +92,7 @@ const PrivateConfiguration = {
     },
 
     getAction(observer, path, name) {
-        const config = this.getModules(observer).get(path === null || path === undefined ? RootModuleSign : path);
+        const config = this.getModules(observer).get(path === null || path === undefined || path === RootModuleSign ? RootModuleSign : path);
         if (config) {
             const actions = config.actions;
             if (actions && actions[name]) {
@@ -350,8 +350,8 @@ export default class Store {
                     }
                 }
             },
-            (path, fn, thisArg, args, level, parent) => {
-                if (Array.isArray(parent)) {
+            (path, p, fn, thisArg, args, level, parent) => {
+                if (Array.isArray(parent) && ["push", "splice", "shift", "pop", "fill", "unshift", "reverse", "copyWithin"].includes(p)) {
                     const watchers = PrivateConfiguration.getWatchers(this);
                     for (const watcher of watchers) {
                         // 避免旧值引用一并被修改
@@ -472,22 +472,33 @@ export default class Store {
             actionName = type;
         }
 
-        for (const p of PrivateConfiguration.getModules(this).keys()) {
-            action = PrivateConfiguration.getAction(this, p, actionName);
-            if (action) {
-                path = p;
-                break;
+        if (actionName) {
+            const iSp = actionName.lastIndexOf("/");
+            if (iSp > 0) {
+                const actionPath = actionName.substring(iSp + 1);
+                path = actionName.substring(0, iSp).replaceAll("/", ".");
+                action = PrivateConfiguration.getAction(this, path, actionPath);
+            } else {
+                for (const p of PrivateConfiguration.getModules(this).keys()) {
+                    action = PrivateConfiguration.getAction(this, p, actionName);
+                    if (action) {
+                        path = p;
+                        break;
+                    }
+                }
             }
         }
 
         if (isFunction(action)) {
+            const moduleContext = {
+                commit: null,
+                dispatch: null,
+                getters: null,
+                state: null
+            };
             const context = {
-                commit: this.commit.bind(this),
-                dispatch: this.dispatch.bind(this),
-                getters: PrivateConfiguration.getFilters(this, path),
                 rootGetters: this.getters,
-                rootState: PrivateConfiguration.getFilters(this, path),
-                state: PrivateConfiguration.getState(this, path)
+                rootState: PrivateConfiguration.getFilters(this, path)
             };
             action.call(this, context, payload);
         } else {

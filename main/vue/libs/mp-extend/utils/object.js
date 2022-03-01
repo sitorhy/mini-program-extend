@@ -92,7 +92,7 @@ export function traceObject(obj, path, clone, override, value) {
  * @param {(path:string,value:any,level:number,parent:any)=>void} onGet - 解析对象回调，用于获取计算依赖
  * @param {(path:string,value:any,level:number,parent:any)=>void} onSet - 设置对象回调，用于获取赋值依赖
  * @param {(path:string,level:number,parent:any)=>void} onDelete - 删除回调
- * @param {(path:string,fn:()=>any,thisArg:any,args:any,level:number,parent:any)=>void} before - 设置函数回调，对象函数即将调用
+ * @param {(path:string,prop:string,fn:()=>any,thisArg:any,args:any,level:number,parent:any)=>void} before - 设置函数回调，对象函数即将调用
  * @param {(path:string,result:any,level:number,parent:any)=>void} after - 设置函数回调，对象函数调用完毕
  * @param level - 层级
  * @returns {boolean|any}
@@ -120,7 +120,7 @@ export function createReactiveObject(
                             return new Proxy(value, {
                                 apply(fn, thisArg, argArray) {
                                     if (isFunction(before)) {
-                                        before(path, fn, thisArg, argArray, level, target);
+                                        before(path, p, fn, thisArg, argArray, level, target);
                                     }
                                     const result = fn.apply(thisArg, argArray);
                                     if (isFunction(after)) {
