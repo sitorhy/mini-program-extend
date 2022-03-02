@@ -3,6 +3,7 @@ import {isFunction, isString} from "../utils/common";
 import CompatibleWatcher from "./CompatibleWatcher";
 import equal from "./fast-deep-equal/index";
 import clone from "./rfdc/default";
+import {Collectors, Stream} from "./Stream";
 
 const OriginalState = Symbol("__originalState__");
 const StateSign = Symbol("__state__");
@@ -341,6 +342,88 @@ export const Connector = {
      */
     cancelIntercept(observer, onStateGetting, onStateSetting) {
         return Configuration.cancelIntercept(observer, onStateGetting, onStateSetting);
+    },
+
+    mapState: function (observer, ...args) {
+        const namespace = args.length > 1 ? args[0] : null;
+        const map = args.length > 1 ? args[1] : args[0];
+        const state = Configuration.getState(observer, namespace ? namespace.replaceAll("/", ".") : null);
+        const mapStateToProps = Array.isArray(map) ? Stream.of(map).map(i => [i, i]).collect(Collectors.toMap()) : map;
+        return Stream.of(Object.keys(mapStateToProps)).map((prop) => {
+            const to = mapStateToProps[prop];
+            if (isString(to)) {
+                return [mapStateToProps[prop], function () {
+                    return state[to];
+                }];
+            } else if (isFunction(to)) {
+                return [mapStateToProps[prop], function () {
+                    return to(state);
+                }];
+            }
+            return [mapStateToProps[prop], function () {
+                return undefined;
+            }];
+        }).collect(Collectors.toMap());
+    },
+
+    mapGetters: function (observer, ...args) {
+        const namespace = args.length > 1 ? args[0] : '';
+        const map = args.length > 1 ? args[1] : args[0];
+        const getters = Configuration.getSpace(observer, GetterSign);
+        const mapGettersToProps = Array.isArray(map) ? Stream.of(map).map(i => [i, i]).collect(Collectors.toMap()) : map;
+        return Stream.of(Object.keys(mapGettersToProps)).map(prop => {
+            const to = mapGettersToProps[prop];
+            return [to, function () {
+                return getters[`${namespace ? namespace + '/' : ''}${prop}`];
+            }];
+        }).collect(Collectors.toMap());
+    },
+
+    mapActions: function (observer, ...args) {
+        const namespace = args.length > 1 ? args[0] : '';
+        const map = args.length > 1 ? args[1] : args[0];
+        const actions = Configuration.getSpace(observer, ActionSign);
+        const mapActionsToProps = Array.isArray(map) ? Stream.of(map).map(i => [i, i]).collect(Collectors.toMap()) : map;
+        return Stream.of(Object.keys(mapActionsToProps)).map(prop => {
+            const to = mapActionsToProps[prop];
+            return [to, function (payload) {
+                return actions[`${namespace ? namespace + '/' : ''}${prop}`](payload);
+            }];
+        }).collect(Collectors.toMap());
+    },
+
+    mapMutations: function (observer, ...args) {
+        const namespace = args.length > 1 ? args[0] : '';
+        const map = args.length > 1 ? args[1] : args[0];
+        const mutations = Configuration.getSpace(observer, MutationSign);
+        const mapMutationsToProps = Array.isArray(map) ? Stream.of(map).map(i => [i, i]).collect(Collectors.toMap()) : map;
+        return Stream.of(Object.keys(mapMutationsToProps)).map(prop => {
+            const to = mapMutationsToProps[prop];
+            return [to, function (payload) {
+                mutations[`${namespace ? namespace + '/' : ''}${prop}`](payload);
+            }];
+        }).collect(Collectors.toMap());
+    },
+
+    createNamespacedHelpers: function (observer, namespace) {
+        const mapNamespaceState = (map) => {
+            return this.mapState(observer, namespace, map);
+        };
+        const mapNamespaceGetters = (map) => {
+            return this.mapGetters(observer, namespace, map);
+        };
+        const mapNamespaceMutations = (map) => {
+            return this.mapMutations(observer, namespace, map);
+        };
+        const mapNamespaceActions = (map) => {
+            return this.mapActions(observer, namespace, map);
+        };
+        return {
+            mapState: mapNamespaceState,
+            mapGetters: mapNamespaceGetters,
+            mapMutations: mapNamespaceMutations,
+            mapActions: mapNamespaceActions
+        };
     }
 };
 

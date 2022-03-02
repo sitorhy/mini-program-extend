@@ -45,12 +45,18 @@ const account = {
         // 继承父模块的命名空间
         myPage: {
             state: () => ({
-                avatar: 10,
-                nickName: 0
+                avatar: "",
+                nickName: "田所浩二"
             }),
             getters: {
-                profile() {
+                profile(state) {
+                    return state.nickName;
                 } // -> getters['account/profile']
+            },
+            mutations: {
+                showAvatar(state, img) {
+                    state.avatar = img;
+                }
             }
         },
 
@@ -62,8 +68,17 @@ const account = {
                 address: ''
             }),
             getters: {
-                popular() {
+                address(state) {
+                    return state.address;
+                },
+                popular(state, getters) {
+                    return getters.address;
                 } // -> getters['account/posts/popular']
+            },
+            actions: {
+                setAddress({state}, address) {
+                    state.address = address;
+                }
             }
         }
     }
