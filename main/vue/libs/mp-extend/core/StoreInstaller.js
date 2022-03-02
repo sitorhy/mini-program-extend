@@ -106,7 +106,8 @@ export default class StoreInstaller extends OptionInstaller {
                         unwatchStore = Connector.intercept(
                             store,
                             (path, value, level) => {
-                                if (!dependencies.findIndex(s => s.store === store && s.path === path) >= 0 && level === 0) {
+                                // 对于潜逃模块 module namespace = true 的模块而言，其实层级可能 > 0
+                                if (!dependencies.findIndex(s => s.store === store && s.path === path) >= 0) {
                                     dependencies.push({
                                         store,
                                         path
@@ -131,7 +132,9 @@ export default class StoreInstaller extends OptionInstaller {
                                 const sl = LinkAge.getStoreLinkAge(s.store);
                                 const cl = LinkAge.getComponentLinkAge(sl, this);
                                 const targets = LinkAge.getTargets(cl, p);
-                                targets.push(src);
+                                if (!targets.includes(src)) {
+                                    targets.push(src);
+                                }
                             });
                         }
                     );
