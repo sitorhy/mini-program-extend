@@ -105,8 +105,8 @@ export default class StoreInstaller extends OptionInstaller {
                     for (const store of stores) {
                         unwatchStore = Connector.intercept(
                             store,
-                            (path, value, level) => {
-                                // 对于潜逃模块 module namespace = true 的模块而言，其实层级可能 > 0
+                            (path) => {
+                                // 对于潜在模块 module namespace = true 的模块而言，起始层级 > 0
                                 if (!dependencies.findIndex(s => s.store === store && s.path === path) >= 0) {
                                     dependencies.push({
                                         store,
@@ -142,6 +142,8 @@ export default class StoreInstaller extends OptionInstaller {
             },
             attached() {
                 const computed = context.get("computed");
+
+                // watch 初始化会触发拦截器，取消拦截需要延后
                 Connector.instances().forEach(s => {
                     LinkAge.watchStore(s, this, computed);
                 });
