@@ -430,9 +430,9 @@ export const Connector = {
 /**
  * @typedef { {
  * state:object,
- * getters?:{[key:string]:(state:object)=>any},
- * mutations?:{[key:string]:(state:object)=>void},
- * actions?:{[key:string]:(state:object)=>(Promise|any)},
+ * getters?:object,
+ * mutations?:object,
+ * actions?:object,
  * modules?:{[name:string]:StoreDefinition}
  * } } StoreDefinition
  */
@@ -610,6 +610,11 @@ export default class Store {
                 Configuration.unregisterModule(this, path);
             }
         }
+    }
+
+    hasModule(path) {
+        const spacePath = Array.isArray(path) ? path.join(".") : path;
+        return Configuration.getModules(this).has(spacePath);
     }
 
     watch(fn, callback, options = null) {

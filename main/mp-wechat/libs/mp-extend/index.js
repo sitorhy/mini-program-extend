@@ -5,6 +5,7 @@ import MixinInstaller from "./core/MixinInstaller";
 
 export const Extension = {
     _installerClasses: new Map(),
+    _globalStore: null,
 
     use: function (installerClass, priority = 100) {
         this._installerClasses.set(installerClass, priority);

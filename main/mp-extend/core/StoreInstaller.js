@@ -88,7 +88,24 @@ const WatchInstallBehavior = Behavior({
  */
 export default class StoreInstaller extends OptionInstaller {
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
-        defFields.behaviors = [WatchInstallBehavior].concat(defFields.behaviors || []);
+        const store = options.store;
+        defFields.behaviors = [
+            Behavior({
+                lifetimes: {
+                    created() {
+                        if (store && !Reflect.has(this, "$store")) {
+                            Object.defineProperty(this, "$store", {
+                                enumerable: true,
+                                configurable: true,
+                                writable: false,
+                                value: store
+                            });
+                        }
+                    }
+                }
+            }),
+            WatchInstallBehavior
+        ].concat(defFields.behaviors || []);
     }
 
     lifetimes(extender, context, options) {

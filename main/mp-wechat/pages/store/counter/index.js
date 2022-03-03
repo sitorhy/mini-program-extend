@@ -1,5 +1,5 @@
 import {ComponentEx} from "../../../libs/mp-extend/index";
-import store from "../store";
+import store from "../../../store/index";
 
 store.watch((state) => {
         return state.count;
