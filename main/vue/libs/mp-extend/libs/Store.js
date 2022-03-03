@@ -349,18 +349,18 @@ export const Connector = {
         const map = args.length > 1 ? args[1] : args[0];
         const state = Configuration.getState(observer, namespace ? namespace.replaceAll("/", ".") : null);
         const mapStateToProps = Array.isArray(map) ? Stream.of(map).map(i => [i, i]).collect(Collectors.toMap()) : map;
-        return Stream.of(Object.keys(mapStateToProps)).map((prop) => {
-            const to = mapStateToProps[prop];
-            if (isString(to)) {
-                return [mapStateToProps[prop], function () {
-                    return state[to];
+        return Stream.of(Object.keys(mapStateToProps)).map((to) => {
+            const from = mapStateToProps[to];
+            if (isString(from)) {
+                return [to, function () {
+                    return state[from];
                 }];
-            } else if (isFunction(to)) {
-                return [mapStateToProps[prop], function () {
-                    return to(state);
+            } else if (isFunction(from)) {
+                return [to, function () {
+                    return from(state);
                 }];
             }
-            return [mapStateToProps[prop], function () {
+            return [to, function () {
                 return undefined;
             }];
         }).collect(Collectors.toMap());
@@ -371,10 +371,10 @@ export const Connector = {
         const map = args.length > 1 ? args[1] : args[0];
         const getters = Configuration.getSpace(observer, GetterSign);
         const mapGettersToProps = Array.isArray(map) ? Stream.of(map).map(i => [i, i]).collect(Collectors.toMap()) : map;
-        return Stream.of(Object.keys(mapGettersToProps)).map(prop => {
-            const to = mapGettersToProps[prop];
+        return Stream.of(Object.keys(mapGettersToProps)).map(to => {
+            const from = mapGettersToProps[to];
             return [to, function () {
-                return getters[`${namespace ? namespace + '/' : ''}${prop}`];
+                return getters[`${namespace ? namespace + '/' : ''}${from}`];
             }];
         }).collect(Collectors.toMap());
     },
@@ -384,10 +384,10 @@ export const Connector = {
         const map = args.length > 1 ? args[1] : args[0];
         const actions = Configuration.getSpace(observer, ActionSign);
         const mapActionsToProps = Array.isArray(map) ? Stream.of(map).map(i => [i, i]).collect(Collectors.toMap()) : map;
-        return Stream.of(Object.keys(mapActionsToProps)).map(prop => {
-            const to = mapActionsToProps[prop];
+        return Stream.of(Object.keys(mapActionsToProps)).map(to => {
+            const from = mapActionsToProps[to];
             return [to, function (payload) {
-                return actions[`${namespace ? namespace + '/' : ''}${prop}`](payload);
+                return actions[`${namespace ? namespace + '/' : ''}${from}`](payload);
             }];
         }).collect(Collectors.toMap());
     },
@@ -397,10 +397,10 @@ export const Connector = {
         const map = args.length > 1 ? args[1] : args[0];
         const mutations = Configuration.getSpace(observer, MutationSign);
         const mapMutationsToProps = Array.isArray(map) ? Stream.of(map).map(i => [i, i]).collect(Collectors.toMap()) : map;
-        return Stream.of(Object.keys(mapMutationsToProps)).map(prop => {
-            const to = mapMutationsToProps[prop];
+        return Stream.of(Object.keys(mapMutationsToProps)).map(to => {
+            const from = mapMutationsToProps[to];
             return [to, function (payload) {
-                mutations[`${namespace ? namespace + '/' : ''}${prop}`](payload);
+                mutations[`${namespace ? namespace + '/' : ''}${from}`](payload);
             }];
         }).collect(Collectors.toMap());
     },
