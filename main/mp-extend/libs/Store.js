@@ -9,6 +9,7 @@ const OriginalState = Symbol("__originalState__");
 const StateSign = Symbol("__state__");
 const InterceptorsSign = Symbol("__interceptors__");
 const WATSign = Symbol("__WAT__");
+const PLUGSign = Symbol("__PLUG__")
 const GetterSign = Symbol("__getters__");
 const ActionSign = Symbol("__actions__");
 const MutationSign = Symbol("__mutations__");
@@ -315,6 +316,127 @@ const Configuration = {
             }
         }
         return state;
+    },
+
+    replaceState(observer, state) {
+        const pending = [];
+        const calling = [];
+
+        this.setOriginalState(observer, state);
+
+        // before -> set -> onChanged -> after
+        Reflect.set(observer, StateSign, createReactiveObject(
+            state,
+            state,
+            (path, value) => {
+                setData(this.getOriginalState(observer), {[path]: value});
+                pending.splice(0).forEach(watcher => {
+                    // ③ not array deep with path
+                    // ⑧ not array shallow with path
+                    // 路径侦听器直接获取新值 不需要传代理对象触发拦截器
+                    watcher.call(undefined, [getData(this.getOriginalState(observer), watcher.path)]);
+                });
+
+                const watchers = this.getWatchers(observer);
+                for (const watcher of watchers) {
+                    if (isFunction(watcher.getter)) {
+                        // ② array deep with getter
+                        // ④ not array deep with getter
+                        // ⑤ array shallow with getter
+                        // ⑥ not array shallow with getter
+                        watcher.update(undefined, [observer.state]);
+                    }
+                }
+            },
+            "",
+            (path, value, level) => {
+                const interceptors = this.getInterceptors(observer);
+                for (const {get} of interceptors) {
+                    if (get) {
+                        if (get(path, value, level) === true) {
+                            break;
+                        }
+                    }
+                }
+            },
+            (path, value, level) => {
+                const interceptors = this.getInterceptors(observer);
+                for (const {set} of interceptors) {
+                    if (set) {
+                        if (set(path, value, level) === true) {
+                            break;
+                        }
+                    }
+                }
+                const watchers = this.getWatchers(observer);
+                for (const watcher of watchers) {
+                    if (!calling.includes(watcher)) { // 4 排除深拷贝预处理
+                        if (watcher.deep) {
+                            // ④ not array deep with getter
+                            watcher.oldValue = clone(watcher.oldValue);
+                            if (watcher.path && path.startsWith(watcher.path)) {
+                                // ③ not array deep with path
+                                pending.push(watcher);
+                            }
+                        } else {
+                            // ⑧ not array shallow with path
+                            if (watcher.path) {
+                                pending.push(watcher);
+                            }
+                        }
+                    }
+                }
+            },
+            (path, level, parent) => {
+                const watchers = this.getWatchers(observer);
+                for (const watcher of watchers) {
+                    if (watcher.deep) {
+                        watcher.oldValue = clone(watcher.oldValue);
+                    }
+                    if (watcher.path) {
+                        watcher.call(undefined, [getData(this.getOriginalState(observer), watcher.path)]);
+                    } else if (isFunction(watcher.getter)) {
+                        watcher.update(undefined, [observer.state]);
+                    }
+                }
+            },
+            (path, p, fn, thisArg, args, level, parent) => {
+                if (Array.isArray(parent) && ["push", "splice", "shift", "pop", "fill", "unshift", "reverse", "copyWithin"].includes(p)) {
+                    const watchers = this.getWatchers(observer);
+                    for (const watcher of watchers) {
+                        // 避免旧值引用一并被修改
+                        if (watcher.deep) {
+                            watcher.oldValue = clone(watcher.oldValue);
+                            if (watcher.path && path.startsWith(watcher.path)) {
+                                // ① array deep with path
+                                calling.push(watcher);
+                            } else if (isFunction(watcher.getter)) {
+                                // ② array deep with getter
+                                calling.push(watcher);
+                            }
+                        } else {
+                            if (watcher.path) {
+                                // ⑦ array shallow with path
+                                calling.push(watcher);
+                            }
+                        }
+                    }
+                }
+            },
+            (path, result, level, parent) => {
+                calling.splice(0).forEach(watcher => {
+                    if (watcher.path) {
+                        // ① array deep with path
+                        // ⑦ array shallow with path
+                        watcher.call(undefined, [getData(this.getOriginalState(observer), watcher.path)]);
+                    }
+                });
+            }
+        ));
+    },
+
+    getPlugins(observer) {
+        return Reflect.get(observer, PLUGSign);
     }
 };
 
@@ -445,138 +567,31 @@ export default class Store {
     [ModulesSign] = new Map();
     [ActionSign] = new Map();
     [MutationSign] = new Map();
+    [PLUGSign] = [];
 
     /**
      * @param { StoreDefinition } config
      */
     constructor(config) {
-        const pending = [];
-        const calling = [];
         const state = Configuration.mergeState(isFunction(config.state) ? config.state() : config.state, config);
-        Configuration.setOriginalState(this, state);
-        Configuration.defineGetters(this, config);
         Configuration.defineMutations(this, config);
+        Configuration.defineGetters(this, config);
         Configuration.defineActions(this, config);
-
-        // before -> set -> onChanged -> after
-        Reflect.set(this, StateSign, createReactiveObject(
-            state,
-            state,
-            (path, value) => {
-                setData(state, {[path]: value});
-                pending.splice(0).forEach(watcher => {
-                    // ③ not array deep with path
-                    // ⑧ not array shallow with path
-                    // 路径侦听器直接获取新值 不需要传 this.state 触发拦截器
-                    watcher.call(undefined, [getData(state, watcher.path)]);
-                });
-
-                const watchers = Configuration.getWatchers(this);
-                for (const watcher of watchers) {
-                    if (isFunction(watcher.getter)) {
-                        // ② array deep with getter
-                        // ④ not array deep with getter
-                        // ⑤ array shallow with getter
-                        // ⑥ not array shallow with getter
-                        watcher.update(undefined, [this.state]);
-                    }
-                }
-            },
-            "",
-            (path, value, level) => {
-                const interceptors = Configuration.getInterceptors(this);
-                for (const {get} of interceptors) {
-                    if (get) {
-                        if (get(path, value, level) === true) {
-                            break;
-                        }
-                    }
-                }
-            },
-            (path, value, level) => {
-                const interceptors = Configuration.getInterceptors(this);
-                for (const {set} of interceptors) {
-                    if (set) {
-                        if (set(path, value, level) === true) {
-                            break;
-                        }
-                    }
-                }
-                const watchers = Configuration.getWatchers(this);
-                for (const watcher of watchers) {
-                    if (!calling.includes(watcher)) { // 4 排除深拷贝预处理
-                        if (watcher.deep) {
-                            // ④ not array deep with getter
-                            watcher.oldValue = clone(watcher.oldValue);
-                            if (watcher.path && path.startsWith(watcher.path)) {
-                                // ③ not array deep with path
-                                pending.push(watcher);
-                            }
-                        } else {
-                            // ⑧ not array shallow with path
-                            if (watcher.path) {
-                                pending.push(watcher);
-                            }
-                        }
-                    }
-                }
-            },
-            (path, level, parent) => {
-                const watchers = Configuration.getWatchers(this);
-                for (const watcher of watchers) {
-                    if (watcher.deep) {
-                        watcher.oldValue = clone(watcher.oldValue);
-                    }
-                    if (watcher.path) {
-                        watcher.call(undefined, [getData(state, watcher.path)]);
-                    } else if (isFunction(watcher.getter)) {
-                        watcher.update(undefined, [this.state]);
-                    }
-                }
-            },
-            (path, p, fn, thisArg, args, level, parent) => {
-                if (Array.isArray(parent) && ["push", "splice", "shift", "pop", "fill", "unshift", "reverse", "copyWithin"].includes(p)) {
-                    const watchers = Configuration.getWatchers(this);
-                    for (const watcher of watchers) {
-                        // 避免旧值引用一并被修改
-                        if (watcher.deep) {
-                            watcher.oldValue = clone(watcher.oldValue);
-                            if (watcher.path && path.startsWith(watcher.path)) {
-                                // ① array deep with path
-                                calling.push(watcher);
-                            } else if (isFunction(watcher.getter)) {
-                                // ② array deep with getter
-                                calling.push(watcher);
-                            }
-                        } else {
-                            if (watcher.path) {
-                                // ⑦ array shallow with path
-                                calling.push(watcher);
-                            }
-                        }
-                    }
-                }
-            },
-            (path, result, level, parent) => {
-                calling.splice(0).forEach(watcher => {
-                    if (watcher.path) {
-                        // ① array deep with path
-                        // ⑦ array shallow with path
-                        watcher.call(undefined, [getData(state, watcher.path)]);
-                    }
-                });
-            }
-        ));
-
+        Configuration.replaceState(this, state);
         Configuration.registerModule(this, RootModuleSign, config);
         Configuration.registerInstance(this);
+        Configuration.getPlugins(this).forEach(plugin => {
+            if (isFunction(plugin)) {
+                plugin.call(undefined, this);
+            }
+        });
     }
 
     registerModule(path, module) {
         const spacePath = Array.isArray(path) ? path.join('.') : path;
         Configuration.mergeState(Configuration.getOriginalState(this), module, spacePath);
-        Configuration.defineGetters(this, module);
         Configuration.defineMutations(this, module);
+        Configuration.defineGetters(this, module);
         Configuration.defineActions(this, module);
         Configuration.registerModule(this, path, module);
     }
@@ -617,6 +632,26 @@ export default class Store {
         return Configuration.getModules(this).has(spacePath);
     }
 
+    hotUpdate(config) {
+        if (config) {
+            Configuration.defineMutations(this, config);
+            Configuration.defineGetters(this, config);
+            Configuration.defineActions(this, config);
+        }
+    }
+
+    subscribe(handler, options) {
+
+    }
+
+    subscribeAction(handler, options) {
+
+    }
+
+    replaceState(state) {
+        Configuration.replaceState(this, state);
+    }
+
     watch(fn, callback, options = null) {
         return Configuration.watch(this, fn, callback, options);
     }
@@ -635,5 +670,9 @@ export default class Store {
 
     get getters() {
         return Configuration.getSpace(this, GetterSign);
+    }
+
+    get plugins() {
+        return Configuration.getPlugins(this);
     }
 }
