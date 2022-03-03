@@ -1,5 +1,5 @@
 import OptionInstaller from "./OptionInstaller";
-import {Configuration} from "../libs/Store";
+import {Connector} from "../libs/Store";
 import {selectPathRoot} from "../utils/object";
 import {isFunction} from "../utils/common";
 
@@ -88,34 +88,54 @@ const WatchInstallBehavior = Behavior({
  */
 export default class StoreInstaller extends OptionInstaller {
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
-        defFields.behaviors = [WatchInstallBehavior].concat(defFields.behaviors || []);
+        const store = options.store;
+        defFields.behaviors = [
+            Behavior({
+                lifetimes: {
+                    created() {
+                        if (store && !Reflect.has(this, "$store")) {
+                            Object.defineProperty(this, "$store", {
+                                enumerable: true,
+                                configurable: true,
+                                writable: false,
+                                value: store
+                            });
+                        }
+                    }
+                }
+            }),
+            WatchInstallBehavior
+        ].concat(defFields.behaviors || []);
     }
 
     lifetimes(extender, context, options) {
-        let cancel;
+        let unwatchState;
+        let unwatchStore;
         const dependencies = [];
         return {
             created() {
-                const stores = Configuration.instances().filter(s => {
+                const stores = Connector.instances().filter(s => {
                     const sl = LinkAge.getStoreLinkAge(s);
                     return !sl.has(this.is);
                 });
                 if (stores.length) {
                     for (const store of stores) {
-                        Configuration.intercept(
+                        unwatchStore = Connector.intercept(
                             store,
-                            (path, value, level) => {
-                                if (!dependencies.findIndex(s => s.store === store && s.path === path) >= 0 && level === 0) {
+                            (path) => {
+                                // 对于潜在模块 module namespace = true 的模块而言，起始层级 > 0
+                                if (!dependencies.findIndex(s => s.store === store && s.path === path) >= 0) {
                                     dependencies.push({
                                         store,
                                         path
                                     });
                                 }
+                                return true;
                             },
                             null
                         );
                     }
-                    cancel = extender.getRuntimeContextSingleton(this).intercept(
+                    unwatchState = extender.getRuntimeContextSingleton(this).intercept(
                         null,
                         (path) => {
                             const src = selectPathRoot(path);
@@ -129,7 +149,9 @@ export default class StoreInstaller extends OptionInstaller {
                                 const sl = LinkAge.getStoreLinkAge(s.store);
                                 const cl = LinkAge.getComponentLinkAge(sl, this);
                                 const targets = LinkAge.getTargets(cl, p);
-                                targets.push(src);
+                                if (!targets.includes(src)) {
+                                    targets.push(src);
+                                }
                             });
                         }
                     );
@@ -137,12 +159,19 @@ export default class StoreInstaller extends OptionInstaller {
             },
             attached() {
                 const computed = context.get("computed");
-                if (cancel) {
-                    cancel();
-                }
-                Configuration.instances().forEach(s => {
+
+                // watch 初始化会触发拦截器，取消拦截需要延后
+                Connector.instances().forEach(s => {
                     LinkAge.watchStore(s, this, computed);
                 });
+
+                if (unwatchStore) {
+                    unwatchStore();
+                }
+
+                if (unwatchState) {
+                    unwatchState();
+                }
             }
         };
     }

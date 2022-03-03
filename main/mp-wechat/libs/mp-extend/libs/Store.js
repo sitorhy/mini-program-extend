@@ -1,18 +1,23 @@
-import {createReactiveObject, getData, selectPathRoot, setData, splitPath, traceObject} from "../utils/object";
-import {isFunction, isString, isPlainObject} from "../utils/common";
+import {createReactiveObject, getData, setData, splitPath} from "../utils/object";
+import {isFunction, isString} from "../utils/common";
 import CompatibleWatcher from "./CompatibleWatcher";
 import equal from "./fast-deep-equal/index";
 import clone from "./rfdc/default";
+import {Collectors, Stream} from "./Stream";
 
+const OriginalState = Symbol("__originalState__");
 const StateSign = Symbol("__state__");
 const InterceptorsSign = Symbol("__interceptors__");
 const WATSign = Symbol("__WAT__");
-const FiltersSign = Symbol("__getters__");
+const PLUGSign = Symbol("__PLUG__")
+const GetterSign = Symbol("__getters__");
+const ActionSign = Symbol("__actions__");
+const MutationSign = Symbol("__mutations__");
 const ModulesSign = Symbol("__modules__");
 const RootModuleSign = Symbol("__root__");
 
-const PrivateConfiguration = {
-    __stores: [],
+const Configuration = {
+    stores: [],
 
     getState(observer, path = null) {
         const root = Reflect.get(observer, StateSign);
@@ -22,38 +27,163 @@ const PrivateConfiguration = {
         return getData(root, path);
     },
 
-    getFilters(observer) {
-        return Reflect.get(observer, FiltersSign);
+    getOriginalState(observer) {
+        return Reflect.get(observer, OriginalState);
     },
 
-    defineFilter(observer, p, fn) {
-        Object.defineProperty(this.getFilters(observer), p, {
-            enumerable: true,
-            configurable: false,
-            get() {
-                if (isFunction(fn)) {
-                    return fn.call(undefined);
-                }
-            },
-            set(v) {
-                throw new Error(`Cannot set property ${p} of #<${Object.prototype.toString.call(v)}> which has only a getter"`);
+    setOriginalState(observer, state) {
+        Reflect.set(observer, OriginalState, state);
+    },
+
+    getSpace(observer, scopeSign, path = null) {
+        const scope = Reflect.get(observer, scopeSign);
+        if (path === null || path === undefined || path === RootModuleSign) {
+            return scope.get(RootModuleSign);
+        }
+        return scope.get(path);
+    },
+
+    defineSpace(observer, config, scopeName, scopeSign, defineProperty, path = null, namespace = null) {
+        if (config[scopeName]) {
+            const spacePath = path === null || path === undefined || path === RootModuleSign ? RootModuleSign : path;
+            const scope = Reflect.get(observer, scopeSign);
+            if (!scope.has(spacePath)) {
+                scope.set(spacePath, {});
             }
-        })
-    },
-
-    deleteFilter(observer, p) {
-        Reflect.deleteProperty(this.getFilters(observer), p);
-    },
-
-    getMutation(observer, path, name) {
-        const config = this.getModules(observer).get(path === null || path === undefined ? RootModuleSign : path);
-        if (config) {
-            const mutations = config.mutations;
-            if (mutations && mutations[name]) {
-                return mutations[name];
+            const space = scope.get(spacePath);
+            if (!scope.has(RootModuleSign)) {
+                scope.set(RootModuleSign, {});
+            }
+            const rootSpace = scope.get(RootModuleSign);
+            for (const definition in config[scopeName]) {
+                const attrs = defineProperty(config, spacePath, definition);
+                Object.defineProperty(space, definition, attrs);
+                Object.defineProperty(rootSpace, `${namespace ? namespace + '/' : ''}${definition}`, attrs);
             }
         }
-        return null;
+        if (config.modules) {
+            for (const subPath in config.modules) {
+                const nextPath = `${!path ? '' : path + '.'}${subPath}`;
+                this.defineSpace(observer, config.modules[subPath], scopeName, scopeSign, defineProperty, nextPath, [namespace || "", config.modules[subPath].namespaced ? subPath : ""].filter(i => !!i).join("/"));
+            }
+        }
+    },
+
+    deleteSpace(observer, scopeSign, path) {
+        const scope = this.getSpace(observer, scopeSign, path);
+        const space = scope.get(path);
+        const rootSpace = scope.get(RootModuleSign);
+        if (path && path !== RootModuleSign) {
+            scope.delete(path);
+        }
+        if (space !== rootSpace) {
+            for (const definition of space.keys()) {
+                rootSpace.delete(definition);
+            }
+        }
+    },
+
+    defineGetters(observer, config) {
+        this.defineSpace(observer, config, "getters", GetterSign, (moduleConfig, spacePath, definition) => {
+            return {
+                enumerable: true,
+                configurable: true,
+                get: () => {
+                    const fn = moduleConfig.getters[definition];
+                    if (isFunction(fn)) {
+                        return fn.call(
+                            observer,
+                            this.getState(observer, spacePath),
+                            this.getSpace(observer, GetterSign, spacePath)
+                        );
+                    }
+                },
+                set: (v) => {
+                    throw new Error(`Cannot set property ${definition} of #<${Object.prototype.toString.call(v)}> which has only a getter"`);
+                }
+            };
+        });
+    },
+
+    defineMutations(observer, config) {
+        this.defineSpace(observer, config, "mutations", MutationSign, (moduleConfig, spacePath, definition) => {
+            return {
+                enumerable: true,
+                configurable: true,
+                writable: false,
+                value: (payload) => {
+                    const fn = moduleConfig.mutations[definition];
+                    if (isFunction(fn)) {
+                        fn.call(
+                            observer,
+                            this.getState(observer, spacePath),
+                            payload
+                        );
+                    }
+                }
+            };
+        });
+    },
+
+    defineActions(observer, config) {
+        this.defineSpace(observer, config, "actions", ActionSign, (moduleConfig, spacePath, definition) => {
+            return {
+                enumerable: true,
+                configurable: true,
+                writable: false,
+                value: (payload) => {
+                    const fn = moduleConfig.actions[definition];
+                    if (isFunction(fn)) {
+                        fn.call(
+                            observer,
+                            {
+                                commit: (...args) => {
+                                    this.commit(observer, spacePath, ...args);
+                                },
+                                dispatch: (...args) => {
+                                    return this.dispatch(observer, spacePath, ...args);
+                                },
+                                getters: this.getSpace(observer, GetterSign, spacePath),
+                                state: this.getState(observer, spacePath),
+                                rootGetters: this.getSpace(observer, GetterSign),
+                                rootState: this.getState(observer)
+                            },
+                            payload
+                        );
+                    }
+                }
+            };
+        });
+    },
+
+    commit(observer, spacePath, ...args) {
+        if ((!isString(args[0]) && !args[0].type) || !args[0]) {
+            throw new Error(`expects string as the type, but found ${Object.prototype.toString.call(args[0])}`);
+        }
+        const type = isString(args[0]) ? args[0] : args[0].type;
+        const payload = isString(args[0]) ? args[1] : args[0];
+        const rootSpace = this.getSpace(observer, MutationSign, spacePath);
+        const mutation = rootSpace[type];
+        if (isFunction(mutation)) {
+            mutation(payload);
+        } else {
+            throw new Error(`unknown mutation type: ${type}`);
+        }
+    },
+
+    dispatch(observer, spacePath, ...args) {
+        if ((!isString(args[0]) && !args[0].type) || !args[0]) {
+            throw new Error(`expects string as the type, but found ${Object.prototype.toString.call(args[0])}`);
+        }
+        const type = isString(args[0]) ? args[0] : args[0].type;
+        const payload = isString(args[0]) ? args[1] : args[0];
+        const rootSpace = this.getSpace(observer, ActionSign, spacePath);
+        const action = rootSpace[type];
+        if (isFunction(action)) {
+            return action(payload);
+        } else {
+            throw new Error(`unknown action type: ${type}`);
+        }
     },
 
     getInterceptors(observer) {
@@ -151,112 +281,142 @@ const PrivateConfiguration = {
 
     registerModule(observer, path, module) {
         this.getModules(observer).set(path, module);
+        if (module.modules) {
+            for (const m in module.modules) {
+                this.registerModule(observer, `${!path || path === RootModuleSign ? '' : path + '.'}${m}`, module.modules[m]);
+            }
+        }
     },
 
     unregisterModule(observer, path) {
         this.getModules(observer).delete(path);
-    }
-};
-
-export const Configuration = {
-    instances() {
-        return PrivateConfiguration.__stores;
     },
 
-    intercept(observer, onStateGetting, onStateSetting) {
-        return PrivateConfiguration.intercept(observer, onStateGetting, onStateSetting);
+    registerInstance(observer) {
+        if (!this.stores.includes(observer)) {
+            this.stores.push(observer);
+        }
     },
 
-    cancelIntercept(observer, onStateGetting, onStateSetting) {
-        return PrivateConfiguration.cancelIntercept(observer, onStateGetting, onStateSetting);
-    }
-};
+    unregisterInstance(observer) {
+        const index = this.stores.findIndex(i => i === observer);
+        if (index >= 0) {
+            this.stores.splice(index, 1);
+        }
+    },
 
-/**
- * @typedef { {
- * state:object,
- * getters?:{[key:string]:(state:object)=>any},
- * mutations?:{[key:string]:(state:object)=>void},
- * actions?:{[key:string]:(state:object)=>(Promise|any)},
- * modules?:{[name:string]:StoreDefinition}
- * } } StoreDefinition
- */
-export default class Store {
-    [StateSign] = null;
-    [InterceptorsSign] = [];
-    [WATSign] = [];
-    [FiltersSign] = {};
-    [ModulesSign] = new Map();
+    mergeState(state, config, path = null) {
+        if (config.modules) {
+            for (const subPath in config.modules) {
+                const module = config.modules[subPath];
+                const mState = module.state;
+                const nextPath = `${!path ? '' : path + '.'}${subPath}`;
+                setData(state, {[nextPath]: isFunction(mState) ? mState() : mState});
+                this.mergeState(state, module, nextPath);
+            }
+        }
+        return state;
+    },
 
-    /**
-     * @param { StoreDefinition } config
-     */
-    constructor(config) {
+    replaceState(observer, state) {
         const pending = [];
         const calling = [];
-        const state = isFunction(config.state) ? config.state() : config.state;
-        Reflect.set(this, StateSign, createReactiveObject(
+
+        this.setOriginalState(observer, state);
+
+        // before -> set -> onChanged -> after
+        Reflect.set(observer, StateSign, createReactiveObject(
             state,
             state,
             (path, value) => {
-                setData(state, {[path]: value});
-                // 待执行路径观察器 组件计算属性依赖
+                setData(this.getOriginalState(observer), {[path]: value});
                 pending.splice(0).forEach(watcher => {
-                    watcher.call(undefined, [getData(state, watcher.path)]);
+                    // ③ not array deep with path
+                    // ⑧ not array shallow with path
+                    // 路径侦听器直接获取新值 不需要传代理对象触发拦截器
+                    watcher.call(undefined, [getData(this.getOriginalState(observer), watcher.path)]);
                 });
 
-                // 自定义观察器
-                const watchers = PrivateConfiguration.getWatchers(this);
+                const watchers = this.getWatchers(observer);
                 for (const watcher of watchers) {
                     if (isFunction(watcher.getter)) {
-                        watcher.update(undefined, [this.state]);
+                        // ② array deep with getter
+                        // ④ not array deep with getter
+                        // ⑤ array shallow with getter
+                        // ⑥ not array shallow with getter
+                        watcher.update(undefined, [observer.state]);
                     }
                 }
             },
             "",
             (path, value, level) => {
-                const interceptors = PrivateConfiguration.getInterceptors(this);
+                const interceptors = this.getInterceptors(observer);
                 for (const {get} of interceptors) {
                     if (get) {
-                        get(path, value, level);
+                        if (get(path, value, level) === true) {
+                            break;
+                        }
                     }
                 }
             },
             (path, value, level) => {
-                const interceptors = PrivateConfiguration.getInterceptors(this);
+                const interceptors = this.getInterceptors(observer);
                 for (const {set} of interceptors) {
                     if (set) {
-                        set(path, value, level);
+                        if (set(path, value, level) === true) {
+                            break;
+                        }
                     }
                 }
-                const watchers = PrivateConfiguration.getWatchers(this);
+                const watchers = this.getWatchers(observer);
                 for (const watcher of watchers) {
-                    // 非数组字段修改
-                    if (!calling.includes(watcher)) {
+                    if (!calling.includes(watcher)) { // 4 排除深拷贝预处理
                         if (watcher.deep) {
+                            // ④ not array deep with getter
+                            watcher.oldValue = clone(watcher.oldValue);
                             if (watcher.path && path.startsWith(watcher.path)) {
-                                const traceObj = traceObject(state, path, true, false, undefined);
-                                watcher.oldValue = [getData(traceObj, watcher.path)];
+                                // ③ not array deep with path
                                 pending.push(watcher);
-                            } else if (isFunction(watcher.getter)) {
-                                watcher.oldValue = clone(watcher.oldValue);
+                            }
+                        } else {
+                            // ⑧ not array shallow with path
+                            if (watcher.path) {
+                                pending.push(watcher);
                             }
                         }
                     }
                 }
             },
-            (path, fn, thisArg, args, level, parent) => {
-                // 仅支持数组 不要定义奇怪的类型
-                if (Array.isArray(parent)) {
-                    const watchers = PrivateConfiguration.getWatchers(this);
+            (path, level, parent) => {
+                const watchers = this.getWatchers(observer);
+                for (const watcher of watchers) {
+                    if (watcher.deep) {
+                        watcher.oldValue = clone(watcher.oldValue);
+                    }
+                    if (watcher.path) {
+                        watcher.call(undefined, [getData(this.getOriginalState(observer), watcher.path)]);
+                    } else if (isFunction(watcher.getter)) {
+                        watcher.update(undefined, [observer.state]);
+                    }
+                }
+            },
+            (path, p, fn, thisArg, args, level, parent) => {
+                if (Array.isArray(parent) && ["push", "splice", "shift", "pop", "fill", "unshift", "reverse", "copyWithin"].includes(p)) {
+                    const watchers = this.getWatchers(observer);
                     for (const watcher of watchers) {
+                        // 避免旧值引用一并被修改
                         if (watcher.deep) {
+                            watcher.oldValue = clone(watcher.oldValue);
                             if (watcher.path && path.startsWith(watcher.path)) {
-                                const traceObj = traceObject(state, path, true, false, undefined);
-                                watcher.oldValue = [getData(traceObj, watcher.path)];
+                                // ① array deep with path
                                 calling.push(watcher);
                             } else if (isFunction(watcher.getter)) {
-                                watcher.oldValue = clone(watcher.oldValue);
+                                // ② array deep with getter
+                                calling.push(watcher);
+                            }
+                        } else {
+                            if (watcher.path) {
+                                // ⑦ array shallow with path
                                 calling.push(watcher);
                             }
                         }
@@ -266,119 +426,253 @@ export default class Store {
             (path, result, level, parent) => {
                 calling.splice(0).forEach(watcher => {
                     if (watcher.path) {
-                        watcher.call(undefined, [getData(state, watcher.path)]);
+                        // ① array deep with path
+                        // ⑦ array shallow with path
+                        watcher.call(undefined, [getData(this.getOriginalState(observer), watcher.path)]);
                     }
                 });
             }
         ));
+    },
 
-        PrivateConfiguration.registerModule(this, RootModuleSign, config);
-        PrivateConfiguration.__stores.push(this);
+    getPlugins(observer) {
+        return Reflect.get(observer, PLUGSign);
+    }
+};
 
-        if (config.getters) {
-            for (const getter in config.getters) {
-                PrivateConfiguration.defineFilter(this, getter, function () {
-                    if (isFunction(config.getters[getter])) {
-                        return config.getters[getter].call(this, state);
-                    }
-                });
+export const Connector = {
+    instances() {
+        return Configuration.stores;
+    },
+
+    /**
+     * 拦截Store读取操作/写入操作，并返回注销拦截的函数，触发顺序为输入优先，返回 true 取消后续拦截器操作
+     * @param observer
+     * @param onStateGetting
+     * @param onStateSetting
+     * @returns {function(): void}
+     */
+    intercept(observer, onStateGetting, onStateSetting) {
+        return Configuration.intercept(observer, onStateGetting, onStateSetting);
+    },
+
+    /**
+     * 注销拦截操作
+     * @param observer
+     * @param onStateGetting
+     * @param onStateSetting
+     */
+    cancelIntercept(observer, onStateGetting, onStateSetting) {
+        return Configuration.cancelIntercept(observer, onStateGetting, onStateSetting);
+    },
+
+    mapState: function (observer, ...args) {
+        const namespace = args.length > 1 ? args[0] : null;
+        const map = args.length > 1 ? args[1] : args[0];
+        const state = Configuration.getState(observer, namespace ? namespace.replaceAll("/", ".") : null);
+        const mapStateToProps = Array.isArray(map) ? Stream.of(map).map(i => [i, i]).collect(Collectors.toMap()) : map;
+        return Stream.of(Object.keys(mapStateToProps)).map((to) => {
+            const from = mapStateToProps[to];
+            if (isString(from)) {
+                return [to, function () {
+                    return state[from];
+                }];
+            } else if (isFunction(from)) {
+                return [to, function () {
+                    return from(state);
+                }];
             }
-        }
+            return [to, function () {
+                return undefined;
+            }];
+        }).collect(Collectors.toMap());
+    },
 
-        if (config.modules) {
-            for (const path in config.modules) {
-                this.registerModule(path, config.modules[path]);
+    mapGetters: function (observer, ...args) {
+        const namespace = args.length > 1 ? args[0] : '';
+        const map = args.length > 1 ? args[1] : args[0];
+        const getters = Configuration.getSpace(observer, GetterSign);
+        const mapGettersToProps = Array.isArray(map) ? Stream.of(map).map(i => [i, i]).collect(Collectors.toMap()) : map;
+        return Stream.of(Object.keys(mapGettersToProps)).map(to => {
+            const from = mapGettersToProps[to];
+            return [to, function () {
+                return getters[`${namespace ? namespace + '/' : ''}${from}`];
+            }];
+        }).collect(Collectors.toMap());
+    },
+
+    mapActions: function (observer, ...args) {
+        const namespace = args.length > 1 ? args[0] : '';
+        const map = args.length > 1 ? args[1] : args[0];
+        const actions = Configuration.getSpace(observer, ActionSign);
+        const mapActionsToProps = Array.isArray(map) ? Stream.of(map).map(i => [i, i]).collect(Collectors.toMap()) : map;
+        return Stream.of(Object.keys(mapActionsToProps)).map(to => {
+            const from = mapActionsToProps[to];
+            return [to, function (payload) {
+                return actions[`${namespace ? namespace + '/' : ''}${from}`](payload);
+            }];
+        }).collect(Collectors.toMap());
+    },
+
+    mapMutations: function (observer, ...args) {
+        const namespace = args.length > 1 ? args[0] : '';
+        const map = args.length > 1 ? args[1] : args[0];
+        const mutations = Configuration.getSpace(observer, MutationSign);
+        const mapMutationsToProps = Array.isArray(map) ? Stream.of(map).map(i => [i, i]).collect(Collectors.toMap()) : map;
+        return Stream.of(Object.keys(mapMutationsToProps)).map(to => {
+            const from = mapMutationsToProps[to];
+            return [to, function (payload) {
+                mutations[`${namespace ? namespace + '/' : ''}${from}`](payload);
+            }];
+        }).collect(Collectors.toMap());
+    },
+
+    createNamespacedHelpers: function (observer, namespace) {
+        const mapNamespaceState = (map) => {
+            return this.mapState(observer, namespace, map);
+        };
+        const mapNamespaceGetters = (map) => {
+            return this.mapGetters(observer, namespace, map);
+        };
+        const mapNamespaceMutations = (map) => {
+            return this.mapMutations(observer, namespace, map);
+        };
+        const mapNamespaceActions = (map) => {
+            return this.mapActions(observer, namespace, map);
+        };
+        return {
+            mapState: mapNamespaceState,
+            mapGetters: mapNamespaceGetters,
+            mapMutations: mapNamespaceMutations,
+            mapActions: mapNamespaceActions
+        };
+    }
+};
+
+/**
+ * @typedef { {
+ * state:object,
+ * getters?:object,
+ * mutations?:object,
+ * actions?:object,
+ * modules?:{[name:string]:StoreDefinition}
+ * } } StoreDefinition
+ */
+export default class Store {
+    [OriginalState] = null;
+    [StateSign] = null;
+    [InterceptorsSign] = [];
+    [WATSign] = [];
+    [GetterSign] = new Map();
+    [ModulesSign] = new Map();
+    [ActionSign] = new Map();
+    [MutationSign] = new Map();
+    [PLUGSign] = [];
+
+    /**
+     * @param { StoreDefinition } config
+     */
+    constructor(config) {
+        const state = Configuration.mergeState(isFunction(config.state) ? config.state() : config.state, config);
+        Configuration.defineMutations(this, config);
+        Configuration.defineGetters(this, config);
+        Configuration.defineActions(this, config);
+        Configuration.replaceState(this, state);
+        Configuration.registerModule(this, RootModuleSign, config);
+        Configuration.registerInstance(this);
+        Configuration.getPlugins(this).forEach(plugin => {
+            if (isFunction(plugin)) {
+                plugin.call(undefined, this);
             }
-        }
+        });
     }
 
     registerModule(path, module) {
-        const {state, getters} = module;
-        if (state) {
-            setData(this.state, {
-                [path]: isFunction(state) ? state() : state
-            });
-        }
-        if (getters) {
-            for (const getter in getters) {
-                PrivateConfiguration.defineFilter(this, getter, () => {
-                    if (isFunction(getters[getter])) {
-                        return getters[getter].call(this, PrivateConfiguration.getState(this, path));
-                    }
-                });
-            }
-        }
-        PrivateConfiguration.registerModule(this, path, module);
+        const spacePath = Array.isArray(path) ? path.join('.') : path;
+        Configuration.mergeState(Configuration.getOriginalState(this), module, spacePath);
+        Configuration.defineMutations(this, module);
+        Configuration.defineGetters(this, module);
+        Configuration.defineActions(this, module);
+        Configuration.registerModule(this, path, module);
     }
 
     unregisterModule(path) {
-        const module = PrivateConfiguration.getModules(path);
+        const module = Configuration.getModules(this).get(path);
         if (module) {
             const paths = splitPath(path);
-            if (paths.length > 1) {
-                let i = path.lastIndexOf('.');
-                if (i < 0) {
-                    i = path.lastIndexOf('[');
-                }
-                if (i > 0) {
-                    const parentPath = path.slice(0, i);
-                    if (parentPath) {
-                        Reflect.deleteProperty(getData(this.state, parentPath), paths[paths.length - 1]);
+            try {
+                if (paths.length > 1) {
+                    let i = path.lastIndexOf('.');
+                    if (i < 0) {
+                        i = path.lastIndexOf('[');
                     }
+                    if (i > 0) {
+                        const parentPath = path.slice(0, i);
+                        if (parentPath) {
+                            Reflect.deleteProperty(getData(this.state, parentPath), paths[paths.length - 1]);
+                        }
+                    }
+                } else {
+                    Reflect.deleteProperty(this.state, path);
                 }
-            } else {
-                Reflect.deleteProperty(this.state, path);
+            } catch (e) {
+                // 删除后触发 computed 可能会出现空指针错误
+                throw e;
+            } finally {
+                Configuration.deleteSpace(this, GetterSign, path);
+                Configuration.deleteSpace(this, MutationSign, path);
+                Configuration.deleteSpace(this, ActionSign, path);
+                Configuration.unregisterModule(this, path);
             }
-            const {getters} = module;
-            if (getters) {
-                for (const getter in getters) {
-                    PrivateConfiguration.deleteFilter(this, getter);
-                }
-            }
-            PrivateConfiguration.unregisterModule(this, path);
         }
     }
 
-    commit(...args) {
-        const type = args.length > 0 ? args[0] : undefined;
-        const payload = args.length > 1 ? args[1] : type;
-        let mutationName = null;
-        let path = null;
-        let mutation = null;
-        if (!isString(type)) {
-            if (isPlainObject(type)) {
-                mutationName = type.type;
-            } else {
-                throw new Error("expects string as the type, but found object");
-            }
-        } else {
-            mutationName = type;
-        }
+    hasModule(path) {
+        const spacePath = Array.isArray(path) ? path.join(".") : path;
+        return Configuration.getModules(this).has(spacePath);
+    }
 
-        for (const p of PrivateConfiguration.getModules(this).keys()) {
-            mutation = PrivateConfiguration.getMutation(this, p, mutationName);
-            if (mutation) {
-                path = p;
-                break;
-            }
+    hotUpdate(config) {
+        if (config) {
+            Configuration.defineMutations(this, config);
+            Configuration.defineGetters(this, config);
+            Configuration.defineActions(this, config);
         }
+    }
 
-        if (isFunction(mutation)) {
-            mutation.call(this, PrivateConfiguration.getState(this, path), payload);
-        } else {
-            throw new Error(`unknown mutation type: ${mutationName}`);
-        }
+    subscribe(handler, options) {
+
+    }
+
+    subscribeAction(handler, options) {
+
+    }
+
+    replaceState(state) {
+        Configuration.replaceState(this, state);
     }
 
     watch(fn, callback, options = null) {
-        return PrivateConfiguration.watch(this, fn, callback, options);
+        return Configuration.watch(this, fn, callback, options);
+    }
+
+    commit(...args) {
+        Configuration.commit(this, RootModuleSign, ...args);
+    }
+
+    dispatch(...args) {
+        return Configuration.dispatch(this, RootModuleSign, ...args);
     }
 
     get state() {
-        return PrivateConfiguration.getState(this);
+        return Configuration.getState(this);
     }
 
     get getters() {
-        return PrivateConfiguration.getFilters(this);
+        return Configuration.getSpace(this, GetterSign);
+    }
+
+    get plugins() {
+        return Configuration.getPlugins(this);
     }
 }

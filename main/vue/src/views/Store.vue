@@ -4,6 +4,7 @@
     <Obj/>
     <Todos/>
     <Auth/>
+    <Namespace/>
   </div>
 </template>
 
@@ -12,6 +13,7 @@ import Counter from "../components/Counter";
 import StoreObj from "../components/StoreObj";
 import Todos from "../components/Todos";
 import Auth from "../components/Auth";
+import Namespace from "../components/Namespace";
 
 export default {
   name: "Store",
@@ -19,7 +21,8 @@ export default {
     Counter,
     Obj: StoreObj,
     Todos,
-    Auth
+    Auth,
+    Namespace
   }
 }
 </script>

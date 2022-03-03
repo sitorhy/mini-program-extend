@@ -6,6 +6,7 @@ export default class CompatibleWatcher {
     _deep = false;
     _path = "";
     _getter = undefined;
+    _enabled = true;
 
     /**
      *
@@ -28,7 +29,7 @@ export default class CompatibleWatcher {
     }
 
     call(thisArg, args) {
-        if (this._callback) {
+        if (this._callback && this._enabled) {
             this._callback.apply(thisArg, args.concat(this.oldValue));
         }
         this.oldValue = args;
@@ -86,5 +87,13 @@ export default class CompatibleWatcher {
 
     set getter(value) {
         this._getter = value;
+    }
+
+    get enabled() {
+        return this._enabled;
+    }
+
+    set enabled(value) {
+        this._enabled = value;
     }
 }

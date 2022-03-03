@@ -11,4 +11,7 @@
     <view>
         <auth/>
     </view>
+    <view>
+        <namespace/>
+    </view>
 </view>

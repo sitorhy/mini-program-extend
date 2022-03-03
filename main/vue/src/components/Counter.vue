@@ -8,6 +8,9 @@
       <button @click="increment2">increment2</button>
     </div>
     <div>
+      <button @click="increment3">increment3</button>
+    </div>
+    <div>
       <button @click="reset">reset</button>
     </div>
   </div>
@@ -45,12 +48,15 @@ export default {
     increment2() {
       store.commit("increment");
     },
+    increment3() {
+      store.dispatch("increment");
+    },
     reset() {
       this.count = 0;
     }
   },
   mounted() {
-    console.log(store)
+    console.log(store);
   }
 }
 </script>

@@ -4,7 +4,6 @@ import {Collectors, Stream} from "../libs/Stream";
 import CompatibleWatcher from "../libs/CompatibleWatcher";
 import equal from "../libs/fast-deep-equal/index";
 import {Invocation} from "../libs/Invocation";
-import {traceObject} from "../utils/object";
 import clone from "../libs/rfdc/default";
 
 const SWATSign = Symbol("__wxSWAT__");
@@ -157,6 +156,7 @@ export default class WatcherInstaller extends OptionInstaller {
     staticWatchersDefinition(extender, context, options, defFields) {
         const watch = context.get("watch");
         const observers = context.get("observers");
+        const computed = context.get("computed");
 
         const createStaticWatchers = () => {
             const staticWatchers = new Map();
@@ -168,7 +168,7 @@ export default class WatcherInstaller extends OptionInstaller {
                 const shallowWatchers = watchers.filter(w => w.deep !== true);
 
                 if (deepWatchers.length) {
-                    staticWatchers.set(`${observerPath}.**`, new CompatibleWatcher(
+                    const compatibleWatcher = new CompatibleWatcher(
                         path,
                         function (newValue, oldValue) {
                             if (!equal(newValue, oldValue)) {
@@ -179,18 +179,23 @@ export default class WatcherInstaller extends OptionInstaller {
                         },
                         function (newValue, oldValue) {
                             deepWatchers.forEach(w => {
-                                if (w.immediate === true) {
+                                if (!w.enabled) {
+                                    w.enabled = true;
+                                } else if (w.immediate === true) {
                                     w.handler.call(this, newValue, oldValue);
                                 }
                             });
-                        }, true, true, undefined));
+                            compatibleWatcher.enabled = true;
+                        }, true, true, undefined);
+                    compatibleWatcher.enabled = !Reflect.has(computed, compatibleWatcher.path);
+                    staticWatchers.set(`${observerPath}.**`, compatibleWatcher);
                 }
 
                 if (shallowWatchers.length) {
-                    staticWatchers.set(observerPath, new CompatibleWatcher(
+                    const compatibleWatcher = new CompatibleWatcher(
                         path,
                         function (newValue, oldValue) {
-                            if (!equal(newValue, oldValue)) {
+                            if (newValue !== oldValue) {
                                 shallowWatchers.forEach(w => {
                                     w.handler.call(this, newValue, oldValue);
                                 });
@@ -198,11 +203,16 @@ export default class WatcherInstaller extends OptionInstaller {
                         },
                         function (newValue, oldValue) {
                             shallowWatchers.forEach(w => {
-                                if (w.immediate === true) {
+                                if (!w.enabled) {
+                                    w.enabled = true;
+                                } else if (w.immediate === true) {
                                     w.handler.call(this, newValue, oldValue);
                                 }
                             });
-                        }, true, false, undefined));
+                            compatibleWatcher.enabled = true;
+                        }, true, false, undefined);
+                    compatibleWatcher.enabled = !Reflect.has(computed, compatibleWatcher.path);
+                    staticWatchers.set(observerPath, compatibleWatcher);
                 }
             });
 
@@ -250,10 +260,12 @@ export default class WatcherInstaller extends OptionInstaller {
                 for (const observerPath of staticWatchers.keys()) {
                     const watcher = getStaticWatcher(this, observerPath);
                     if (watcher) {
-                        const curValue = selectRuntimeState(this.data, watcher.path);
-
                         // 设置侦听器初始值，并触发 immediate 侦听器
-                        watcher.once(this, [curValue]);
+                        // 计算属性还没有计算初始值，排除掉
+                        if (watcher.enabled) {
+                            const curValue = selectRuntimeState(this.data, watcher.path);
+                            watcher.once(this, [curValue]);
+                        }
                     }
                 }
             },
@@ -285,7 +297,13 @@ export default class WatcherInstaller extends OptionInstaller {
                         Invocation(observers[observerPath], null, function (newValue) {
                             const watcher = getStaticWatcher(this, observerPath);
                             if (watcher) {
-                                watcher.call(this, [newValue])
+                                if (!watcher.enabled) {
+                                    // 初始化计算属性监听器 启用计算属性监听器 跳过第一次 undefined -> any
+                                    // once 中启动监听器
+                                    watcher.once(this, [newValue]);
+                                } else {
+                                    watcher.call(this, [newValue]);
+                                }
                             }
                         })
                     ];
@@ -297,12 +315,7 @@ export default class WatcherInstaller extends OptionInstaller {
     updateDeepWatcherRef(instance, watchers) {
         for (const [, watcher] of watchers) {
             if (watcher.deep) {
-                if (watcher.path) {
-                    const trace = traceObject(instance.data, watcher.path, true, false, undefined);
-                    watcher.oldValue = [this.selectData(trace, watcher.path)];
-                } else {
-                    watcher.oldValue = clone(watcher.oldValue);
-                }
+                watcher.oldValue = clone(watcher.oldValue);
             }
         }
     }
@@ -343,6 +356,8 @@ export default class WatcherInstaller extends OptionInstaller {
      * @param options
      */
     install(extender, context, options) {
+        const computed = context.get("computed");
+
         const getDynamicWatchers = (thisArg) => {
             return this.getDynamicWatchers(thisArg);
         };
@@ -351,25 +366,28 @@ export default class WatcherInstaller extends OptionInstaller {
             return this.selectData(data, path);
         };
 
-        const watch = Stream.of(
-            Object.entries(
-                Object.assign.apply(
-                    undefined,
-                    [
-                        {},
-                        ...extender.installers.map(i => i.watch()),
-                        options.watch
-                    ]
-                )
-            )
-        ).map(([path, watcher]) => {
+        const combineWatch = {...options.watch};
+
+        for (const i of extender.installers.map(i => i.watch())) {
+            if (i) {
+                for (const k in i) {
+                    const w = i[k];
+                    if (w) {
+                        combineWatch[k] = [w].concat(combineWatch[k] || []);
+                    }
+                }
+            }
+        }
+
+        const watch = Stream.of(Object.entries(combineWatch)).map(([path, watcher]) => {
             return [
                 path,
                 [].concat(watcher).map(w => {
                     const normalize = {
                         handler: null,
                         deep: false,
-                        immediate: false
+                        immediate: false,
+                        enabled: !computed || (computed && !Reflect.has(computed, path)) || w.immediate === true
                     };
                     if (isString(w)) {
                         normalize.handler = function () {

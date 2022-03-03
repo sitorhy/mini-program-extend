@@ -1,4 +1,16 @@
+const mixin = {
+    watch: {
+        p6: {
+            handler(v, ov) {
+                console.log(`immediate test p6_2 ${JSON.stringify(ov)} => ${JSON.stringify(v)}`);
+            },
+            immediate: true
+        }
+    }
+};
+
 export default {
+    mixins: [mixin],
     props: {
         p1: {
             type: Number,
@@ -38,6 +50,13 @@ export default {
         }
     },
     watch: {
+        p6: {
+            handler(v, ov) {
+                console.log(`immediate test p6 ${JSON.stringify(ov)} => ${JSON.stringify(v)}`);
+            },
+            immediate: true,
+            deep: true
+        },
         p1: {
             handler: function (v, ov) {
                 console.log(`p1 ${ov} => ${v}`);

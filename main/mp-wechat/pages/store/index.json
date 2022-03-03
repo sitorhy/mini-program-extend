@@ -3,6 +3,7 @@
     "counter": "./counter/index",
     "obj": "./obj/index",
     "todos": "./todos/index",
-    "auth": "./auth/index"
+    "auth": "./auth/index",
+    "namespace": "./namespace/index"
   }
 }

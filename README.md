@@ -90,7 +90,7 @@ Page.created > Component.created
              > PageEx.mounted
              > Page.onReady
 ```
-+ 同级`Component`深度优先触发。 <br>`A(parent)` ← `B(child) `<br>`A.attached` > `B.attached` > `relations.child(A,B)` > `relations.parent(A,B)` <br>
++ 组件树内`Component`触发顺序。 <br>`A(parent)` ← `B(child) `<br>`A.attached` > `B.attached` > `relations.child(A,B)` > `relations.parent(A,B)` <br>
 + `onShow` `onHide` / `pageLifetimes.show` `pageLifetimes.hide` 互斥，不要同时配置。
 + 如果关闭掉开发工具的模拟器，`Page.onReady`不会触发，但`Page.onShow`会触发，再次打开模拟器，`Page.onReady`触发。
 

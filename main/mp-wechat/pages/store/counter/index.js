@@ -1,5 +1,5 @@
 import {ComponentEx} from "../../../libs/mp-extend/index";
-import store from "../store";
+import store from "../../../store/index";
 
 store.watch((state) => {
         return state.count;
@@ -28,6 +28,9 @@ ComponentEx({
     },
     increment2() {
         store.commit("increment");
+    },
+    increment3() {
+        store.dispatch("increment");
     },
     reset() {
         this.count = 0;
