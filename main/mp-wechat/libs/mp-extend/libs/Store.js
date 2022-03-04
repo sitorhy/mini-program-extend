@@ -145,7 +145,7 @@ const Configuration = {
                         this.getActionSubscribers(observer).forEach(s => {
                             if (s && isFunction(s.before)) {
                                 s.before.call(undefined, {
-                                    type: `${spacePath}/${definition}`,
+                                    type: `${isString(spacePath) && spacePath ? spacePath + "/" : ""}${definition}`,
                                     payload
                                 }, this.getOriginalState(observer));
                             }
@@ -175,7 +175,7 @@ const Configuration = {
                                     this.getActionSubscribers(observer).forEach(s => {
                                         if (s && isFunction(s.after)) {
                                             s.after.call(undefined, {
-                                                type: `${spacePath}/${definition}`,
+                                                type: `${isString(spacePath) && spacePath ? spacePath + "/" : ""}${definition}`,
                                                 payload
                                             }, this.getOriginalState(observer));
                                         }
@@ -187,7 +187,7 @@ const Configuration = {
                                 this.getActionSubscribers(observer).forEach(s => {
                                     if (s && isFunction(s.error)) {
                                         s.error.call(undefined, {
-                                            type: `${spacePath}/${definition}`,
+                                            type: `${isString(spacePath) && spacePath ? spacePath + "/" : ""}${definition}`,
                                             payload
                                         }, this.getOriginalState(observer), error);
                                     }
