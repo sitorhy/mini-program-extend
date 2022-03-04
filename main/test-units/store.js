@@ -84,6 +84,74 @@ const account = {
     }
 };
 
+const task = {
+    namespaced: true,
+    state: () => {
+        return {
+            txt1: "",
+            txt2: ""
+        };
+    },
+    mutations: {
+        setText1(state, txt) {
+            state.txt1 = txt;
+        },
+        setText2(state, txt) {
+            state.txt2 = txt;
+        }
+    },
+    getters: {
+        text1(state) {
+            return state.txt1;
+        },
+        text2(state) {
+            return state.txt2;
+        }
+    },
+    actions: {
+        asyncAction() {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    resolve("I would happily sacrifice my life if my death can bring any good to country.");
+                }, 1000);
+            });
+        },
+        async asyncTask({commit, dispatch, state}) {
+            const txt1 = await dispatch("asyncAction");
+            commit("setText1", txt1);
+            const txt2 = await (() => {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        resolve("nothing can waver my devotion, be it personal misfortune or other temptations.");
+                    }, 1000);
+                });
+            })();
+            commit("setText2", txt2);
+        },
+        rejectTest() {
+            return new Promise((r, j) => {
+                j("rejected test");
+            });
+        },
+        throwTest() {
+            // 同步方法抛异常不会被监听器捕获
+            throw new Error("error test1");
+        },
+        throwTest2() {
+            // 可捕获
+            return new Promise(() => {
+                throw new Error("error test2");
+            });
+        },
+        throwTest3() {
+            // 可捕获
+            return new Promise((r, j) => {
+                j(new Error("error test3"));
+            });
+        }
+    }
+};
+
 export default {
     state: {
         count: 0,
@@ -119,6 +187,7 @@ export default {
     },
     modules: {
         auth,
-        account
+        account,
+        task
     }
 }

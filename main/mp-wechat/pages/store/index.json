@@ -4,6 +4,7 @@
     "obj": "./obj/index",
     "todos": "./todos/index",
     "auth": "./auth/index",
-    "namespace": "./namespace/index"
+    "namespace": "./namespace/index",
+    "task": "./task/index"
   }
 }

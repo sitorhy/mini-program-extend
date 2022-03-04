@@ -14,4 +14,7 @@
     <view>
         <namespace/>
     </view>
+    <view>
+        <task/>
+    </view>
 </view>

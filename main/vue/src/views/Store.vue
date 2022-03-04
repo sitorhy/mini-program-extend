@@ -5,6 +5,7 @@
     <Todos/>
     <Auth/>
     <Namespace/>
+    <AsyncTask/>
   </div>
 </template>
 
@@ -14,6 +15,7 @@ import StoreObj from "../components/StoreObj";
 import Todos from "../components/Todos";
 import Auth from "../components/Auth";
 import Namespace from "../components/Namespace";
+import AsyncTask from "../components/AsyncTask";
 
 export default {
   name: "Store",
@@ -22,7 +24,8 @@ export default {
     Obj: StoreObj,
     Todos,
     Auth,
-    Namespace
+    Namespace,
+    AsyncTask
   }
 }
 </script>

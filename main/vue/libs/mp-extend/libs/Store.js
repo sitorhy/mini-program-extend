@@ -1,5 +1,5 @@
 import {createReactiveObject, getData, setData, splitPath} from "../utils/object";
-import {isFunction, isString} from "../utils/common";
+import {isFunction, isPrimitive, isString} from "../utils/common";
 import CompatibleWatcher from "./CompatibleWatcher";
 import equal from "./fast-deep-equal/index";
 import clone from "./rfdc/default";
@@ -9,7 +9,9 @@ const OriginalState = Symbol("__originalState__");
 const StateSign = Symbol("__state__");
 const InterceptorsSign = Symbol("__interceptors__");
 const WATSign = Symbol("__WAT__");
-const PLUGSign = Symbol("__PLUG__")
+const PLUGSign = Symbol("__PLUG__");
+const SUBSign = Symbol("__SUB__");
+const ACTSUBSign = Symbol("__ACT_SUB__");
 const GetterSign = Symbol("__getters__");
 const ActionSign = Symbol("__actions__");
 const MutationSign = Symbol("__mutations__");
@@ -58,12 +60,12 @@ const Configuration = {
             for (const definition in config[scopeName]) {
                 const attrs = defineProperty(config, spacePath, definition);
                 Object.defineProperty(space, definition, attrs);
-                Object.defineProperty(rootSpace, `${namespace ? namespace + '/' : ''}${definition}`, attrs);
+                Object.defineProperty(rootSpace, `${namespace ? namespace + "/" : ""}${definition}`, attrs);
             }
         }
         if (config.modules) {
             for (const subPath in config.modules) {
-                const nextPath = `${!path ? '' : path + '.'}${subPath}`;
+                const nextPath = `${!path ? "" : path + "."}${subPath}`;
                 this.defineSpace(observer, config.modules[subPath], scopeName, scopeSign, defineProperty, nextPath, [namespace || "", config.modules[subPath].namespaced ? subPath : ""].filter(i => !!i).join("/"));
             }
         }
@@ -119,6 +121,12 @@ const Configuration = {
                             this.getState(observer, spacePath),
                             payload
                         );
+                        this.getSubscribers(observer).forEach(s => {
+                            s.call(undefined, {
+                                type: definition,
+                                payload
+                            }, this.getOriginalState(observer));
+                        });
                     }
                 }
             };
@@ -134,7 +142,16 @@ const Configuration = {
                 value: (payload) => {
                     const fn = moduleConfig.actions[definition];
                     if (isFunction(fn)) {
-                        fn.call(
+                        this.getActionSubscribers(observer).forEach(s => {
+                            if (s && isFunction(s.before)) {
+                                s.before.call(undefined, {
+                                    type: `${spacePath}/${definition}`,
+                                    payload
+                                }, this.getOriginalState(observer));
+                            }
+                        });
+
+                        const result = fn.call(
                             observer,
                             {
                                 commit: (...args) => {
@@ -150,6 +167,35 @@ const Configuration = {
                             },
                             payload
                         );
+                        if (result && !isPrimitive(result) && isFunction(result.then)) {
+                            // Promise/A+ thenable
+                            return new Promise((resolve, reject) => {
+                                result.then((r1) => {
+                                    resolve(r1);
+                                    this.getActionSubscribers(observer).forEach(s => {
+                                        if (s && isFunction(s.after)) {
+                                            s.after.call(undefined, {
+                                                type: `${spacePath}/${definition}`,
+                                                payload
+                                            }, this.getOriginalState(observer));
+                                        }
+                                    });
+                                }, (r2) => {
+                                    reject(r2);
+                                });
+                            }).catch(error => {
+                                this.getActionSubscribers(observer).forEach(s => {
+                                    if (s && isFunction(s.error)) {
+                                        s.error.call(undefined, {
+                                            type: `${spacePath}/${definition}`,
+                                            payload
+                                        }, this.getOriginalState(observer), error);
+                                    }
+                                });
+                                throw e;
+                            });
+                        }
+                        return result;
                     }
                 }
             };
@@ -283,7 +329,7 @@ const Configuration = {
         this.getModules(observer).set(path, module);
         if (module.modules) {
             for (const m in module.modules) {
-                this.registerModule(observer, `${!path || path === RootModuleSign ? '' : path + '.'}${m}`, module.modules[m]);
+                this.registerModule(observer, `${!path || path === RootModuleSign ? "" : path + "."}${m}`, module.modules[m]);
             }
         }
     },
@@ -310,7 +356,7 @@ const Configuration = {
             for (const subPath in config.modules) {
                 const module = config.modules[subPath];
                 const mState = module.state;
-                const nextPath = `${!path ? '' : path + '.'}${subPath}`;
+                const nextPath = `${!path ? "" : path + "."}${subPath}`;
                 setData(state, {[nextPath]: isFunction(mState) ? mState() : mState});
                 this.mergeState(state, module, nextPath);
             }
@@ -437,6 +483,58 @@ const Configuration = {
 
     getPlugins(observer) {
         return Reflect.get(observer, PLUGSign);
+    },
+
+    getSubscribers(observer) {
+        return Reflect.get(observer, SUBSign);
+    },
+
+    subscribe(observer, callback, options) {
+        const subscribers = this.getSubscribers(observer);
+        if (!subscribers.includes(callback)) {
+            if (options && options.prepend === true) {
+                subscribers.unshift(callback);
+            } else {
+                subscribers.push(callback);
+            }
+        }
+        return () => {
+            this.unsubscribe(observer, callback);
+        };
+    },
+
+    unsubscribe(observer, callback) {
+        const subscribers = this.getSubscribers(observer);
+        const index = subscribers.indexOf(callback);
+        if (index >= 0) {
+            subscribers.splice(index, 1);
+        }
+    },
+
+    getActionSubscribers(observer) {
+        return Reflect.get(observer, ACTSUBSign);
+    },
+
+    subscribeAction(observer, callback, options) {
+        const subscribers = this.getActionSubscribers(observer);
+        if (!subscribers.includes(callback)) {
+            if (options && options.prepend === true) {
+                subscribers.unshift(callback);
+            } else {
+                subscribers.push(callback);
+            }
+        }
+        return () => {
+            this.unsubscribe(observer, callback);
+        };
+    },
+
+    unsubscribeAction(observer, callback) {
+        const subscribers = this.getActionSubscribers(observer);
+        const index = subscribers.indexOf(callback);
+        if (index >= 0) {
+            subscribers.splice(index, 1);
+        }
     }
 };
 
@@ -489,40 +587,40 @@ export const Connector = {
     },
 
     mapGetters: function (observer, ...args) {
-        const namespace = args.length > 1 ? args[0] : '';
+        const namespace = args.length > 1 ? args[0] : "";
         const map = args.length > 1 ? args[1] : args[0];
         const getters = Configuration.getSpace(observer, GetterSign);
         const mapGettersToProps = Array.isArray(map) ? Stream.of(map).map(i => [i, i]).collect(Collectors.toMap()) : map;
         return Stream.of(Object.keys(mapGettersToProps)).map(to => {
             const from = mapGettersToProps[to];
             return [to, function () {
-                return getters[`${namespace ? namespace + '/' : ''}${from}`];
+                return getters[`${namespace ? namespace + "/" : ""}${from}`];
             }];
         }).collect(Collectors.toMap());
     },
 
     mapActions: function (observer, ...args) {
-        const namespace = args.length > 1 ? args[0] : '';
+        const namespace = args.length > 1 ? args[0] : "";
         const map = args.length > 1 ? args[1] : args[0];
         const actions = Configuration.getSpace(observer, ActionSign);
         const mapActionsToProps = Array.isArray(map) ? Stream.of(map).map(i => [i, i]).collect(Collectors.toMap()) : map;
         return Stream.of(Object.keys(mapActionsToProps)).map(to => {
             const from = mapActionsToProps[to];
             return [to, function (payload) {
-                return actions[`${namespace ? namespace + '/' : ''}${from}`](payload);
+                return actions[`${namespace ? namespace + "/" : ""}${from}`](payload);
             }];
         }).collect(Collectors.toMap());
     },
 
     mapMutations: function (observer, ...args) {
-        const namespace = args.length > 1 ? args[0] : '';
+        const namespace = args.length > 1 ? args[0] : "";
         const map = args.length > 1 ? args[1] : args[0];
         const mutations = Configuration.getSpace(observer, MutationSign);
         const mapMutationsToProps = Array.isArray(map) ? Stream.of(map).map(i => [i, i]).collect(Collectors.toMap()) : map;
         return Stream.of(Object.keys(mapMutationsToProps)).map(to => {
             const from = mapMutationsToProps[to];
             return [to, function (payload) {
-                mutations[`${namespace ? namespace + '/' : ''}${from}`](payload);
+                mutations[`${namespace ? namespace + "/" : ""}${from}`](payload);
             }];
         }).collect(Collectors.toMap());
     },
@@ -563,11 +661,13 @@ export default class Store {
     [StateSign] = null;
     [InterceptorsSign] = [];
     [WATSign] = [];
+    [PLUGSign] = [];
+    [SUBSign] = [];
+    [ACTSUBSign] = [];
     [GetterSign] = new Map();
     [ModulesSign] = new Map();
     [ActionSign] = new Map();
     [MutationSign] = new Map();
-    [PLUGSign] = [];
 
     /**
      * @param { StoreDefinition } config
@@ -588,7 +688,7 @@ export default class Store {
     }
 
     registerModule(path, module) {
-        const spacePath = Array.isArray(path) ? path.join('.') : path;
+        const spacePath = Array.isArray(path) ? path.join(".") : path;
         Configuration.mergeState(Configuration.getOriginalState(this), module, spacePath);
         Configuration.defineMutations(this, module);
         Configuration.defineGetters(this, module);
@@ -602,9 +702,9 @@ export default class Store {
             const paths = splitPath(path);
             try {
                 if (paths.length > 1) {
-                    let i = path.lastIndexOf('.');
+                    let i = path.lastIndexOf(".");
                     if (i < 0) {
-                        i = path.lastIndexOf('[');
+                        i = path.lastIndexOf("[");
                     }
                     if (i > 0) {
                         const parentPath = path.slice(0, i);
@@ -641,11 +741,11 @@ export default class Store {
     }
 
     subscribe(handler, options) {
-
+        return Configuration.subscribe(this, handler, options);
     }
 
     subscribeAction(handler, options) {
-
+        return Configuration.subscribeAction(this, handler, options);
     }
 
     replaceState(state) {
