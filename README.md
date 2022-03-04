@@ -79,16 +79,16 @@ console.log(this.num);
 ### 小程序生命周期
 
 ```
-Page.created > Component.created
-             > Page.attached = PageEx.beforeMount
-             > Component.attached = ComponentEx.beforeMount
-             > Component.relations
-             > Page.onLoad
-             > Page.onShow
-             > Component.lifetimes.show or ComponentEx.onShow
-             > ComponentEx.mounted = Component.ready = ComponentEx.onReady
-             > PageEx.mounted
-             > Page.onReady
+Component.created > Page.created
+                  > Page.attached = PageEx.beforeMount
+                  > Component.attached = ComponentEx.beforeMount
+                  > Component.relations
+                  > Page.onLoad
+                  > Page.onShow
+                  > Component.lifetimes.show or ComponentEx.onShow
+                  > ComponentEx.mounted = Component.ready = ComponentEx.onReady
+                  > PageEx.mounted
+                  > Page.onReady
 ```
 + 组件树内`Component`触发顺序。 <br>`A(parent)` ← `B(child) `<br>`A.attached` > `B.attached` > `relations.child(A,B)` > `relations.parent(A,B)` <br>
 + `onShow` `onHide` / `pageLifetimes.show` `pageLifetimes.hide` 互斥，不要同时配置。

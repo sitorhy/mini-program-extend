@@ -168,21 +168,31 @@ export default {
             {id: 1, text: 'Eat', done: true},
             {id: 2, text: 'Sleep', done: false},
             {id: 3, text: 'Game', done: false}
-        ]
+        ],
+        mpBoxColor: "red" // 小程序专用测试项
     },
     mutations: {
         increment(state) {
             state.count++;
+        },
+        setBoxColor(state, color) {
+            state.mpBoxColor = color;
         }
     },
     getters: {
         doneTodos: (state) => {
             return state.todos.filter(todo => todo.done);
+        },
+        boxColor(state) {
+            return state.mpBoxColor;
         }
     },
     actions: {
         increment(context) {
             context.commit('increment');
+        },
+        setBoxColor({commit}, color) {
+            commit("setBoxColor", color);
         }
     },
     modules: {

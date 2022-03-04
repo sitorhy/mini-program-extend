@@ -17,4 +17,16 @@
     <view>
         <task/>
     </view>
+    <view>
+        <view>
+            <view style="{{boxStyle}}">
+
+            </view>
+        </view>
+        <view>
+            <navigator url="/pages/store/page/index">
+                <button>跨页面同步测试</button>
+            </navigator>
+        </view>
+    </view>
 </view>

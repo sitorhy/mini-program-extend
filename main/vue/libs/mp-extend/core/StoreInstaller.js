@@ -88,6 +88,8 @@ const WatchInstallBehavior = Behavior({
  * StoreInstaller 依赖 ComputedInstaller
  */
 export default class StoreInstaller extends OptionInstaller {
+    static dependencies = [];
+
     definitionFilter(extender, context, options, defFields, definitionFilterArr) {
         const store = options.store;
         defFields.behaviors = [
@@ -126,7 +128,6 @@ export default class StoreInstaller extends OptionInstaller {
     lifetimes(extender, context, options) {
         let unwatchState;
         let unwatchStore;
-        const dependencies = [];
         return {
             created() {
                 const stores = Connector.instances().filter(s => {
@@ -139,8 +140,8 @@ export default class StoreInstaller extends OptionInstaller {
                             store,
                             (path) => {
                                 // 对于潜在模块 module namespace = true 的模块而言，起始层级 > 0
-                                if (!dependencies.findIndex(s => s.store === store && s.path === path) >= 0) {
-                                    dependencies.push({
+                                if (!StoreInstaller.dependencies.findIndex(s => s.store === store && s.path === path) >= 0) {
+                                    StoreInstaller.dependencies.push({
                                         store,
                                         path
                                     });
@@ -154,7 +155,7 @@ export default class StoreInstaller extends OptionInstaller {
                         null,
                         (path) => {
                             const src = selectPathRoot(path);
-                            dependencies.splice(0).map(s => {
+                            StoreInstaller.dependencies.splice(0).map(s => {
                                 return {
                                     store: s.store,
                                     path: selectPathRoot(s.path)
