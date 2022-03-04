@@ -717,3 +717,93 @@ App({
 
 
 
+
+
+## 状态管理模式
+
+接口标准移植自`Vuex`，可参考`Vuex`文档，此处不再复述。
+
+### **基本使用**
+
+🔴 `state`一般建议使用函数定义，如果多个状态管理共用一套配置会产生不可预料的冲突。目录结构上可参考`Vue`的脚手架，单独建立一个`store`文件夹。
+
+```javascript
+import { createStore } from "wechat-mini-program-extend/store";
+
+const store = createStore({
+    state() {
+        return {
+            count: 0
+        };
+    },
+    mutations: {
+        increment(state) {
+            state.count++;
+        }
+    },
+    actions: {
+        increment({commit}) {
+            commit('increment');
+        }
+    }
+});
+
+export default store; // 导出 src/store/index.js
+```
+
+```javascript
+import { ComponentEx } from "wechat-mini-program-extend";
+import store from "path/store"; // 引入 store
+
+ComponentEx({
+    computed: {
+        count: () => store.state.count;
+    },
+    increment() {
+        store.state.count++;
+    }
+});
+```
+
+```xml
+<view>
+    <text>{{ count }}</text>
+    <view>
+        <button bind:tap="increment">increment</button>
+    </view>
+</view>
+```
+
+
+
+### **组件绑定辅助函数**
+
+辅助函数针对全局状态管理容器，只需要在`App`对象中配置一个`store`对象，全局容器会挂载到组件的`$store`属性。
+
+```javascript
+// app.js
+import store from "path/store";
+
+App({
+    store,
+    onLaunch() {
+        // ...
+    },
+    globalData: {
+        // ...
+    }
+});
+```
+
+```javascript
+import {mapActions} from "wechat-mini-program-extend/store";
+
+ComponentEx({
+    methods: {
+        ...mapActions(["increment"])
+    }
+})
+```
+
+
+

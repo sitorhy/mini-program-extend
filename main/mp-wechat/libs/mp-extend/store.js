@@ -7,28 +7,28 @@ function assertAppStore() {
     }
 }
 
-export const mapState = function (namespace, map) {
+export const mapState = function (...args) {
     assertAppStore();
     const {store} = getApp();
-    return Connector.mapState(store, namespace, map);
+    return Connector.mapState(store, ...args);
 };
 
-export const mapGetters = function (namespace, map) {
+export const mapGetters = function (...args) {
     assertAppStore();
     const {store} = getApp();
-    return Connector.mapGetters(store, namespace, map);
+    return Connector.mapGetters(store, ...args);
 };
 
-export const mapActions = function (namespace, map) {
+export const mapActions = function (...args) {
     assertAppStore();
     const {store} = getApp();
-    return Connector.mapActions(store, namespace, map);
+    return Connector.mapActions(store, ...args);
 };
 
-export const mapMutations = function (namespace, map) {
+export const mapMutations = function (...args) {
     assertAppStore();
     const {store} = getApp();
-    return Connector.mapMutations(store, namespace, map);
+    return Connector.mapMutations(store, ...args);
 };
 
 export const createNamespacedHelpers = function (namespace) {

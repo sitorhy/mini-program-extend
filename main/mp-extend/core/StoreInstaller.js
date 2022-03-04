@@ -4,6 +4,7 @@ import {selectPathRoot} from "../utils/object";
 import {isFunction} from "../utils/common";
 
 const UnwatchSign = ("__wxUnWAT__");
+const StoreSign = ("__store__");
 
 const LinkAge = {
     __linkAge: new Map(),
@@ -93,14 +94,28 @@ export default class StoreInstaller extends OptionInstaller {
             Behavior({
                 lifetimes: {
                     created() {
-                        if (store && !Reflect.has(this, "$store")) {
+                        if (store) {
                             Object.defineProperty(this, "$store", {
                                 enumerable: true,
                                 configurable: true,
                                 writable: false,
                                 value: store
                             });
+                        } else {
+                            Object.defineProperty(this, "$store", {
+                                enumerable: true,
+                                configurable: true,
+                                get: () => {
+                                    return Reflect.has(this, StoreSign) ? Reflect.get(this, StoreSign) : getApp().store;
+                                },
+                                set: (v) => {
+                                    Reflect.set(this, StoreSign, v);
+                                }
+                            });
                         }
+                    },
+                    detached() {
+                        Reflect.deleteProperty(this, StoreSign);
                     }
                 }
             }),

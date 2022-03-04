@@ -27,7 +27,7 @@ ComponentEx({
             console.log(store);
         },
         check() {
-            console.log(store);
+            console.log(this.$store);
         }
     }
 })
