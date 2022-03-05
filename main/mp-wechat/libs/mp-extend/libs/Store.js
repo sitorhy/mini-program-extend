@@ -167,35 +167,39 @@ const Configuration = {
                             },
                             payload
                         );
-                        if (result && !isPrimitive(result) && isFunction(result.then)) {
-                            // Promise/A+ thenable
-                            return new Promise((resolve, reject) => {
+                        return new Promise((resolve, reject) => {
+                            const callAfter = () => {
+                                this.getActionSubscribers(observer).forEach(s => {
+                                    if (s && isFunction(s.after)) {
+                                        s.after.call(undefined, {
+                                            type: `${isString(spacePath) && spacePath ? spacePath + "/" : ""}${definition}`,
+                                            payload
+                                        }, this.getOriginalState(observer));
+                                    }
+                                });
+                            };
+                            if (result && !isPrimitive(result) && isFunction(result.then)) {
                                 result.then((r1) => {
                                     resolve(r1);
-                                    this.getActionSubscribers(observer).forEach(s => {
-                                        if (s && isFunction(s.after)) {
-                                            s.after.call(undefined, {
-                                                type: `${isString(spacePath) && spacePath ? spacePath + "/" : ""}${definition}`,
-                                                payload
-                                            }, this.getOriginalState(observer));
-                                        }
-                                    });
+                                    callAfter();
                                 }, (r2) => {
                                     reject(r2);
                                 });
-                            }).catch(error => {
-                                this.getActionSubscribers(observer).forEach(s => {
-                                    if (s && isFunction(s.error)) {
-                                        s.error.call(undefined, {
-                                            type: `${isString(spacePath) && spacePath ? spacePath + "/" : ""}${definition}`,
-                                            payload
-                                        }, this.getOriginalState(observer), error);
-                                    }
-                                });
-                                throw e;
+                            } else {
+                                resolve(result);
+                                callAfter();
+                            }
+                        }).catch(error => {
+                            this.getActionSubscribers(observer).forEach(s => {
+                                if (s && isFunction(s.error)) {
+                                    s.error.call(undefined, {
+                                        type: `${isString(spacePath) && spacePath ? spacePath + "/" : ""}${definition}`,
+                                        payload
+                                    }, this.getOriginalState(observer), error);
+                                }
                             });
-                        }
-                        return result;
+                            throw e;
+                        });
                     }
                 }
             };
