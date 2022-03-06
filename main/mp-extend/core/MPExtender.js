@@ -19,7 +19,7 @@ import StoreInstaller from "./StoreInstaller";
 
 import {Singleton} from "../libs/Singleton";
 import {isFunction, isPlainObject} from "../utils/common";
-import {createReactiveObject, selectPathRoot, getData, setData} from "../utils/object";
+import {createReactiveObject, selectPathRoot, getData, setData, selectPathParent} from "../utils/object";
 
 import clone from "../libs/rfdc/default";
 import {Collectors, Stream} from "../libs/Stream";
@@ -54,8 +54,25 @@ class RuntimeContextSingleton extends Singleton {
     __interceptors = [];
 
     get() {
-        const [options, thisArg, properties, computed, fnSetData, onStateGetting, onStateSetting] = arguments;
-        this.intercept(onStateGetting, onStateSetting);
+        const [
+            options,
+            thisArg,
+            properties,
+            computed,
+            fnSetData,
+            fnStateGetting = null,
+            fnStateSetting = null,
+            fnDeleted = null,
+            fnBefore = null,
+            fnAfter = null
+        ] = arguments;
+        this.intercept(
+            fnStateGetting,
+            fnStateSetting,
+            fnDeleted,
+            fnBefore,
+            fnAfter
+        );
         return super.get(options, thisArg, properties, computed, fnSetData,
             (path, value, level) => {
                 if (this.__interceptors.length) {
@@ -65,6 +82,21 @@ class RuntimeContextSingleton extends Singleton {
             (path, value, level) => {
                 if (this.__interceptors.length) {
                     this.__onStateSetting(path, value, level);
+                }
+            },
+            (path, level, parent) => {
+                if (this.__interceptors.length) {
+                    this.__onStateDeleted(path, level, parent);
+                }
+            },
+            (path, prop, fn, thisArg, argArray, level, parent) => {
+                if (this.__interceptors.length) {
+                    this.__beforeMethodCall(path, prop, fn, thisArg, argArray, level, parent);
+                }
+            },
+            (path, result, level, parent) => {
+                if (this.__interceptors.length) {
+                    this.__afterMethodCall(path, result, level, parent);
                 }
             });
     }
@@ -89,21 +121,94 @@ class RuntimeContextSingleton extends Singleton {
         }
     }
 
-    intercept(onStateGetting, onStateSetting) {
-        if (!onStateGetting && !onStateSetting) {
+    __onStateDeleted(path, level, parent) {
+        for (const {del} of this.__interceptors) {
+            if (del) {
+                if (del(path, level, parent) === true) {
+                    break;
+                }
+            }
+        }
+    }
+
+    __beforeMethodCall(path, prop, fn, thisArg, argArray, level, parent) {
+        for (const {before} of this.__interceptors) {
+            if (before) {
+                if (before(path, prop, fn, thisArg, argArray, level, parent) === true) {
+                    break;
+                }
+            }
+        }
+    }
+
+    __afterMethodCall(path, result, level, target) {
+        for (const {after} of this.__interceptors) {
+            if (after) {
+                if (after(path, result, level, target) === true) {
+                    break;
+                }
+            }
+        }
+    }
+
+    intercept(
+        fnStateGetting,
+        fnStateSetting,
+        fnDeleted,
+        fnBefore,
+        fnAfter
+    ) {
+        if (
+            !fnStateGetting &&
+            !fnStateSetting &&
+            !fnDeleted &&
+            !fnBefore &&
+            !fnAfter
+        ) {
             return null;
         }
-        if (this.__interceptors.findIndex(i => i.get === onStateGetting && i.set === onStateSetting) >= 0) {
+        if (this.__interceptors.findIndex
+        (
+            i => i.get === fnStateGetting
+                && i.set === fnStateSetting
+                && i.del === fnDeleted
+                && i.before === fnBefore
+                && i.after === fnAfter
+        ) >= 0) {
             return null;
         }
-        this.__interceptors.push({get: onStateGetting, set: onStateSetting});
+        this.__interceptors.push({
+            get: fnStateGetting,
+            set: fnStateSetting,
+            del: fnDeleted,
+            before: fnBefore,
+            after: fnAfter
+        });
         return () => {
-            this.cancelIntercept(onStateGetting, onStateSetting);
+            this.cancelIntercept(
+                fnStateGetting,
+                fnStateSetting,
+                fnDeleted,
+                fnBefore,
+                fnAfter
+            );
         };
     }
 
-    cancelIntercept(onStateGetting, onStateSetting) {
-        const index = this.__interceptors.findIndex(i => i.get === onStateGetting && i.set === onStateSetting);
+    cancelIntercept(
+        fnStateGetting,
+        fnStateSetting,
+        fnDeleted,
+        fnBefore,
+        fnAfter
+    ) {
+        const index = this.__interceptors.findIndex(
+            i => i.get === fnStateGetting
+                && i.set === fnStateSetting
+                && i.del === fnDeleted
+                && i.before === fnBefore
+                && i.after === fnAfter
+        );
         if (index >= 0) {
             this.__interceptors.splice(index, 1);
         }
@@ -157,9 +262,23 @@ export default class MPExtender {
      * @param {Function} fnSetData - 自定义setData函数，可传入原生setData函数，提高效率
      * @param {Function} fnStateGetting
      * @param {Function} fnStateSetting
+     * @param {Function} fnDeleted
+     * @param {Function} fnBefore
+     * @param {Function} fnAfter
      * @returns {*}
      */
-    createRuntimeCompatibleContext(options, instance, properties, computed, fnSetData, fnStateGetting = null, fnStateSetting = null) {
+    createRuntimeCompatibleContext(
+        options,
+        instance,
+        properties,
+        computed,
+        fnSetData,
+        fnStateGetting = null,
+        fnStateSetting = null,
+        fnDeleted = null,
+        fnBefore = null,
+        fnAfter = null
+    ) {
         let runtimeContext;
 
         const beforeUpdateChain = (options, instance, data) => {
@@ -174,14 +293,51 @@ export default class MPExtender {
             });
         };
 
+        const calling = [];
+
         const reactiveState = createReactiveObject(instance.data, instance.data,
             (path, value) => {
+                console.log(`${path} => ${JSON.stringify(value)}`);
                 const data = {[path]: value};
                 beforeUpdateChain(options, instance, data);
                 fnSetData(data, function () {
                     updatedChain(options, instance, data);
                 });
-            }, "", fnStateGetting, fnStateSetting);
+            },
+            "",
+            fnStateGetting,
+            (field, v, level, target) => {
+                console.log(`set ${field} ${JSON.stringify(v)}`)
+                fnStateSetting.call(undefined, field, v, level, target)
+            },
+            (path, level, parent) => {
+                const parentPath = selectPathParent(path);
+                if (!calling.includes(parentPath)) {
+                    // 排除 pop shift 等方法干扰
+                    const data = {[path]: parent};
+                    beforeUpdateChain(options, instance, data);
+                    fnSetData(data, function () {
+                        updatedChain(options, instance, data);
+                    });
+                }
+                fnDeleted.call(undefined, path, level, parent);
+            },
+            (path, p, fn, thisArg, args, level, parent) => {
+                if (Array.isArray(parent) && ["push", "splice", "shift", "pop", "fill", "unshift", "reverse", "copyWithin"].includes(p)) {
+                    calling.push(path);
+                }
+                fnBefore.call(undefined, path, p, fn, thisArg, args, level, parent);
+            },
+            (path, result, level, target) => {
+                calling.splice(0).forEach(path => {
+                    const data = {[path]: target};
+                    beforeUpdateChain(options, instance, data);
+                    fnSetData(data, function () {
+                        updatedChain(options, instance, data);
+                    });
+                });
+                fnAfter.call(undefined, path, result, level, target);
+            });
 
         const propsSingleton = new Singleton((receiver) => {
             const $props = {};
@@ -260,7 +416,6 @@ export default class MPExtender {
                     return Reflect.set(reactiveState, p, value);
                 }
                 return Reflect.set(instance, p, value);
-
             },
             deleteProperty(target, p) {
                 if (["$data", "$props"].includes(p)) {
@@ -281,8 +436,30 @@ export default class MPExtender {
      * @returns {Singleton}
      */
     createRuntimeContextSingleton() {
-        return new RuntimeContextSingleton((options, thisArg, properties, computed, fnSetData, onStateGetting, onStateSetting) => {
-            return this.createRuntimeCompatibleContext(options, thisArg, properties, computed, fnSetData, onStateGetting, onStateSetting);
+        return new RuntimeContextSingleton((
+            options,
+            thisArg,
+            properties,
+            computed,
+            fnSetData,
+            fnStateGetting = null,
+            fnStateSetting = null,
+            fnDeleted = null,
+            fnBefore = null,
+            fnAfter = null
+        ) => {
+            return this.createRuntimeCompatibleContext(
+                options,
+                thisArg,
+                properties,
+                computed,
+                fnSetData,
+                fnStateGetting,
+                fnStateSetting,
+                fnDeleted,
+                fnBefore,
+                fnAfter
+            );
         });
     }
 
@@ -603,6 +780,7 @@ export default class MPExtender {
     createInitializationCompatibleContext(state, linkAge, properties, computed, methods, constants = {}) {
         let context;
         const locking = new Set();
+        const calling = [];
         const reactiveState = createReactiveObject(state, state,
             (path, value) => {
                 // 获取根对象
@@ -653,6 +831,27 @@ export default class MPExtender {
                 }
                 // 解锁
                 locking.delete(src);
+            },
+            "",
+            null,
+            null,
+            (path, level, parent) => {
+                const parentPath = selectPathParent(path);
+                if (!calling.includes(parentPath)) {
+                    const data = {[path]: parent};
+                    setData(state, data);
+                }
+            },
+            (path, p, fn, thisArg, args, level, parent) => {
+                if (Array.isArray(parent) && ["push", "splice", "shift", "pop", "fill", "unshift", "reverse", "copyWithin"].includes(p)) {
+                    calling.push(path);
+                }
+            },
+            (path, result, level, target) => {
+                calling.splice(0).forEach(path => {
+                    const data = {[path]: target};
+                    setData(state, data);
+                });
             });
 
         context = this.createDataCompatibleContext(reactiveState, properties, null, computed, methods, constants);

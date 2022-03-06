@@ -240,23 +240,63 @@ const Configuration = {
         return Reflect.get(observer, InterceptorsSign);
     },
 
-    intercept(observer, onStateGetting, onStateSetting) {
-        if (!onStateGetting && !onStateGetting) {
+    intercept(
+        observer,
+        fnStateGetting,
+        fnStateSetting,
+        fnDeleted,
+        fnBefore,
+        fnAfter
+    ) {
+        if (
+            !fnStateGetting &&
+            !fnStateSetting &&
+            !fnDeleted &&
+            !fnBefore &&
+            !fnAfter
+        ) {
             return null;
         }
         const interceptors = this.getInterceptors(observer);
-        if (interceptors.findIndex(i => i.get === onStateGetting && i.set === onStateSetting) >= 0) {
+        if (interceptors.findIndex(
+            i => i.get === fnStateGetting
+                && i.set === fnStateSetting
+                && i.del === fnDeleted
+                && i.before === fnBefore
+                && i.after === fnAfter
+        ) >= 0) {
             return null;
         }
-        interceptors.push({get: onStateGetting, set: onStateSetting});
+        interceptors.push(
+            {
+                get: fnStateGetting,
+                set: fnStateSetting,
+                del: fnDeleted,
+                before: fnBefore,
+                after: fnAfter
+            }
+        );
         return () => {
-            this.cancelIntercept(observer, onStateGetting, onStateSetting);
+            this.cancelIntercept(observer, fnStateGetting, fnStateSetting);
         };
     },
 
-    cancelIntercept(observer, onStateGetting, onStateSetting) {
+    cancelIntercept(
+        observer,
+        fnStateGetting,
+        fnStateSetting,
+        fnDeleted,
+        fnBefore,
+        fnAfter
+    ) {
         const interceptors = this.getInterceptors(observer);
-        const index = interceptors.findIndex(i => i.get === onStateGetting && i.set === onStateSetting);
+        const index = interceptors.findIndex(
+            i => i.get === fnStateGetting
+                && i.set === fnStateSetting
+                && i.del === fnDeleted
+                && i.before === fnBefore
+                && i.after === fnAfter
+        );
         if (index >= 0) {
             interceptors.splice(index, 1);
         }
@@ -438,6 +478,14 @@ const Configuration = {
                 }
             },
             (path, level, parent) => {
+                const interceptors = this.getInterceptors(observer);
+                for (const {del} of interceptors) {
+                    if (del) {
+                        if (del(path, level, parent) === true) {
+                            break;
+                        }
+                    }
+                }
                 const watchers = this.getWatchers(observer);
                 for (const watcher of watchers) {
                     if (watcher.deep) {
@@ -451,6 +499,14 @@ const Configuration = {
                 }
             },
             (path, p, fn, thisArg, args, level, parent) => {
+                const interceptors = this.getInterceptors(observer);
+                for (const {before} of interceptors) {
+                    if (before) {
+                        if (before(path, p, fn, thisArg, args, level, parent) === true) {
+                            break;
+                        }
+                    }
+                }
                 if (Array.isArray(parent) && ["push", "splice", "shift", "pop", "fill", "unshift", "reverse", "copyWithin"].includes(p)) {
                     const watchers = this.getWatchers(observer);
                     for (const watcher of watchers) {
@@ -474,6 +530,14 @@ const Configuration = {
                 }
             },
             (path, result, level, parent) => {
+                const interceptors = this.getInterceptors(observer);
+                for (const {after} of interceptors) {
+                    if (after) {
+                        if (after(path, result, level, parent) === true) {
+                            break;
+                        }
+                    }
+                }
                 calling.splice(0).forEach(watcher => {
                     if (watcher.path) {
                         // ① array deep with path
@@ -550,22 +614,56 @@ export const Connector = {
     /**
      * 拦截Store读取操作/写入操作，并返回注销拦截的函数，触发顺序为输入优先，返回 true 取消后续拦截器操作
      * @param observer
-     * @param onStateGetting
-     * @param onStateSetting
+     * @param fnStateGetting
+     * @param fnStateSetting
+     * @param fnDeleted
+     * @param fnBefore
+     * @param fnAfter
      * @returns {function(): void}
      */
-    intercept(observer, onStateGetting, onStateSetting) {
-        return Configuration.intercept(observer, onStateGetting, onStateSetting);
+    intercept(
+        observer,
+        fnStateGetting,
+        fnStateSetting,
+        fnDeleted,
+        fnBefore,
+        fnAfter
+    ) {
+        return Configuration.intercept(
+            observer,
+            fnStateGetting,
+            fnStateSetting,
+            fnDeleted,
+            fnBefore,
+            fnAfter
+        );
     },
 
     /**
      * 注销拦截操作
      * @param observer
-     * @param onStateGetting
-     * @param onStateSetting
+     * @param fnStateGetting
+     * @param fnStateSetting
+     * @param fnDeleted
+     * @param fnBefore
+     * @param fnAfter
      */
-    cancelIntercept(observer, onStateGetting, onStateSetting) {
-        return Configuration.cancelIntercept(observer, onStateGetting, onStateSetting);
+    cancelIntercept(
+        observer,
+        fnStateGetting,
+        fnStateSetting,
+        fnDeleted,
+        fnBefore,
+        fnAfter
+    ) {
+        return Configuration.cancelIntercept(
+            observer,
+            fnStateGetting,
+            fnStateSetting,
+            fnDeleted,
+            fnBefore,
+            fnAfter
+        );
     },
 
     mapState: function (observer, ...args) {

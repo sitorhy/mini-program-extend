@@ -25,7 +25,12 @@
     <view>
         <text>p3RefreshTime={{ p3RefreshTime }}</text>
     </view>
+    <view>
+        <text>数组测试={{ wxs.stringify(arrayObserver) }}</text>
+    </view>
     <button bind:tap="test">测试</button>
+    <button bind:tap="push">数组插入</button>
+    <button bind:tap="pop">数组删除</button>
     <navigator url="/pages/context/components">
         <button>组件嵌套测试</button>
     </navigator>

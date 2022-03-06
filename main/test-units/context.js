@@ -1,8 +1,22 @@
+export function randomNumber(minNum, maxNum) {
+    switch (arguments.length) {
+        case 1:
+            return parseInt(Math.random() * minNum + 1, 10);
+        case 2:
+            return parseInt(Math.random() * (maxNum - minNum + 1) + minNum, 10);
+        default:
+            return 0;
+    }
+}
+
 function beforeCreate() {
     this.p3.a = 999;
     this.p3 = {a: 1000};
     this.p3.a++;
     this.p3.a++;
+    this.push();
+    this.push();
+    this.pop();
 }
 
 const common = {
@@ -37,12 +51,19 @@ const common = {
                 a: 100
             },
             p3RefreshTime: 0,
-            arr: []
+            arr: [],
+            arrayObserver: []
         };
     },
     methods: {
         test() {
             console.log(this.data)
+        },
+        push() {
+            this.arrayObserver.push(randomNumber(1, 100));
+        },
+        pop() {
+            this.arrayObserver.pop();
         }
     },
 };

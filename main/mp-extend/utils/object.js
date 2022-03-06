@@ -21,6 +21,17 @@ export function selectPathRoot(path) {
     return null;
 }
 
+export function selectPathParent(path) {
+    let i = path.lastIndexOf("[");
+    if (i < 0) {
+        i = path.lastIndexOf(".");
+    }
+    if (i >= 0) {
+        return path.substring(0, i);
+    }
+    return path;
+}
+
 /**
  * 分解路径
  * @param path
@@ -91,9 +102,9 @@ export function traceObject(obj, path, clone, override, value) {
  * @param path - 目标对象相对根对象路径
  * @param {(path:string,value:any,level:number,parent:any)=>void} onGet - 解析对象回调，用于获取计算依赖
  * @param {(path:string,value:any,level:number,parent:any)=>void} onSet - 设置对象回调，用于获取赋值依赖
- * @param {(path:string,level:number,parent:any)=>void} onDelete - 删除回调
- * @param {(path:string,prop:string,fn:()=>any,thisArg:any,args:any,level:number,parent:any)=>void} before - 设置函数回调，对象函数即将调用
- * @param {(path:string,result:any,level:number,parent:any)=>void} after - 设置函数回调，对象函数调用完毕
+ * @param {(path:string,level:number,parent:object)=>void} onDelete - 删除回调
+ * @param {(path:string,prop:string,fn:function,thisArg:object,argArray:any[],level:number,parent:object)=>void} before - 设置函数回调，对象函数即将调用
+ * @param {(path:string,result:any,level:number,parent:object)=>void} after - 设置函数回调，对象函数调用完毕
  * @param level - 层级
  * @returns {boolean|any}
  */
@@ -200,27 +211,23 @@ export function createReactiveObject(
                 }
             },
             deleteProperty(target, p) {
-                if (Array.isArray(target)) {
-                    const tryNum = Number.parseInt(p);
-                    if (Reflect.deleteProperty(target, p)) {
-                        if (Number.isSafeInteger(tryNum)) {
-                            const path = `${path}[${p}]`;
+                if (/^\d+$/.test(p)) {
+                    if (Array.isArray(target)) {
+                        const num = Number.parseInt(p);
+                        if (Reflect.deleteProperty(target, num)) {
+                            const nextPath = `${path}[${num}]`;
                             if (isFunction(onDelete)) {
-                                onDelete(path, level, target);
+                                onDelete(nextPath, level, target);
                             }
-                        } else {
-                            const path = `${path}.${p}`;
-                            if (isFunction(onDelete)) {
-                                onDelete(path, level, target);
-                            }
+                            return true;
                         }
+                        return false;
                     }
-                    return false;
                 }
                 if (Reflect.deleteProperty(target, p)) {
-                    const path = `${path ? path + '.' : ''}${p}`;
+                    const nextPath = `${path ? path + '.' : ''}${p}`;
                     if (isFunction(onDelete)) {
-                        onDelete(path, level, target);
+                        onDelete(nextPath, level, target);
                     }
                     return true;
                 }

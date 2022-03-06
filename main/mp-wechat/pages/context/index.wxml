@@ -25,4 +25,7 @@
     <view>
         <text>p3RefreshTime={{ p3RefreshTime }}</text>
     </view>
+    <view>
+        <text>数组测试={{ wxs.stringify(arrayObserver) }}</text>
+    </view>
 </view>
