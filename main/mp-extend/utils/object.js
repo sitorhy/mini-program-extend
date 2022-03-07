@@ -128,18 +128,19 @@ export function createReactiveObject(
                     if (isFunction(onGet)) {
                         onGet(`${path ? path + '.' : ''}${p}`, value, level, target);
                         if (p !== 'constructor' && Array.isArray(target) && isFunction(value)) {
-                            return new Proxy(value, {
-                                apply(fn, thisArg, argArray) {
-                                    if (isFunction(before)) {
-                                        before(path, p, fn, thisArg, argArray, level, target);
-                                    }
-                                    const result = fn.apply(thisArg, argArray);
-                                    if (isFunction(after)) {
-                                        after(path, result, level, target);
-                                    }
-                                    return result;
+                            return function () {
+                                const fn = value;
+                                const thisArg = target;
+                                const argArray = [...arguments];
+                                if (isFunction(before)) {
+                                    before(path, p, fn, thisArg, argArray, level, target);
                                 }
-                            });
+                                const result = fn.apply(thisArg, argArray);
+                                if (isFunction(after)) {
+                                    after(path, result, level, target);
+                                }
+                                return result;
+                            }.bind(target);
                         }
                     }
                     // 不可枚举的值，直接返回
