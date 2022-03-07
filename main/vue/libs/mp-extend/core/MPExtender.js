@@ -297,7 +297,6 @@ export default class MPExtender {
 
         const reactiveState = createReactiveObject(instance.data, instance.data,
             (path, value) => {
-                console.log(`${path} => ${JSON.stringify(value)}`);
                 const data = {[path]: value};
                 beforeUpdateChain(options, instance, data);
                 fnSetData(data, function () {
@@ -306,10 +305,7 @@ export default class MPExtender {
             },
             "",
             fnStateGetting,
-            (field, v, level, target) => {
-                console.log(`set ${field} ${JSON.stringify(v)}`)
-                fnStateSetting.call(undefined, field, v, level, target)
-            },
+            fnStateSetting,
             (path, level, parent) => {
                 const parentPath = selectPathParent(path);
                 if (!calling.includes(parentPath)) {

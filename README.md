@@ -721,11 +721,11 @@ App({
 
 ## 状态管理模式
 
-接口标准移植自`Vuex`，可参考`Vuex`文档，此处不再复述。
-
+接口标准移植自`Vuex`，可参考`Vuex`文档。
+ 
 ### **基本使用**
 
-🔴 `state`一般建议使用函数定义，如果多个状态管理共用一套配置会产生不可预料的冲突。目录结构上可参考`Vue`的脚手架，单独建立一个`store`文件夹。
+🔴 `state`一般建议使用函数定义，如果多个状态管理共用一套配置会产生不可预料的冲突。
 
 ```javascript
 import { createStore } from "wechat-mini-program-extend/store";
@@ -778,7 +778,7 @@ ComponentEx({
 
 ### **组件绑定辅助函数**
 
-辅助函数针对全局状态管理容器，只需要在`App`对象中配置一个`store`对象，全局容器会挂载到组件的`$store`属性。
+在`App`对象中配置全局容器`store`，全局容器会挂载到组件的`$store`属性。
 
 ```javascript
 // app.js
