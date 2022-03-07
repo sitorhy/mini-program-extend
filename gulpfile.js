@@ -121,7 +121,7 @@ gulp.task("build", async () => {
     gulp.src("main/mp-extend/**/tsconfig.json")
         .pipe(gulp.dest(`dist`));
 
-    gulp.src("main/mp-extend/index.d.ts")
+    gulp.src("main/mp-extend/*.d.ts")
         .pipe(gulp.dest(`dist`));
 
     fs.writeFileSync("dist/package.json", JSON.stringify({
