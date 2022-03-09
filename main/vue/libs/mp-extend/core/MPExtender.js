@@ -310,7 +310,7 @@ export default class MPExtender {
                 const parentPath = selectPathParent(path);
                 if (!calling.includes(parentPath)) {
                     // 排除 pop shift 等方法干扰
-                    const data = {[path]: parent};
+                    const data = {[parentPath]: parent};
                     beforeUpdateChain(options, instance, data);
                     fnSetData(data, function () {
                         updatedChain(options, instance, data);
@@ -347,6 +347,7 @@ export default class MPExtender {
                     }
                 });
             });
+            return $props;
         });
 
         runtimeContext = new Proxy(instance, {
