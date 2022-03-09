@@ -1,5 +1,6 @@
 import OptionInstaller from "./OptionInstaller";
 import EventEmitter from "../libs/EventEmitter";
+import MPExtender from "./MPExtender";
 
 const EVTSign = Symbol("__wxEVT__");
 
@@ -78,6 +79,9 @@ class RoutedEventArgs extends EventArgs {
     }
 }
 
+/**
+ * 依赖 UpdateInstaller
+ */
 const BusInstallBehavior = Behavior({
     created() {
         Object.defineProperty(this, EVTSign, {
@@ -88,7 +92,7 @@ const BusInstallBehavior = Behavior({
 
         if (!Object.hasOwnProperty.call(this, "$emit")) {
             const $emit = (event, data) => {
-                const e = new RoutedEventArgs(this, event, data);
+                const e = new RoutedEventArgs(MPExtender.getRuntimeContext(this), event, data);
                 let p = this;
                 while (p) {
                     const emitter = Reflect.get(p, EVTSign);
@@ -167,7 +171,7 @@ const BusInstallBehavior = Behavior({
         if (!Object.hasOwnProperty.call(this, "$dispatch")) {
             const $dispatch = (event, data) => {
                 const targets = [];
-                const e = new RoutedEventArgs(this, event, data);
+                const e = new RoutedEventArgs(MPExtender.getRuntimeContext(this), event, data);
                 let p = this;
                 while (p) {
                     targets.push(p);
@@ -196,7 +200,7 @@ const BusInstallBehavior = Behavior({
 
         if (!Object.hasOwnProperty.call(this, "$broadcast")) {
             const $broadcast = (event, data) => {
-                const e = new EventArgs(this, event, data);
+                const e = new EventArgs(MPExtender.getRuntimeContext(this), event, data);
 
                 let s = this;
                 while (s.$parent) {
