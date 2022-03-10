@@ -310,11 +310,7 @@ export default class MPExtender {
                 const parentPath = selectPathParent(path);
                 if (!calling.includes(parentPath)) {
                     // 排除 pop shift 等方法干扰
-                    const data = {[parentPath]: parent};
-                    beforeUpdateChain(options, instance, data);
-                    fnSetData(data, function () {
-                        updatedChain(options, instance, data);
-                    });
+                    setData(reactiveState, {[parentPath]: parent});
                 }
                 fnDeleted.call(undefined, path, level, parent);
             },
@@ -326,11 +322,7 @@ export default class MPExtender {
             },
             (path, result, level, target) => {
                 calling.splice(0).forEach(path => {
-                    const data = {[path]: target};
-                    beforeUpdateChain(options, instance, data);
-                    fnSetData(data, function () {
-                        updatedChain(options, instance, data);
-                    });
+                    setData(reactiveState, {[path]: target});
                 });
                 fnAfter.call(undefined, path, result, level, target);
             });
