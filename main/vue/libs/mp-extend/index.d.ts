@@ -106,6 +106,8 @@ declare namespace extend {
     }
 
     class FrameworkInstaller {
+        use(extender: MPExtender, options: object): Boolean;
+
         configuration(extender: MPExtender, context: Map<any, any>, options: object): object;
 
         install(extender: MPExtender, context: Map<any, any>, options: object): object;
