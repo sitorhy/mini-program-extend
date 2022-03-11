@@ -344,10 +344,10 @@ Component.created > Page.created
   输出：
 
   ```
-  num = 114
-  created
-  onLoad
-  mounted
+created
+num = 114
+onLoad
+mounted
   ```
 
 <br>
