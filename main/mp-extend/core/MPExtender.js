@@ -28,28 +28,6 @@ import RESERVED_LIFECYCLES_WORDS from "../utils/lifecycle";
 
 const RTCSign = Symbol("__wxRTC__");
 
-class InstallersSingleton extends Singleton {
-    /**
-     * @type {Map<any, any>}
-     * @private
-     */
-    _installers = new Map();
-
-    constructor() {
-        super(() => {
-            return [...this._installers.entries()].sort((i, j) => i[1] - j[1]).map(i => i[0]);
-        });
-    }
-
-    prepare(installer, priority = 100) {
-        if (installer instanceof OptionInstaller) {
-            if (!this._installers.has(installer)) {
-                this._installers.set(installer, priority);
-            }
-        }
-    }
-}
-
 class RuntimeContextSingleton extends Singleton {
     __interceptors = [];
 
@@ -216,7 +194,12 @@ class RuntimeContextSingleton extends Singleton {
 }
 
 export default class MPExtender {
-    _installers = new InstallersSingleton();
+    /**
+     * @type {Map<any, any>}
+     * @private
+     */
+    _installers = new Map();
+
     _context = new Map();
 
     // @deprecated 上下文容器测试相关，该值永不启用，仅开发用途
@@ -246,11 +229,15 @@ export default class MPExtender {
      * @returns {OptionInstaller[]}
      */
     get installers() {
-        return this._installers.get();
+        return [...this._installers.entries()].sort((i, j) => i[1] - j[1]).map(i => i[0]);
     }
 
     use(installer, priority = 100) {
-        this._installers.prepare(installer, priority);
+        if (installer instanceof OptionInstaller) {
+            if (!this._installers.has(installer)) {
+                this._installers.set(installer, priority);
+            }
+        }
     }
 
     /**
@@ -869,6 +856,11 @@ export default class MPExtender {
 
     extends(configuration) {
         let options = configuration;
+        this.installers.forEach(installer => {
+            if (installer.use(this, options) === false) {
+                this._installers.delete(installer);
+            }
+        });
         const installers = this.installers;
         const reduceOptions = {};
         installers.forEach(installer => {

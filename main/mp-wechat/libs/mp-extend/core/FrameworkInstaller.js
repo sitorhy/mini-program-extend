@@ -1,5 +1,14 @@
 export default class FrameworkInstaller {
     /**
+     * 执行一些初始化操作，扩展一些插件等，返回 false 则移除自身
+     * @param extender
+     * @param options
+     */
+    use(extender, options) {
+        return true;
+    }
+
+    /**
      * 拦截，构建配置
      * @param extender
      * @param context
