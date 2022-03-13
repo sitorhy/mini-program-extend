@@ -109,15 +109,6 @@ gulp.task("build", async () => {
     gulp.src("README.md")
         .pipe(gulp.dest("dist"));
 
-    gulp.src("main/mp-extend/**/LICENSE")
-        .pipe(gulp.dest(`dist/${miniprogram}`));
-
-    gulp.src("main/mp-extend/**/*.d.ts")
-        .pipe(gulp.dest(`dist/${miniprogram}`));
-
-    gulp.src("main/mp-extend/**/tsconfig.json")
-        .pipe(gulp.dest(`dist/${miniprogram}`));
-
     gulp.src("main/mp-extend/**/tsconfig.json")
         .pipe(gulp.dest(`dist`));
 
