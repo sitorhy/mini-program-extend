@@ -1,11 +1,16 @@
 export default class FrameworkInstaller {
     /**
-     * 执行一些初始化操作，扩展一些插件等，返回 false 则移除自身
+     * 执行一些初始化操作，插件释放 <br>
+     * 例： <br>
+     * 释放内部插件 <br>
+     * extender.use(new OtherInstaller()); <br>
+     * 移除自身 <br>
+     * extender.unset(this);
      * @param extender
      * @param options
      */
     use(extender, options) {
-        return true;
+
     }
 
     /**

@@ -232,12 +232,26 @@ export default class MPExtender {
         return [...this._installers.entries()].sort((i, j) => i[1] - j[1]).map(i => i[0]);
     }
 
+    /**
+     * 添加插件
+     * @param installer
+     * @param priority - 优先级，请保持默认值
+     */
     use(installer, priority = 100) {
         if (installer instanceof OptionInstaller) {
             if (!this._installers.has(installer)) {
                 this._installers.set(installer, priority);
             }
         }
+    }
+
+    /**
+     * 移除插件，一般配合 OptionInstaller.use 方法使用，释放插件后，移除自身
+     * @param installer
+     * @returns {boolean}
+     */
+    unset(installer) {
+        return this._installers.delete(installer);
     }
 
     /**
@@ -330,7 +344,7 @@ export default class MPExtender {
         });
 
         runtimeContext = new Proxy(instance, {
-            ownKeys(target) {
+            ownKeys() {
                 return [...new Set(["$data", "$props"].concat(Object.keys(instance)).concat(Object.keys(instance.data)))];
             },
             has(target, p) {
@@ -339,7 +353,7 @@ export default class MPExtender {
                 }
                 return Reflect.has(instance.data, p) || Reflect.has(instance, p);
             },
-            get(target, p, receiver) {
+            get(target, p) {
                 if (p === "$data") {
                     const keys = Object.keys(instance.data || {}).filter(k => {
                         if (properties) {
@@ -384,7 +398,7 @@ export default class MPExtender {
                     return Reflect.get(target, p);
                 }
             },
-            set(target, p, value, receiver) {
+            set(target, p, value) {
                 if (["$data", "$props"].includes(p)) {
                     return false;
                 }
@@ -483,7 +497,7 @@ export default class MPExtender {
             .collect(Collectors.toMap());
 
         return new Proxy($options, {
-            set(target, p, value, receiver) {
+            set(target, p, value) {
                 if (Reflect.set(target, p, value)) {
                     if (Reflect.has(options, p)) {
                         Reflect.set(options, p, value);
@@ -550,7 +564,7 @@ export default class MPExtender {
                     }
                     return undefined;
                 },
-                set(target, p, value, receiver) {
+                set(target, p, value) {
                     if (["$options", "$props"].includes(p)) {
                         return false;
                     }
@@ -657,7 +671,7 @@ export default class MPExtender {
                     }
                     return Reflect.get(target, p);
                 },
-                set(target, p, value, receiver) {
+                set(target, p, value) {
                     if (["data", "$data"].includes(p)) {
                         return false;
                     }
@@ -714,7 +728,7 @@ export default class MPExtender {
                     dependencies.push(path);
                 }
             },
-            (path, value, level) => {
+            (path) => {
                 const src = selectPathRoot(path);
                 dependencies.splice(0).map(i => selectPathRoot(i)).filter(i => i !== src).forEach(p => {
                     if (!linkAge.has(p)) {
@@ -856,11 +870,31 @@ export default class MPExtender {
 
     extends(configuration) {
         let options = configuration;
-        this.installers.forEach(installer => {
-            if (installer.use(this, options) === false) {
-                this._installers.delete(installer);
+
+        const extender = Proxy.revocable(this, {
+            get(target, p, receiver) {
+                if (p === "use") {
+                    return function () {
+                        MPExtender.prototype.use.apply(target, arguments);
+                        arguments[0].use(extender, options);
+                    };
+                }
+                return Reflect.get(target, p, receiver);
+            },
+            set() {
+                return false;
+            },
+            deleteProperty() {
+                return false;
             }
         });
+
+        this.installers.forEach(installer => {
+            installer.use(extender.proxy, options);
+        });
+
+        extender.revoke();
+
         const installers = this.installers;
         const reduceOptions = {};
         installers.forEach(installer => {

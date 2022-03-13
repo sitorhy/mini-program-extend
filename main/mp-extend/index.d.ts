@@ -102,11 +102,13 @@ declare namespace extend {
     class MPExtender {
         use<T extends OptionInstaller>(installer: T, priority?: number): void;
 
+        unset<T extends OptionInstaller>(installer: T): Boolean;
+
         extends(options: object): object;
     }
 
     class FrameworkInstaller {
-        use(extender: MPExtender, options: object): Boolean;
+        use(extender: MPExtender, options: object): void;
 
         configuration(extender: MPExtender, context: Map<any, any>, options: object): object;
 
