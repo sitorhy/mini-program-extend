@@ -93,21 +93,6 @@ export function traceObject(obj, path, clone, override, value) {
     return copy;
 }
 
-
-const ProxySign = Symbol("__proxy__");
-
-function sign(obj, handler) {
-    if (isPrimitive(obj) || Object.hasOwnProperty.call(obj, ProxySign)) {
-        return obj;
-    }
-    const signed = handler(obj);
-    Object.defineProperty(signed, ProxySign, {
-        value: true
-    });
-    return signed;
-}
-
-
 /**
  * 创建反应式对象
  *
@@ -144,7 +129,19 @@ export function createReactiveObject(
                         onGet(`${path ? path + '.' : ''}${p}`, value, level, target);
                         if (p !== 'constructor' && Array.isArray(target) && isFunction(value)) {
                             return function () {
-                                const fn = value;
+                                let fn = value;
+                                if (Array.isArray(target) && p === "forEach") {
+                                    fn = function (fnCallback) {
+                                        if (!isFunction(fnCallback)) {
+                                            throw new Error(`${fnCallback} is not a function`);
+                                        }
+                                        for (let i = 0, len = target.length; i < len; ++i) {
+                                            const nextPath = `${path}[${i}]`;
+                                            const el = createReactiveObject(root, target[i], onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
+                                            fnCallback(el, i);
+                                        }
+                                    };
+                                }
                                 const thisArg = target;
                                 const argArray = [...arguments];
                                 if (isFunction(before)) {
@@ -166,17 +163,13 @@ export function createReactiveObject(
                         if (isFunction(onGet)) {
                             onGet(nextPath, value, level, target);
                         }
-                        return sign(value, (value) => {
-                            return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
-                        });
+                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
                     } else {
                         const nextPath = `${path ? path + '.' : ''}${p}`;
                         if (isFunction(onGet)) {
                             onGet(nextPath, value, level, target);
                         }
-                        return sign(value, (value) => {
-                            return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
-                        });
+                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
                     }
                 }
             },
