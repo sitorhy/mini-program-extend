@@ -93,6 +93,21 @@ export function traceObject(obj, path, clone, override, value) {
     return copy;
 }
 
+
+const ProxySign = Symbol("__proxy__");
+
+function sign(obj, handler) {
+    if (isPrimitive(obj) || Object.hasOwnProperty.call(obj, ProxySign)) {
+        return obj;
+    }
+    const signed = handler(obj);
+    Object.defineProperty(signed, ProxySign, {
+        value: true
+    });
+    return signed;
+}
+
+
 /**
  * 创建反应式对象
  *
@@ -151,13 +166,17 @@ export function createReactiveObject(
                         if (isFunction(onGet)) {
                             onGet(nextPath, value, level, target);
                         }
-                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
+                        return sign(value, (value) => {
+                            return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
+                        });
                     } else {
                         const nextPath = `${path ? path + '.' : ''}${p}`;
                         if (isFunction(onGet)) {
                             onGet(nextPath, value, level, target);
                         }
-                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
+                        return sign(value, (value) => {
+                            return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
+                        });
                     }
                 }
             },
