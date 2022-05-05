@@ -52,18 +52,71 @@ const common = {
             },
             p3RefreshTime: 0,
             arr: [],
-            arrayObserver: []
+            arrayObserver: [],
+            objectArray: [
+                {
+                    num: 57
+                },
+                {
+                    num: 257
+                },
+                {
+                    num: 959.5
+                },
+                {
+                    num: 405
+                }
+            ]
         };
     },
     methods: {
         test() {
-            console.log(this.data)
+            if (typeof wx === "undefined") {
+                console.log(this)
+            } else {
+                console.log(this.data)
+            }
         },
         push() {
             this.arrayObserver.push(randomNumber(1, 100));
         },
         pop() {
             this.arrayObserver.pop();
+        },
+        doubleObjectArray() {
+            const mid = Math.floor(this.objectArray.length / 2);
+            /*
+            this.objectArray.forEach(i => {
+                i.num *= 2;
+            });*/
+            this.objectArray.slice(0, mid).forEach(i => {
+                i.num *= 2;
+            });
+            for (let i = mid; i < this.objectArray.length; ++i) {
+                this.objectArray[i].num *= 2;
+            }
+        },
+        reverseObjectArray() {
+            this.objectArray.reverse();
+        },
+        resetObjectArray() {
+            this.objectArray = [
+                {
+                    num: 57
+                },
+                {
+                    num: 257
+                },
+                {
+                    num: 959.5
+                },
+                {
+                    num: 405
+                }
+            ];
+        },
+        destructObjectArray() {
+            this.objectArray = [...this.objectArray];
         }
     },
 };
