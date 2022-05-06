@@ -10,14 +10,24 @@ export function randomNumber(minNum, maxNum) {
 }
 
 function beforeCreate() {
+    /*
     this.p3.a = 999;
     this.p3 = {a: 1000};
     this.p3.a++;
     this.p3.a++;
     this.push();
     this.push();
-    this.pop();
+    this.pop();*/
 }
+
+/*
+被依赖属性 => 依赖属性
+p1 => p2 √
+p4 => p3
+p3 => p5 √
+p5 => arr √
+arr => p5History
+ */
 
 const common = {
     staticData: 100,

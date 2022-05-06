@@ -1,7 +1,7 @@
 import OptionInstaller from "./OptionInstaller";
 import {isFunction, isPlainObject} from "../utils/common";
 import {Collectors, Stream} from "../libs/Stream";
-import {getData, setData, selectPathRoot} from "../utils/object";
+import {getData, selectPathRoot, setData} from "../utils/object";
 
 const CMPCLockSign = Symbol("__wxCMPCLock__");
 const CMPCRTCLockSign = Symbol("__wxCMPCRTCLock__");
@@ -110,17 +110,22 @@ export default class ComputedInstaller extends OptionInstaller {
 
                 // 初始化计算属性
 
+                console.log(JSON.stringify(this.data))
+
                 const linkAge = new Map();
                 const dependencies = [];
                 context.set("linkAge", linkAge);
                 const cancel = extender.getRuntimeContextSingleton(this).intercept(
                     (path, value, level) => {
+                        console.log(`getter ${level} : ${path}`)
                         if (!dependencies.includes(path) && level === 0) {
                             dependencies.push(path);
                         }
                     },
-                    (path) => {
+                    (path,value,level) => {
+                        console.log(`setter ${path} ${level} : ${JSON.stringify(value)}`)
                         const src = selectPathRoot(path);
+                        console.log(dependencies)
                         dependencies.splice(0).map(i => selectPathRoot(i)).filter(i => i !== src).forEach(p => {
                             if (!linkAge.has(p)) {
                                 linkAge.set(p, []);
@@ -136,6 +141,7 @@ export default class ComputedInstaller extends OptionInstaller {
                 const computed = context.get("computed");
                 const getters = isPlainObject(computed) ? Object.keys(computed).filter(i => (isPlainObject(computed[i]) && isFunction(computed[i].get)) || isFunction(computed[i])) : [];
                 getters.forEach(p => {
+                    console.log(`=== computed prop ${p} ===`);
                     const getter = isFunction(computed[p].get) ? computed[p].get : computed[p];
                     if (isFunction(getter)) {
                         // 初始值直接提交
@@ -145,6 +151,8 @@ export default class ComputedInstaller extends OptionInstaller {
                 // 解锁计算属性关联
                 cancel();
                 RuntimeContextMonitor.unlock(this);
+
+                console.log(linkAge)
             }
         }
     }
