@@ -58,13 +58,17 @@ const common = {
                     num: 57
                 },
                 {
-                    num: 257
+                    a: {
+                        num: 257
+                    }
                 },
                 {
                     num: 959.5
                 },
                 {
-                    num: 405
+                    b: {
+                        num: 405
+                    }
                 }
             ]
         };
@@ -90,10 +94,24 @@ const common = {
                 i.num *= 2;
             });*/
             this.objectArray.slice(0, mid).forEach(i => {
-                i.num *= 2;
+                if (i.a) {
+                    i.a.num *= 2;
+                } else if (i.b) {
+                    i.b.num *= 2;
+                } else {
+                    i.num *= 2;
+                }
             });
             for (let i = mid; i < this.objectArray.length; ++i) {
-                this.objectArray[i].num *= 2;
+                const j = this.objectArray[i];
+
+                if (j.a) {
+                    j.a.num *= 2;
+                } else if (j.b) {
+                    j.b.num *= 2;
+                } else {
+                    j.num *= 2;
+                }
             }
         },
         reverseObjectArray() {
@@ -105,13 +123,17 @@ const common = {
                     num: 57
                 },
                 {
-                    num: 257
+                    a: {
+                        num: 257
+                    }
                 },
                 {
                     num: 959.5
                 },
                 {
-                    num: 405
+                    b: {
+                        num: 405
+                    }
                 }
             ];
         },

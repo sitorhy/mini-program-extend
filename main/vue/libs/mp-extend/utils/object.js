@@ -1,4 +1,4 @@
-import {isFunction, isPrimitive, isString, isSymbol} from "./common";
+import {isFunction, isPrimitive, isSymbol} from "./common";
 
 /**
  * 解析路径根对象名称
@@ -95,23 +95,16 @@ export function traceObject(obj, path, clone, override, value) {
 
 const OBSign = Symbol("_ob_");
 
-function signObject(obj, callback) {
-    if (isPrimitive(obj)) {
-        return obj;
+function signObject(proxy, value) {
+    if (isPrimitive(value)) {
+        return value;
     }
-    if (!Reflect.has(obj, OBSign)) {
-        const p = callback(obj);
-        Object.defineProperty(p, OBSign, {
-            enumerable: false,
-            configurable: true,
-            value: obj
-        });
-        return p;
-    } else {
-        const v = Reflect.get(obj, OBSign);
-        Reflect.deleteProperty(obj, OBSign);
-        return signObject(v, callback);
-    }
+    Object.defineProperty(proxy, OBSign, {
+        enumerable: false,
+        value,
+        configurable: true
+    });
+    return proxy;
 }
 
 function unmarkObject(obj) {
@@ -120,7 +113,7 @@ function unmarkObject(obj) {
     }
     for (const k in obj) {
         const v = Reflect.get(obj, k);
-        obj[k] = unmarkObject(v, obj);
+        obj[k] = unmarkObject(v);
     }
     if (Reflect.has(obj, OBSign)) {
         const plain = Reflect.get(obj, OBSign);
@@ -156,11 +149,16 @@ export function createReactiveObject(
     before = null,
     after = null,
     level = 0) {
+    let writing = false;
     return new Proxy(
         target,
         {
             get(target, p, receiver) {
                 const value = Reflect.get(target, p, receiver);
+                if (writing) {
+                    console.log(`locking ${p}`);
+                    return value;
+                }
                 if (isFunction(value) || isPrimitive(value) || !value || isSymbol(p)) {
                     if (isFunction(onGet)) {
                         if (!isSymbol(p)) {
@@ -197,35 +195,23 @@ export function createReactiveObject(
                     // 不可枚举的值，直接返回
                     return value;
                 } else {
+                    let nextPath;
                     if (Number.isSafeInteger(Number.parseInt(p))) {
-                        const nextPath = `${path}[${p}]`;
-                        if (isFunction(onGet)) {
-                            onGet(nextPath, value, level, target);
-                        }
-
-                        if (!isPrimitive(value)) {
-                            if (!Reflect.has(value, OBSign)) {
-                                return signObject(value, (v) => {
-                                    return createReactiveObject(root, v, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
-                                });
-                            } else {
-                                return signObject(value, (v) => {
-                                    return createReactiveObject(root, v, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
-                                });
-                            }
-                        }
-
-                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
+                        nextPath = `${path}[${p}]`;
                     } else {
-                        const nextPath = `${path ? path + '.' : ''}${p}`;
-                        if (isFunction(onGet)) {
-                            onGet(nextPath, value, level, target);
-                        }
-                        return createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
+                        nextPath = `${path ? path + '.' : ''}${p}`;
                     }
+                    if (isFunction(onGet)) {
+                        onGet(nextPath, value, level, target);
+                    }
+                    const proxy = createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
+                    return signObject(proxy, value);
                 }
             },
             set(target, p, value, receiver) {
+                writing = true;
+                value = unmarkObject(value);
+                writing = false;
                 if (isSymbol(p)) {
                     return Reflect.set(target, p, value, receiver);
                 } else {
@@ -261,11 +247,6 @@ export function createReactiveObject(
                         if (Array.isArray(target) && p === 'length') {
                             return Reflect.set(target, p, value, receiver);
                         } else {
-                            if (Array.isArray(value)) {
-                                value = value.map(i => {
-                                    return unmarkObject(i);
-                                });
-                            }
                             if (isFunction(onChanged)) {
                                 const nextPath = `${path ? path + '.' : ''}${p}`;
                                 if (isFunction(onSet)) {
@@ -281,7 +262,7 @@ export function createReactiveObject(
                 }
             },
             deleteProperty(target, p) {
-                if (isString(p) && /^\d+$/.test(p)) {
+                if (!isSymbol(p) && /^\d+$/.test(p)) {
                     if (Array.isArray(target)) {
                         const num = Number.parseInt(p);
                         if (Reflect.deleteProperty(target, num)) {
