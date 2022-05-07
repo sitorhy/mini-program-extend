@@ -94,7 +94,6 @@ export function traceObject(obj, path, clone, override, value) {
 }
 
 const OBSign = Symbol("_ob_");
-const OBLockSign = Symbol("_fn_ob_lock_");
 
 function unmarkObject(obj) {
     if (isPrimitive(obj)) {
@@ -112,6 +111,22 @@ function unmarkObject(obj) {
     return obj;
 }
 
+class ProxyReaderWriterLock {
+    _locked = 0;
+
+    isLocked() {
+        return this._locked > 0;
+    }
+
+    lock() {
+        this._locked++;
+    }
+
+    unlock() {
+        this._locked--;
+    }
+}
+
 /**
  * 创建反应式对象
  *
@@ -124,7 +139,8 @@ function unmarkObject(obj) {
  * @param {(path:string,level:number,parent:object)=>void} onDelete - 删除回调
  * @param {(path:string,prop:string,fn:function,thisArg:object,argArray:any[],level:number,parent:object)=>void} before - 设置函数回调，对象函数即将调用
  * @param {(path:string,result:any,level:number,parent:object)=>void} after - 设置函数回调，对象函数调用完毕
- * @param level - 层级
+ * @param level - 层级，禁填
+ * @param {lockSlim:ProxyReaderWriterLock} lockSlim - 读写锁，禁填
  * @returns {boolean|any}
  */
 export function createReactiveObject(
@@ -137,19 +153,18 @@ export function createReactiveObject(
     onDelete = null,
     before = null,
     after = null,
-    level = 0) {
-    let locking = false;
-    const proxy = new Proxy(
+    level = 0,
+    lockSlim = new ProxyReaderWriterLock()) {
+    return new Proxy(
         target,
         {
             get(target, p, receiver) {
                 const value = Reflect.get(target, p, receiver);
-                if (locking) {
-                    console.log(`locking ${p}`);
+                if (lockSlim.isLocked()) {
                     return value;
                 }
                 if (isFunction(value) || isPrimitive(value) || !value || isSymbol(p)) {
-                    if (!locking && isFunction(onGet)) {
+                    if (!lockSlim.isLocked() && isFunction(onGet)) {
                         if (!isSymbol(p)) {
                             onGet(`${path ? path + '.' : ''}${p}`, value, level, target);
                         }
@@ -163,18 +178,18 @@ export function createReactiveObject(
                                         }
                                         for (let i = 0, len = target.length; i < len; ++i) {
                                             const nextPath = `${path}[${i}]`;
-                                            const el = createReactiveObject(root, target[i], onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
+                                            const el = createReactiveObject(root, target[i], onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1, lockSlim);
                                             fnCallback(el, i);
                                         }
                                     };
                                 }
                                 const thisArg = target;
                                 const argArray = [...arguments];
-                                if (!locking && isFunction(before)) {
+                                if (!lockSlim.isLocked() && isFunction(before)) {
                                     before(path, p, fn, thisArg, argArray, level, target);
                                 }
                                 const result = fn.apply(thisArg, argArray);
-                                if (!locking && isFunction(after)) {
+                                if (!lockSlim.isLocked() && isFunction(after)) {
                                     after(path, result, level, target);
                                 }
                                 return result;
@@ -190,10 +205,10 @@ export function createReactiveObject(
                     } else {
                         nextPath = `${path ? path + '.' : ''}${p}`;
                     }
-                    if (!locking && isFunction(onGet)) {
+                    if (!lockSlim.isLocked() && isFunction(onGet)) {
                         onGet(nextPath, value, level, target);
                     }
-                    const proxy = createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1);
+                    const proxy = createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1, lockSlim);
                     Object.defineProperty(proxy, OBSign, {
                         enumerable: false,
                         value,
@@ -203,24 +218,23 @@ export function createReactiveObject(
                 }
             },
             set(target, p, value, receiver) {
-                locking = true;
-                if (!isPrimitive(value) && Reflect.has(value, OBLockSign)) {
-                    Reflect.get(value, OBLockSign)(true);
+                if (p !== OBSign) {
+                    lockSlim.lock();
+                    value = unmarkObject(value);
+                    lockSlim.unlock();
                 }
-                value = unmarkObject(value);
-                locking = false;
                 if (isSymbol(p)) {
                     return Reflect.set(target, p, value, receiver);
                 } else {
                     const tryNum = Number.parseInt(p);
                     if (Number.isSafeInteger(tryNum)) {
                         if (Array.isArray(target)) {
-                            if (!locking && isFunction(onChanged)) {
+                            if (!lockSlim.isLocked() && isFunction(onChanged)) {
                                 const success = Reflect.set(target, p, value, receiver);
                                 if (success) {
                                     const field = selectPathRoot(path);
                                     const v = Reflect.get(root, field);
-                                    if (!locking && isFunction(onSet)) {
+                                    if (!lockSlim.isLocked() && isFunction(onSet)) {
                                         onSet(field, v, level, target);
                                     }
                                     onChanged(field, v);
@@ -230,9 +244,9 @@ export function createReactiveObject(
                                 return Reflect.set(target, p, value, receiver);
                             }
                         } else {
-                            if (!locking && isFunction(onChanged)) {
+                            if (!lockSlim.isLocked() && isFunction(onChanged)) {
                                 const nextPath = `${path}[${p}]`;
-                                if (!locking && isFunction(onSet)) {
+                                if (!lockSlim.isLocked() && isFunction(onSet)) {
                                     onSet(nextPath, value, level, target);
                                 }
                                 onChanged(nextPath, value);
@@ -244,9 +258,9 @@ export function createReactiveObject(
                         if (Array.isArray(target) && p === 'length') {
                             return Reflect.set(target, p, value, receiver);
                         } else {
-                            if (!locking && isFunction(onChanged)) {
+                            if (!lockSlim.isLocked() && isFunction(onChanged)) {
                                 const nextPath = `${path ? path + '.' : ''}${p}`;
-                                if (!locking && isFunction(onSet)) {
+                                if (!lockSlim.isLocked() && isFunction(onSet)) {
                                     onSet(nextPath, value, level, target);
                                 }
                                 onChanged(nextPath, value);
@@ -259,12 +273,18 @@ export function createReactiveObject(
                 }
             },
             deleteProperty(target, p) {
+                if (p !== OBSign) {
+                    lockSlim.lock();
+                    const value = Reflect.get(target, p);
+                    unmarkObject(value);
+                    lockSlim.unlock();
+                }
                 if (!isSymbol(p) && /^\d+$/.test(p)) {
                     if (Array.isArray(target)) {
                         const num = Number.parseInt(p);
                         if (Reflect.deleteProperty(target, num)) {
                             const nextPath = `${path}[${num}]`;
-                            if (!locking && isFunction(onDelete)) {
+                            if (!lockSlim.isLocked() && isFunction(onDelete)) {
                                 onDelete(nextPath, level, target);
                             }
                             return true;
@@ -275,7 +295,7 @@ export function createReactiveObject(
                 if (Reflect.deleteProperty(target, p)) {
                     if (!isSymbol(p)) {
                         const nextPath = `${path ? path + '.' : ''}${p}`;
-                        if (!locking && isFunction(onDelete)) {
+                        if (!lockSlim.isLocked() && isFunction(onDelete)) {
                             onDelete(nextPath, level, target);
                         }
                     }
@@ -285,16 +305,6 @@ export function createReactiveObject(
             }
         }
     );
-
-    Object.defineProperty(proxy, OBLockSign, {
-        enumerable: true,
-        configurable: true,
-        value: function (value) {
-            locking = value;
-        }
-    });
-
-    return proxy;
 }
 
 export function getData(target, path) {
