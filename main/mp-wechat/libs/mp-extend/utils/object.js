@@ -1,4 +1,4 @@
-import {isFunction, isPrimitive, isSymbol} from "./common";
+import {isFunction, isNullOrEmpty, isPrimitive, isSymbol} from "./common";
 
 /**
  * 解析路径根对象名称
@@ -105,7 +105,7 @@ function signObject(proxy) {
 }
 
 function unSignObject(obj) {
-    if (isPrimitive(obj)) {
+    if (isPrimitive(obj) || isNullOrEmpty(obj)) {
         return obj;
     }
     for (const k in obj) {
