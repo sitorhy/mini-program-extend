@@ -72,15 +72,15 @@ const Configuration = {
     },
 
     deleteSpace(observer, scopeSign, path) {
-        const scope = this.getSpace(observer, scopeSign, path);
+        const scope = Reflect.get(observer, scopeSign);
         const space = scope.get(path);
         const rootSpace = scope.get(RootModuleSign);
         if (path && path !== RootModuleSign) {
             scope.delete(path);
         }
         if (space !== rootSpace) {
-            for (const definition of space.keys()) {
-                rootSpace.delete(definition);
+            for (const definition of Object.keys(space)) {
+                Reflect.deleteProperty(rootSpace, definition);
             }
         }
     },
@@ -821,6 +821,7 @@ export default class Store {
                 // 删除后触发 computed 可能会出现空指针错误
                 throw e;
             } finally {
+                // 强制移除模块
                 Configuration.deleteSpace(this, GetterSign, path);
                 Configuration.deleteSpace(this, MutationSign, path);
                 Configuration.deleteSpace(this, ActionSign, path);

@@ -95,16 +95,25 @@ export function traceObject(obj, path, clone, override, value) {
 
 const OBSign = Symbol("_ob_");
 
-function unmarkObject(obj) {
+function signObject(proxy) {
+    Object.defineProperty(proxy, OBSign, {
+        enumerable: false,
+        value: true,
+        configurable: true
+    });
+    return proxy;
+}
+
+function unSignObject(obj) {
     if (isPrimitive(obj)) {
         return obj;
     }
     for (const k in obj) {
         const v = Reflect.get(obj, k);
-        obj[k] = unmarkObject(v);
+        obj[k] = unSignObject(v);
     }
     if (Reflect.has(obj, OBSign)) {
-        const plain = Reflect.get(obj, OBSign);
+        const plain = Array.isArray(obj) ? obj.map(i => unSignObject(i)) : {...obj};
         Reflect.deleteProperty(obj, OBSign);
         return plain;
     }
@@ -127,21 +136,23 @@ class ProxyReaderWriterLock {
     }
 }
 
+const __rw__ = new ProxyReaderWriterLock();
+
 /**
  * 创建反应式对象
  *
- * @param root - 根对象
- * @param target - 目标对象
- * @param onChanged - 实现对象修改行为，只读可以不实现
- * @param path - 目标对象相对根对象路径
+ * @param {Object} root - 根对象
+ * @param {Object} target - 目标对象
+ * @param {(path:String,value:any)=>void} onChanged - 实现对象修改行为，只读可以不实现
+ * @param {String} path - 目标对象相对根对象路径
  * @param {(path:string,value:any,level:number,parent:any)=>void} onGet - 解析对象回调，用于获取计算依赖
  * @param {(path:string,value:any,level:number,parent:any)=>void} onSet - 设置对象回调，用于获取赋值依赖
  * @param {(path:string,level:number,parent:object)=>void} onDelete - 删除回调
  * @param {(path:string,prop:string,fn:function,thisArg:object,argArray:any[],level:number,parent:object)=>void} before - 设置函数回调，对象函数即将调用
  * @param {(path:string,result:any,level:number,parent:object)=>void} after - 设置函数回调，对象函数调用完毕
- * @param level - 层级，禁填
+ * @param {Number} level - 层级，禁填
  * @param {lockSlim:ProxyReaderWriterLock} lockSlim - 读写锁，禁填
- * @returns {boolean|any}
+ * @returns {Proxy<any>}
  */
 export function createReactiveObject(
     root,
@@ -154,7 +165,7 @@ export function createReactiveObject(
     before = null,
     after = null,
     level = 0,
-    lockSlim = new ProxyReaderWriterLock()) {
+    lockSlim = __rw__) {
     return new Proxy(
         target,
         {
@@ -209,18 +220,13 @@ export function createReactiveObject(
                         onGet(nextPath, value, level, target);
                     }
                     const proxy = createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1, lockSlim);
-                    Object.defineProperty(proxy, OBSign, {
-                        enumerable: false,
-                        value,
-                        configurable: true
-                    });
-                    return proxy;
+                    return signObject(proxy);
                 }
             },
             set(target, p, value, receiver) {
                 if (p !== OBSign) {
                     lockSlim.lock();
-                    value = unmarkObject(value);
+                    value = unSignObject(value);
                     lockSlim.unlock();
                 }
                 if (isSymbol(p)) {
@@ -276,7 +282,7 @@ export function createReactiveObject(
                 if (p !== OBSign) {
                     lockSlim.lock();
                     const value = Reflect.get(target, p);
-                    unmarkObject(value);
+                    unSignObject(value);
                     lockSlim.unlock();
                 }
                 if (!isSymbol(p) && /^\d+$/.test(p)) {
