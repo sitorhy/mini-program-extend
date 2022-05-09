@@ -214,7 +214,7 @@ export default class ComputedInstaller extends OptionInstaller {
             payload[i] = instance.data[i];
             PropertiesCollection.delete(instance, i);
         }
-        const originalSetData = context.get("originalSetData") || this.setData;
+        const originalSetData = context.get("originalSetData")(instance) || this.setData;
         if (isFunction(originalSetData)) {
             originalSetData(payload);
         }

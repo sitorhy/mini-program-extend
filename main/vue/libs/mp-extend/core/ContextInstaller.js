@@ -9,7 +9,7 @@ export default class ContextInstaller extends OptionInstaller {
                         const properties = context.get("properties");
                         const computed = context.get("computed");
                         // originalSetData : 检查是否安装 UpdateInstaller
-                        extender.getRuntimeContextSingleton(this).get(options, this, properties, computed, context.get("originalSetData") || this.setData.bind(this));
+                        extender.getRuntimeContextSingleton(this).get(options, this, properties, computed, context.get("originalSetData")(this) || this.setData.bind(this));
                     }
                 }
             })

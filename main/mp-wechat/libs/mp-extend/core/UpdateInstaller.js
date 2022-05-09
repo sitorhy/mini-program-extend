@@ -1,6 +1,7 @@
 import OptionInstaller from "./OptionInstaller";
 import {isFunction} from "../utils/common";
 
+const OrigSetDataSign = Symbol("__wxOrigSetData__");
 const SetDataSign = Symbol("__wxSetData__");
 
 export default class UpdateInstaller extends OptionInstaller {
@@ -13,19 +14,25 @@ export default class UpdateInstaller extends OptionInstaller {
                 lifetimes: {
                     created() {
                         const originalSetData = this.setData;
-                        context.set("originalSetData", (data, callback) => {
-                            originalSetData.call(this, data, callback);
-                        });
                         Object.defineProperty(this, SetDataSign, {
+                            value: originalSetData.bind(this),
+                            enumerable: false,
+                            configurable: true
+                        });
+                        Object.defineProperty(this, OrigSetDataSign, {
                             get() {
                                 return originalSetData;
                             },
                             enumerable: false,
                             configurable: true
                         });
+                        // instance - 修复多个实例会相互覆盖
+                        context.set("originalSetData", function (instance) {
+                            return Reflect.get(instance, SetDataSign);
+                        });
                         this.setData = (data, callback) => {
                             beforeUpdate(extender, context, options, this, data);
-                            return Reflect.get(this, SetDataSign).call(this, data, function () {
+                            return Reflect.get(this, OrigSetDataSign).call(this, data, function () {
                                 updated(extender, context, options, this, data);
                                 if (isFunction(callback)) {
                                     callback.call(this);
@@ -34,7 +41,8 @@ export default class UpdateInstaller extends OptionInstaller {
                         };
                     },
                     detached() {
-                        this.setData = Reflect.get(this, SetDataSign);
+                        this.setData = Reflect.get(this, OrigSetDataSign);
+                        Reflect.deleteProperty(this, OrigSetDataSign);
                         Reflect.deleteProperty(this, SetDataSign);
                         context.delete("originalSetData");
                     }
