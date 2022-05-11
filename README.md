@@ -242,7 +242,31 @@ Component.created > Page.created
   <view style="{{numStyle}}">{{num}}</view>
   ```
 
-<br>
+  <br>
+
+  请确保状态会被命中，分支判定可能会丢失跟踪，导致计算属性不更新。
+
+🔴 示例：
+  ```javascript
+  PageEx({
+      data: {
+          feedBack: false, 
+          validateStatus: ""
+      },
+      computed: {
+          validateStatusIcon() {
+              // 提前读取状态，确保状态被跟踪
+              const validateStatus = this.validateStatus;
+              if(this.feedBack){
+                  // feedBack 初始值为 false 时，this.validateStatus 不会被读取
+                  // return `${this.validateStatus}.svg`;
+                  return `${validateStatus}.svg`;
+              }
+              return "";
+          }
+      }
+  });
+  ```
 
 * **methods**
 
