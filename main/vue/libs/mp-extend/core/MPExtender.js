@@ -311,7 +311,7 @@ export default class MPExtender {
                 const parentPath = selectPathParent(path);
                 if (!calling.includes(parentPath)) {
                     // 排除 pop shift 等方法干扰
-                    setData(reactiveState, {[parentPath]: parent});
+                    setData(reactiveState, parentPath, parent);
                 }
                 fnDeleted.call(undefined, path, level, parent);
             },
@@ -323,7 +323,7 @@ export default class MPExtender {
             },
             (path, result, level, target) => {
                 calling.splice(0).forEach(path => {
-                    setData(reactiveState, {[path]: target});
+                    setData(reactiveState, path, target);
                 });
                 fnAfter.call(undefined, path, result, level, target);
             });
@@ -720,7 +720,7 @@ export default class MPExtender {
         const dependencies = [];
         const reactiveState = createReactiveObject(plainState, plainState,
             (path, value) => {
-                setData(plainState, {[path]: value});
+                setData(plainState, path, value);
             },
             "",
             (path, value, level) => {
@@ -785,7 +785,7 @@ export default class MPExtender {
                     // 不规范修改，计算属性应该总是返回新对象
                     // 直接修改内部属性值，默认该对象已修改，锁定对象引用不再执行getter
                     if (getData(state, path) !== value) {
-                        setData(state, {[path]: value});
+                        setData(state, path, value);
                     }
                 } else {
                     // 修改引用
@@ -800,7 +800,7 @@ export default class MPExtender {
                                 throw new Error(`Getter is missing for computed property "${src}".`);
                             }
                         } else {
-                            setData(state, {[path]: value});
+                            setData(state, path, value);
                         }
                     }
                 }
@@ -828,8 +828,7 @@ export default class MPExtender {
             (path, level, parent) => {
                 const parentPath = selectPathParent(path);
                 if (!calling.includes(parentPath)) {
-                    const data = {[path]: parent};
-                    setData(state, data);
+                    setData(state, path, parent);
                 }
             },
             (path, p, fn, thisArg, args, level, parent) => {
@@ -839,8 +838,7 @@ export default class MPExtender {
             },
             (path, result, level, target) => {
                 calling.splice(0).forEach(path => {
-                    const data = {[path]: target};
-                    setData(state, data);
+                    setData(state, path, target);
                 });
             });
 

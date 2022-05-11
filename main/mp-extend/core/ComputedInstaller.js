@@ -118,7 +118,7 @@ export default class ComputedInstaller extends OptionInstaller {
                             dependencies.push(path);
                         }
                     },
-                    (path,value,level) => {
+                    (path, value, level) => {
                         const src = selectPathRoot(path);
                         dependencies.splice(0).map(i => selectPathRoot(i)).filter(i => i !== src).forEach(p => {
                             if (!linkAge.has(p)) {
@@ -173,7 +173,7 @@ export default class ComputedInstaller extends OptionInstaller {
             PropertyMonitor.lock(instance, src);
             if (src !== path) {
                 if (getData(instance.data, path) !== value) {
-                    setData(instance.data, {[path]: value});
+                    setData(instance.data, path, value);
                 }
             } else {
                 const setter = computed[src] && isFunction(computed[src].set) ? computed[src].set : null;
@@ -187,7 +187,7 @@ export default class ComputedInstaller extends OptionInstaller {
                             throw new Error(`Getter is missing for computed property "${src}".`);
                         }
                     } else {
-                        setData(instance.data, {[path]: value});
+                        setData(instance.data, path, value);
                     }
                 }
             }

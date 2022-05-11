@@ -401,7 +401,11 @@ const Configuration = {
                 const module = config.modules[subPath];
                 const mState = module.state;
                 const nextPath = `${!path ? "" : path + "."}${subPath}`;
-                setData(state, {[nextPath]: isFunction(mState) ? mState() : mState});
+                const xx = isFunction(mState) ? mState() : mState
+                console.log(nextPath)
+                console.log(xx)
+                setData(state, nextPath, xx);
+                console.log(state)
                 this.mergeState(state, module, nextPath);
             }
         }
@@ -419,7 +423,7 @@ const Configuration = {
             state,
             state,
             (path, value) => {
-                setData(this.getOriginalState(observer), {[path]: value});
+                setData(this.getOriginalState(observer), path, value);
                 pending.splice(0).forEach(watcher => {
                     // ③ not array deep with path
                     // ⑧ not array shallow with path

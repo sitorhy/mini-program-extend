@@ -1,4 +1,4 @@
-import {isFunction, isNullOrEmpty, isPrimitive, isSymbol} from "./common";
+import {isFunction, isNullOrEmpty, isNumber, isPrimitive, isSymbol} from "./common";
 
 /**
  * 解析路径根对象名称
@@ -337,30 +337,47 @@ export function getData(target, path) {
     return v;
 }
 
-export function setData(target, payload) {
-    Object.keys(payload).forEach(function (path) {
-        const paths = splitPath(path);
-        const v = payload[path];
-        let o = target;
-        paths.forEach(function (p, pi) {
-            if (pi === paths.length - 1) {
-                o[p] = v;
+export function setData(target, path, value) {
+    const paths = isSymbol(path) || isNumber(path) ? [path] : (Array.isArray(path) ? path : splitPath(path));
+    let parent = target || {};
+    let pKey;
+    let cKey;
+    for (let pi = 0; pi <= paths.length - 1; ++pi) {
+        if (Number.isInteger(paths[pi])) {
+            pKey = paths[pi];
+        } else if (/^\d+$/.test(paths[pi])) {
+            pKey = parseInt(paths[pi]);
+        } else {
+            pKey = paths[pi];
+        }
+
+        if (pi + 1 < paths.length) {
+            if (Number.isInteger(paths[pi + 1])) {
+                cKey = paths[pi];
+            } else if (/^\d+$/.test(paths[pi + 1])) {
+                cKey = parseInt(paths[pi + 1]);
             } else {
-                if (/\d+/.test(p)) {
-                    if (Array.isArray(o)) {
-                        const index = parseInt(p);
-                        if (Number.isSafeInteger(index)) {
-                            o = o[index];
-                        } else {
-                            throw new Error(`Unexpected range index "${index}".`);
-                        }
-                    } else {
-                        o = o[p];
+                cKey = paths[pi + 1];
+            }
+        }
+
+        if (pi + 1 < paths.length) {
+            if (!parent[pKey]) {
+                if (Number.isInteger(cKey)) {
+                    parent[pKey] = [];
+                    if (parent[pKey].length - 1 < cKey) {
+                        parent[pKey].push(...new Array(cKey - parent[pKey].length + 1).fill(undefined));
                     }
                 } else {
-                    o = o[p];
+                    parent[pKey] = {};
                 }
             }
-        });
-    });
+
+            parent = parent[pKey];
+        }
+    }
+
+    parent[pKey] = value;
+
+    return parent;
 }
