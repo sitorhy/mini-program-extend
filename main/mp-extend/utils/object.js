@@ -353,7 +353,7 @@ export function setData(target, path, value) {
 
         if (pi + 1 < paths.length) {
             if (Number.isInteger(paths[pi + 1])) {
-                cKey = paths[pi];
+                cKey = paths[pi + 1];
             } else if (/^\d+$/.test(paths[pi + 1])) {
                 cKey = parseInt(paths[pi + 1]);
             } else {
