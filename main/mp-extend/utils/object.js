@@ -95,7 +95,12 @@ export function traceObject(obj, path, clone, override, value) {
 
 const OBSign = Symbol("_ob_");
 
-function signObject(proxy) {
+/**
+ * 已纳入状态管理的对象进行签名
+ * @param proxy
+ * @returns {*}
+ */
+function incorporateObject(proxy) {
     Object.defineProperty(proxy, OBSign, {
         enumerable: false,
         value: true,
@@ -104,16 +109,21 @@ function signObject(proxy) {
     return proxy;
 }
 
-function unSignObject(obj) {
+/**
+ * 对签名引用进行浅复制，使数据脱离框架
+ * @param obj
+ * @returns {*}
+ */
+export function dissociateObject(obj) {
     if (isPrimitive(obj) || isNullOrEmpty(obj)) {
         return obj;
     }
     for (const k in obj) {
         const v = Reflect.get(obj, k);
-        obj[k] = unSignObject(v);
+        obj[k] = dissociateObject(v);
     }
     if (Reflect.has(obj, OBSign)) {
-        const plain = Array.isArray(obj) ? obj.map(i => unSignObject(i)) : {...obj};
+        const plain = Array.isArray(obj) ? obj.map(i => dissociateObject(i)) : {...obj};
         Reflect.deleteProperty(obj, OBSign);
         return plain;
     }
@@ -220,13 +230,13 @@ export function createReactiveObject(
                         onGet(nextPath, value, level, target);
                     }
                     const proxy = createReactiveObject(root, value, onChanged, nextPath, onGet, onSet, onDelete, before, after, level + 1, lockSlim);
-                    return signObject(proxy);
+                    return incorporateObject(proxy);
                 }
             },
             set(target, p, value, receiver) {
                 if (p !== OBSign) {
                     lockSlim.lock();
-                    value = unSignObject(value);
+                    value = dissociateObject(value);
                     lockSlim.unlock();
                 }
                 if (isSymbol(p)) {
@@ -282,7 +292,7 @@ export function createReactiveObject(
                 if (p !== OBSign) {
                     lockSlim.lock();
                     const value = Reflect.get(target, p);
-                    unSignObject(value);
+                    dissociateObject(value);
                     lockSlim.unlock();
                 }
                 if (!isSymbol(p) && /^\d+$/.test(p)) {
