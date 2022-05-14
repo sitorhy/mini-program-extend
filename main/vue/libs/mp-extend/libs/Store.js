@@ -401,11 +401,7 @@ const Configuration = {
                 const module = config.modules[subPath];
                 const mState = module.state;
                 const nextPath = `${!path ? "" : path + "."}${subPath}`;
-                const xx = isFunction(mState) ? mState() : mState
-                console.log(nextPath)
-                console.log(xx)
-                setData(state, nextPath, xx);
-                console.log(state)
+                setData(state, nextPath, isFunction(mState) ? mState() : mState);
                 this.mergeState(state, module, nextPath);
             }
         }
