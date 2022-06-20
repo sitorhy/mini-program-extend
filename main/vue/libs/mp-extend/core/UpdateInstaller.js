@@ -26,10 +26,6 @@ export default class UpdateInstaller extends OptionInstaller {
                             enumerable: false,
                             configurable: true
                         });
-                        // instance - 修复多个实例会相互覆盖
-                        context.set("originalSetData", function (instance) {
-                            return Reflect.get(instance, SetDataSign) || originalSetData;
-                        });
                         this.setData = (data, callback) => {
                             beforeUpdate(extender, context, options, this, data);
                             return Reflect.get(this, OrigSetDataSign).call(this, data, function () {
@@ -44,7 +40,6 @@ export default class UpdateInstaller extends OptionInstaller {
                         this.setData = Reflect.get(this, OrigSetDataSign);
                         Reflect.deleteProperty(this, OrigSetDataSign);
                         Reflect.deleteProperty(this, SetDataSign);
-                        context.delete("originalSetData");
                     }
                 }
             })
@@ -59,6 +54,11 @@ export default class UpdateInstaller extends OptionInstaller {
         });
         context.set("updated", function (extender, context, options, instance, data) {
             updatedChain.forEach(i => i(extender, context, options, instance, data));
+        });
+        
+        // instance - 修复多个实例会相互覆盖
+        context.set("originalSetData", function (instance) {
+            return Reflect.get(instance, SetDataSign);
         });
     }
 }
