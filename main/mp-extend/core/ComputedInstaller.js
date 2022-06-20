@@ -216,7 +216,7 @@ export default class ComputedInstaller extends OptionInstaller {
         }
         const originalSetDataGetter = context.get("originalSetData");
         // detached 执行 originalSetData 可能被清除
-        const originalSetData = originalSetDataGetter ? originalSetDataGetter(instance) : instance.setData;
+        const originalSetData = originalSetDataGetter ? originalSetDataGetter(instance) : instance.setData.bind(instance);
         if (isFunction(originalSetData)) {
             originalSetData(payload);
         }
