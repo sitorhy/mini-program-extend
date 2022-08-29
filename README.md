@@ -579,20 +579,19 @@ PageEx({
   在`app.js`注入。
 
 ```javascript
-import {Extension} from "wechat-mini-program-extend";
-
-Extension.mixin({
-  methods: {
-    getUserInfo() {
-      console.log('114514')
-    }
-  }
-});
-
 App({
   onLaunch(options) {
-    // ...
-  }
+    
+  },
+  mixins:[
+    {
+      methods: {
+        getUserInfo() {
+          console.log('114514')
+        }
+      }
+    }
+  ]
 });
 ```
 

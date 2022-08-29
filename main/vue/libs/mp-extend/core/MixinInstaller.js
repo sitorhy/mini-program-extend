@@ -143,9 +143,21 @@ export default class MixinInstaller extends OptionInstaller {
     }
 
     configuration(extender, context, options) {
-        if (options && MixinInstaller.globalMixins.length) {
-            options.mixins = MixinInstaller.globalMixins.concat(Array.isArray(options.mixins) ? options.mixins : []);
-        }
+        const mixins = [];
+        [
+            MixinInstaller.globalMixins,
+            typeof getApp === "function" ? getApp().mixins : [],
+            options.mixins
+        ].forEach(arr => {
+            if (Array.isArray(arr)) {
+                arr.forEach(i => {
+                    if (!mixins.includes(i)) {
+                        mixins.push(i);
+                    }
+                });
+            }
+        });
+        options.mixins = mixins;
         return this.reduceConfiguration(options);
     }
 

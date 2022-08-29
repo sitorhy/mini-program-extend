@@ -9,11 +9,11 @@
     <view class="line" wx:else>（这是新开的页面）</view>
     <view class="line">本页面的 rand 参数：</view>
     <view class="line">
-        <text selectable>{{rand}}</text>
+        <text user-select>{{rand}}</text>
     </view>
     <view class="line">页面初始化时间：</view>
     <view class="line">
-        <text selectable>{{timeStr}}</text>
+        <text user-select>{{timeStr}}</text>
     </view>
     <view class="line">点右上角退出后，杀死微信，再进入小程序时可以重新看到这个页面</view>
 </view>
